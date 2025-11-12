@@ -18,7 +18,9 @@ export default function RootLayout({
       <body
         className={`${fontSans.variable} font-sans antialiased `}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )

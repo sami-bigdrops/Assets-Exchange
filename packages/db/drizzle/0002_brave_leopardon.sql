@@ -1,0 +1,1 @@
+ALTER TABLE "personalizations" ADD COLUMN "metric_card_colors" jsonb;

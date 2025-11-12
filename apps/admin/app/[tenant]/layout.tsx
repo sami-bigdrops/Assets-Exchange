@@ -1,23 +1,22 @@
-import { SidebarProvider, SidebarTrigger, SidebarInset } from "@workspace/ui/components/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
+import { FaviconProvider } from "@/components/favicon-provider"
+import { DashboardWrapper } from "@/components/dashboard-wrapper"
 
-export default function TenantLayout({
+export default async function TenantLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode
+  params: Promise<{ tenant: string }>
 }>) {
+  const { tenant } = await params
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          {children}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <>
+      <FaviconProvider tenant={tenant} />
+      <DashboardWrapper tenant={tenant}>
+        {children}
+      </DashboardWrapper>
+    </>
   )
 }
 

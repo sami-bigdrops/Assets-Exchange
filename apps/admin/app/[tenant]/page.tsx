@@ -1,12 +1,20 @@
-import { Button } from "@workspace/ui/components/button"
+"use client"
+
+import { useParams } from "next/navigation"
+import { DashboardMetrics } from "@/components/dashboard/dashboard-metrics"
+import { usePersonalization } from "@/hooks/use-personalization"
 
 export default function Page() {
+  const params = useParams()
+  const tenant = params.tenant as string
+  const { settings } = usePersonalization(tenant)
+
   return (
-    <div className="flex items-center justify-center min-h-svh">
-      <div className="flex flex-col items-center justify-center gap-4">
-        <h1 className="text-2xl font-bold">Hello World</h1>
-        <Button size="sm">Button</Button>
-      </div>
+    <div className="space-y-6">
+      <DashboardMetrics 
+        tenant={tenant}
+        personalizedColors={settings?.metricCardColors ?? undefined}
+      />
     </div>
   )
 }

@@ -23,6 +23,8 @@ export const personalizations = pgTable("personalizations", {
     heading: string;
     sidebarHoverBackground: string;
     sidebarHoverText: string;
+    sectionHeaderBackground: string;
+    sectionHeadingTextColor: string;
   }>(),
   buttonColors: jsonb("button_colors").$type<{
     primaryButton: string;

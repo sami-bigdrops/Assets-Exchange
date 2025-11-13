@@ -12,6 +12,8 @@ interface ColorSectionProps {
     heading: string
     sidebarHoverBackground: string
     sidebarHoverText: string
+    sectionHeaderBackground: string
+    sectionHeadingTextColor: string
   }
   onColorChange: (key: string, value: string) => void
 }
@@ -92,6 +94,30 @@ export function ColorSection({ colors, onColorChange }: ColorSectionProps) {
               value={colors.sidebarHoverText}
               onChange={(value) => onColorChange("sidebarHoverText", value)}
               description="Text color when hovering over sidebar menu items. This same color is also used for the selected/active menu item text."
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Section Colors */}
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium">Section Colors</h4>
+          <p className="text-xs text-muted-foreground">
+            Colors for section headers and card headers throughout the dashboard
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ColorInput
+              label="Section Header Background Color"
+              value={colors.sectionHeaderBackground}
+              onChange={(value) => onColorChange("sectionHeaderBackground", value)}
+              description="Background color for section headers, such as the Performance Overview header. This color appears behind section titles and controls."
+            />
+            <ColorInput
+              label="Section Heading Text Color"
+              value={colors.sectionHeadingTextColor}
+              onChange={(value) => onColorChange("sectionHeadingTextColor", value)}
+              description="Text color for section headings and titles, such as 'Performance Overview'. Should have good contrast with the section header background."
             />
           </div>
         </div>

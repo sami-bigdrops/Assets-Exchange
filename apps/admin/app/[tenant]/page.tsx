@@ -1,20 +1,18 @@
-"use client"
+import { getPersonalizationByTenantSlug } from "@/lib/personalization"
+import { DashboardPageClient } from "./dashboard-page-client"
 
-import { useParams } from "next/navigation"
-import { DashboardMetrics } from "@/components/dashboard/dashboard-metrics"
-import { usePersonalization } from "@/hooks/use-personalization"
-
-export default function Page() {
-  const params = useParams()
-  const tenant = params.tenant as string
-  const { settings } = usePersonalization(tenant)
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ tenant: string }>
+}) {
+  const { tenant } = await params
+  const personalizationSettings = await getPersonalizationByTenantSlug(tenant)
 
   return (
-    <div className="space-y-6">
-      <DashboardMetrics 
-        tenant={tenant}
-        personalizedColors={settings?.metricCardColors ?? undefined}
-      />
-    </div>
+    <DashboardPageClient
+      tenant={tenant}
+      initialPersonalization={personalizationSettings}
+    />
   )
 }

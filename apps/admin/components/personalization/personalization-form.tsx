@@ -18,6 +18,8 @@ interface PersonalizationFormData {
     heading: string
     sidebarHoverBackground: string
     sidebarHoverText: string
+    sectionHeaderBackground: string
+    sectionHeadingTextColor: string
   }
   buttonColors: {
     primaryButton: string
@@ -55,6 +57,8 @@ const defaultColors = {
   heading: "#374151",
   sidebarHoverBackground: "#f3f4f6",
   sidebarHoverText: "#111827",
+  sectionHeaderBackground: "#ffffff",
+  sectionHeadingTextColor: "#111827",
 }
 
 const defaultButtonColors = {

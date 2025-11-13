@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { PersonalizationSettings } from "@/lib/personalization"
 
 export function usePersonalization(tenant: string, initialSettings?: PersonalizationSettings | null) {
-  const [settings, setSettings] = useState<PersonalizationSettings | null>(initialSettings ?? null)
+  const [fetchedSettings, setFetchedSettings] = useState<PersonalizationSettings | null>(null)
   const [loading, setLoading] = useState(initialSettings === undefined)
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export function usePersonalization(tenant: string, initialSettings?: Personaliza
         const response = await fetch(`/api/personalization/${tenant}`)
         if (response.ok) {
           const data = await response.json()
-          setSettings(data)
+          setFetchedSettings(data)
         }
       } catch (error) {
         console.error("Error fetching personalization:", error)
@@ -31,6 +31,8 @@ export function usePersonalization(tenant: string, initialSettings?: Personaliza
       fetchPersonalization()
     }
   }, [tenant, initialSettings])
+
+  const settings = initialSettings !== undefined ? initialSettings : fetchedSettings
 
   return { settings, loading }
 }

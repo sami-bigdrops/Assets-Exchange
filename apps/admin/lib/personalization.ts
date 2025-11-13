@@ -13,6 +13,8 @@ export interface PersonalizationSettings {
     heading: string;
     sidebarHoverBackground: string;
     sidebarHoverText: string;
+    sectionHeaderBackground: string;
+    sectionHeadingTextColor: string;
   } | null;
   buttonColors?: {
     primaryButton: string;

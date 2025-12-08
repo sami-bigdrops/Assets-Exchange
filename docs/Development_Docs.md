@@ -24,10 +24,13 @@ assets-exchange/
 │   │   ├── (admin)/              # Admin dashboard
 │   │   ├── (advertiser)/         # Advertiser dashboard
 │   │   ├── (administrator)/      # Administrator dashboard
+│   │   ├── dashboard/            # Dashboard page
 │   │   └── layout.tsx            # Shared dashboard layout
 │   ├── publisher/                # Public routes (no auth)
 │   ├── auth/                     # Authentication pages
-│   └── layout.tsx                # Root layout
+│   ├── unauthorized/             # Access denied page
+│   ├── layout.tsx                # Root layout
+│   └── global-error.tsx          # Global error boundary
 │
 ├── features/                     # Feature modules (MVVM)
 │   ├── auth/
@@ -52,17 +55,29 @@ assets-exchange/
 │   ├── schema.ts                 # Database schema definitions
 │   ├── get-user.ts               # Server-side user retrieval
 │   ├── auth-helpers.ts           # Route protection helpers
-│   └── utils.ts                  # Utility functions
+│   ├── utils.ts                  # Utility functions
+│   └── rpc/                      # oRPC router and client
+│       ├── router.ts             # RPC router definitions
+│       └── client.ts             # RPC client for frontend
 │
-├── app/api/auth/                 # BetterAuth API routes
-│   ├── [...all]/route.ts         # Main auth handler
-│   └── get-session/route.ts      # Session retrieval
+├── app/api/
+│   ├── auth/                     # BetterAuth API routes
+│   │   ├── [...all]/route.ts     # Main auth handler
+│   │   └── get-session/route.ts  # Session retrieval
+│   └── rpc/                      # oRPC API routes
+│       └── [...path]/route.ts    # RPC handler
 │
 ├── seed-scripts/                 # Database seeding scripts
 │   ├── SeedAdmin.ts              # Admin user creation
 │   └── SeedAdvertiser.ts         # Advertiser user creation
 │
-└── hooks/                        # Global hooks
+├── hooks/                        # Global hooks
+├── public/                       # Static assets
+├── components.json               # shadcn/ui configuration
+├── drizzle.config.ts             # Drizzle Kit configuration
+├── env.js                        # Environment variable validation
+├── next.config.ts                # Next.js configuration
+└── package.json                  # Dependencies and scripts
 ```
 
 ## Getting Started
@@ -86,6 +101,8 @@ assets-exchange/
    BETTER_AUTH_SECRET=your_secret_key
    BETTER_AUTH_URL=http://localhost:3000
    ```
+   
+   Environment variables are validated using `env.js` with Zod schemas. See the [Environment Variables](#environment-variables) section for all available variables.
 
 3. Set up database:
    ```bash
@@ -115,6 +132,8 @@ assets-exchange/
 - **Better Auth**: Authentication system
 - **Neon PostgreSQL**: Serverless database
 - **Drizzle ORM**: Type-safe database queries
+- **oRPC**: Type-safe RPC with OpenAPI support
+- **t3-env**: Type-safe environment variable validation
 - **React Hook Form + Zod**: Form validation
 
 ## Routing Structure
@@ -379,6 +398,7 @@ export function MyForm() {
 1. Use try-catch for async operations
 2. Provide meaningful error messages
 3. Handle loading and error states in UI
+4. Global error boundary (`app/global-error.tsx`) catches unhandled errors
 
 ## Development Workflow
 
@@ -533,7 +553,9 @@ ADMIN_NAME=Your Name
 
 ## Environment Variables
 
-Required variables in `.env.local`:
+Environment variables are validated using [t3-env](https://env.t3.gg) with Zod schemas. The validation configuration is in `env.js` at the project root.
+
+### Required Variables
 
 ```env
 # Database (Neon PostgreSQL)
@@ -544,13 +566,70 @@ BETTER_AUTH_SECRET=your_secret_key
 BETTER_AUTH_URL=http://localhost:3000
 ```
 
-Optional variables:
+### Optional Variables
+
 ```env
-# For seeding
+# For seeding users
 ADMIN_EMAIL=admin@assets-exchange.com
 ADMIN_PASSWORD=Admin@123
 ADMIN_NAME=Admin User
+ADVERTISER_EMAIL=advertiser@assets-exchange.com
+ADVERTISER_PASSWORD=Advertiser@123
+ADVERTISER_NAME=Advertiser User
+
+# Client-side (NEXT_PUBLIC_*)
+NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+### Environment Validation
+
+The project uses `env.js` to validate all environment variables at runtime:
+
+- **Server variables**: Validated on server-side (DATABASE_URL, BETTER_AUTH_SECRET, etc.)
+- **Client variables**: Validated for client-side use (NEXT_PUBLIC_*)
+- **Type safety**: Full TypeScript support with Zod schemas
+- **Runtime validation**: Invalid or missing required variables cause startup failures with clear error messages
+
+To skip validation (e.g., in CI):
+```bash
+SKIP_ENV_VALIDATION=true pnpm build
+```
+
+## oRPC (Type-Safe RPC)
+
+The project uses [oRPC](https://orpc.dev) for type-safe RPC calls with end-to-end type safety.
+
+### Router Setup
+
+RPC procedures are defined in `lib/rpc/router.ts`:
+
+```typescript
+import { os } from "@orpc/server";
+import { z } from "zod";
+
+export const health = os
+  .output(z.object({ status: z.string(), timestamp: z.string() }))
+  .handler(async () => {
+    return { status: "ok", timestamp: new Date().toISOString() };
+  });
+
+export const router = { health };
+```
+
+### Client Usage
+
+Use the RPC client in client components:
+
+```typescript
+import { rpc } from "@/lib/rpc/client";
+
+const result = await rpc.health();
+```
+
+### API Route
+
+RPC requests are handled at `/api/rpc/*` via `app/api/rpc/[...path]/route.ts`.
 
 ## Troubleshooting
 
@@ -563,6 +642,8 @@ ADMIN_NAME=Admin User
 5. **Database connection error**: Verify `DATABASE_URL` in `.env.local`
 6. **Auth not working**: Check `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`
 7. **Environment variables not loading**: Ensure `.env.local` exists and variables are set
+8. **Environment validation errors**: Check `env.js` for required variables and their schemas
+9. **RPC errors**: Verify the RPC router is properly configured and the client is using the correct URL
 
 ## Resources
 
@@ -570,6 +651,8 @@ ADMIN_NAME=Admin User
 - [Better Auth Docs](https://www.better-auth.com)
 - [Neon Docs](https://neon.tech/docs)
 - [Drizzle ORM Docs](https://orm.drizzle.team)
+- [oRPC Docs](https://orpc.dev)
+- [t3-env Docs](https://env.t3.gg)
 - [shadcn/ui Docs](https://ui.shadcn.com)
 - [Tailwind CSS Docs](https://tailwindcss.com/docs)
 - [React Docs](https://react.dev)

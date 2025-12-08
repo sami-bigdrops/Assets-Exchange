@@ -12,7 +12,6 @@ export const env = createEnv({
     ADVERTISER_EMAIL: z.string().email().optional(),
     ADVERTISER_PASSWORD: z.string().min(1).optional(),
     ADVERTISER_NAME: z.string().min(1).optional(),
-    SENTRY_AUTH_TOKEN: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_BETTER_AUTH_URL: z.string().url().optional(),
@@ -30,7 +29,6 @@ export const env = createEnv({
     ADVERTISER_NAME: process.env.ADVERTISER_NAME,
     NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,

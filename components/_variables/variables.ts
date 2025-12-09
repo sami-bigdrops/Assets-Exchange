@@ -23,6 +23,7 @@ export interface AppVariables {
     inputBorderFocusColor: string;
     inputErrorColor: string;
     inputBorderDisabledColor: string;
+    inputRingColor: string;
     buttonDefaultBackgroundColor: string;
     buttonDefaultTextColor: string;
     buttonOutlineBackgroundColor: string;
@@ -66,6 +67,7 @@ export const defaultVariables: AppVariables = {
     inputBorderFocusColor: "#2c91cc",
     inputErrorColor: "#FF0000",
     inputBorderDisabledColor: "#999999",
+    inputRingColor: "#2c91cc",
     buttonDefaultBackgroundColor: "#2c91cc",
     buttonDefaultTextColor: "#FFFFFF",
     buttonOutlineBackgroundColor: "transparent",

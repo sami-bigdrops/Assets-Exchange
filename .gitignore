@@ -109,3 +109,6 @@ pnpm-debug.log*
 
 # Optional: Uncomment if using Turbopack
 # .turbo/
+
+# GitHub Actions (not used)
+.github/

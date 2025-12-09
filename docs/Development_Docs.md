@@ -38,7 +38,8 @@ assets-exchange/
 │   │   ├── view-models/           # Business logic
 │   │   ├── models/                # Data structures
 │   │   ├── services/              # API calls
-│   │   ├── hooks/                 # Custom hooks
+│   │   ├── hooks/                 # Custom hooks (e.g., useForm)
+│   │   ├── validation/            # Zod validation schemas
 │   │   └── types/                 # TypeScript types
 │   ├── admin/                    # Admin feature
 │   ├── advertiser/               # Advertiser feature
@@ -414,11 +415,47 @@ export default async function AdminLayout({ children }) {
 
 ### Login Form
 
-The login form is built with MVVM architecture:
+The login form is built with MVVM architecture and includes enhanced features:
 
 - **View**: `features/auth/components/LoginForm.tsx`
 - **ViewModel**: `features/auth/view-models/useLoginViewModel.ts`
+- **Validation**: `features/auth/validation/login.validation.ts` - Zod schema for form validation
+- **Form Hook**: `features/auth/hooks/useForm.ts` - Generic React Hook Form hook with Zod validation
 - **Types**: `features/auth/types/auth.types.ts`
+
+**Features:**
+
+- Password visibility toggle (show/hide password) with Eye/EyeOff icons
+- Responsive design with mobile, tablet, and desktop breakpoints
+- Custom form validation with React Hook Form and Zod:
+  - Real-time validation as user types (`mode: "onChange"`)
+  - Custom error messages displayed below each input field
+  - Email validation: "Email is required" or "Enter a valid email address"
+  - Password validation: "Password is required" or "Password must be at least 6 characters"
+  - No browser default validation popups (`noValidate` on form)
+  - Error border colors applied automatically when validation fails
+- Full integration with application variables system for theming
+- Custom focus ring styling using `inputRingColor` variable
+- Chrome autofill styling to maintain consistent background colors
+- Custom text selection color matching theme
+- Logo display using variables with responsive sizing
+- Loading states with spinner animation and disabled states
+- Error handling and display with Alert component
+- Accessible form labels and ARIA attributes
+
+**Form Hook Usage:**
+
+```typescript
+import { useForm } from "../hooks/useForm";
+import { loginSchema } from "../validation/login.validation";
+
+const form = useForm(loginSchema, {
+  defaultValues: {
+    email: "",
+    password: "",
+  },
+});
+```
 
 After successful login, users are redirected to `/dashboard` which displays role-based content.
 
@@ -426,24 +463,92 @@ After successful login, users are redirected to `/dashboard` which displays role
 
 ### React Hook Form + Zod
 
+The project uses React Hook Form with Zod for type-safe form validation. Forms include custom validation with error messages displayed below inputs.
+
+**Validation Schema Example:**
+
 ```typescript
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+// features/auth/validation/login.validation.ts
 import { z } from "zod";
 
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Enter a valid email address"),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .min(6, "Password must be at least 6 characters"),
 });
 
-export function MyForm() {
-  const form = useForm({
-    resolver: zodResolver(schema),
+export type LoginFormData = z.infer<typeof loginSchema>;
+```
+
+**Generic Form Hook:**
+
+The project provides a generic `useForm` hook that can be used with any Zod schema:
+
+```typescript
+// features/auth/hooks/useForm.ts
+import { useForm } from "../hooks/useForm";
+import { loginSchema } from "../validation/login.validation";
+
+const form = useForm(loginSchema, {
+  defaultValues: {
+    email: "",
+    password: "",
+  },
+});
+```
+
+**Form Component Example:**
+
+```typescript
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "../hooks/useForm";
+import { loginSchema } from "../validation/login.validation";
+
+export function LoginForm() {
+  const form = useForm(loginSchema, {
+    defaultValues: {
+      email: "",
+      password: "",
+    },
   });
 
-  return <form onSubmit={form.handleSubmit(onSubmit)}>...</form>;
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage /> {/* Error message appears here */}
+            </FormItem>
+          )}
+        />
+      </form>
+    </Form>
+  );
 }
 ```
+
+**Key Features:**
+
+- Generic `useForm` hook reusable with any Zod schema
+- Custom validation messages displayed below each input
+- Real-time validation as user types (`mode: "onChange"`)
+- No browser default validation (`noValidate` on form)
+- Type-safe with TypeScript and Zod
+- Error border colors applied automatically when validation fails
+- Chrome autofill styling to maintain consistent colors
+- Custom text selection color matching theme
 
 ## Best Practices
 

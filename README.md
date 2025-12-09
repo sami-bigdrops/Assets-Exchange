@@ -225,10 +225,10 @@ assets-exchange/
 - **Environment Validation**: Type-safe environment variables with t3-env and Zod
 - **Role-Based Access**: Three dashboard types (Admin, Advertiser, Administrator) with protected routes
 - **Public Publisher Section**: No authentication required for publisher routes
-- **Login UI**: Beautiful sign-in form with error handling and loading states
+- **Login UI**: Enhanced sign-in form with custom validation, password visibility toggle, responsive design, and full theme variable integration
 - **Component Library**: Pre-built, accessible UI components from shadcn/ui
 - **Dark Mode**: Full dark mode support with theme switching
-- **Form Validation**: Type-safe forms with React Hook Form and Zod
+- **Form Validation**: Type-safe forms with React Hook Form and Zod, custom error messages, and real-time validation
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 - **Type Safety**: Full TypeScript support throughout
 - **Database Seeding**: Scripts to create initial admin and advertiser users

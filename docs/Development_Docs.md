@@ -58,6 +58,7 @@ assets-exchange/
 │   ├── schema.ts                 # Database schema definitions
 │   ├── get-user.ts               # Server-side user retrieval
 │   ├── auth-helpers.ts           # Route protection helpers
+│   ├── logger.ts                 # Server-side logging utility
 │   ├── utils.ts                  # Utility functions
 │   └── rpc/                      # oRPC router and client
 │       ├── router.ts             # RPC router definitions
@@ -719,6 +720,55 @@ const result = await rpc.health();
 
 RPC requests are handled at `/api/rpc/*` via `app/api/rpc/[...path]/route.ts`.
 
+## Logging
+
+### Logger Utility
+
+The project includes a simple server-side logging utility located in `lib/logger.ts`. The logger is marked as `server-only` to prevent client-side bundling.
+
+**Available Loggers:**
+
+- `logger.app` - Application-level logging
+- `logger.api` - API route logging
+- `logger.db` - Database operation logging
+- `logger.auth` - Authentication logging
+- `logger.rpc` - RPC handler logging
+
+**Usage:**
+
+```typescript
+import { logger } from "@/lib/logger";
+
+// Info logging
+logger.app.info("Application started");
+logger.api.info("Request received", { path: "/api/users" });
+
+// Success logging
+logger.app.success("Operation completed");
+logger.db.success("Query executed", { rows: 10 });
+
+// Warning logging
+logger.app.warn("Rate limit approaching");
+logger.auth.warn("Failed login attempt", { email });
+
+// Error logging
+logger.app.error("Error occurred", error);
+logger.db.error("Connection failed", error);
+
+// Debug logging (only in development)
+logger.app.debug("Debug information", { data: {...} });
+```
+
+**Features:**
+
+- Simple console-based implementation (no external dependencies)
+- Tagged logging for easy filtering (`[APP]`, `[API]`, `[DB]`, etc.)
+- Server-only (marked with `server-only` package)
+- Uses native `console.log`, `console.warn`, and `console.error`
+- Debug logging only enabled in development mode
+
+**Note**: The logger uses native console methods and is safe for server-side use only. It will not be bundled for the client.
+
 ## Testing
 
 ### Jest Configuration
@@ -831,10 +881,16 @@ Key rules:
    ```
 
 4. **Console Statements**: Use logger instead of `console.log`:
+
    ```typescript
    import { logger } from "@/lib/logger";
    logger.app.info("Message");
+   logger.app.success("Operation completed");
+   logger.app.warn("Warning message");
+   logger.app.error("Error occurred", error);
    ```
+
+   **Note**: The logger is a simple console-based implementation (server-only) that provides structured logging with tags. It uses native `console` methods and is safe for server-side use only.
 
 ## Security
 

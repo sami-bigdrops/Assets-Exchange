@@ -25,6 +25,15 @@ const cspDirectives = [
 ];
 
 const nextConfig: NextConfig = {
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "@/lib/logger": false,
+      };
+    }
+    return config;
+  },
   async headers() {
     return [
       {

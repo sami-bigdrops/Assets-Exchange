@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { env } from "../env.js";
 import { auth } from "../lib/auth";
 import { db } from "../lib/db";
-import { logger, withSpinner, boxMessage } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { user } from "../lib/schema";
 
 async function seedAdmin() {
@@ -17,85 +17,64 @@ async function seedAdmin() {
     logger.app.info(`Name: ${adminName}`);
 
     // Check if user already exists
-    const existingUser = await withSpinner(
-      "Checking if admin user exists...",
-      async () => {
-        return await db
-          .select()
-          .from(user)
-          .where(eq(user.email, adminEmail))
-          .limit(1);
-      },
-      "User check completed"
-    );
+    logger.app.info("Checking if admin user exists...");
+    const existingUser = await db
+      .select()
+      .from(user)
+      .where(eq(user.email, adminEmail))
+      .limit(1);
+    logger.app.success("User check completed");
 
     if (existingUser.length > 0) {
       logger.app.warn("Admin user already exists!");
 
       // Update role to admin if not already
       if (existingUser[0].role !== "admin") {
-        await withSpinner(
-          "Updating user role to admin...",
-          async () => {
-            await db
-              .update(user)
-              .set({ role: "admin", updatedAt: new Date() })
-              .where(eq(user.id, existingUser[0].id));
-          },
-          "User role updated to admin"
-        );
+        logger.app.info("Updating user role to admin...");
+        await db
+          .update(user)
+          .set({ role: "admin", updatedAt: new Date() })
+          .where(eq(user.id, existingUser[0].id));
+        logger.app.success("User role updated to admin");
       } else {
         logger.app.success("Admin user already has admin role");
       }
 
       logger.app.info(
-        boxMessage(
-          `Admin user already exists!\n\nEmail: ${adminEmail}\nRole: admin`,
-          { title: "ℹ️  Info", color: "blue" }
-        )
+        `\nℹ️  Info\n\nAdmin user already exists!\n\nEmail: ${adminEmail}\nRole: admin\n`
       );
       return;
     }
 
     // Create user using BetterAuth API
-    const result = await withSpinner(
-      "Creating admin user...",
-      async () => {
-        const signUpResult = await auth.api.signUpEmail({
-          body: {
-            email: adminEmail,
-            password: adminPassword,
-            name: adminName,
-          },
-          headers: new Headers(),
-        });
-
-        if (!signUpResult.user) {
-          throw new Error("User creation failed: No user data returned");
-        }
-
-        // Update user role to admin
-        await db
-          .update(user)
-          .set({ role: "admin", updatedAt: new Date() })
-          .where(eq(user.id, signUpResult.user.id));
-
-        return signUpResult;
+    logger.app.info("Creating admin user...");
+    const signUpResult = await auth.api.signUpEmail({
+      body: {
+        email: adminEmail,
+        password: adminPassword,
+        name: adminName,
       },
-      "Admin user created successfully!"
+      headers: new Headers(),
+    });
+
+    if (!signUpResult.user) {
+      throw new Error("User creation failed: No user data returned");
+    }
+
+    // Update user role to admin
+    await db
+      .update(user)
+      .set({ role: "admin", updatedAt: new Date() })
+      .where(eq(user.id, signUpResult.user.id));
+
+    logger.app.success("Admin user created successfully!");
+
+    // Display success message
+    logger.app.info(
+      `\n✅ Admin User Created\n\nEmail: ${adminEmail}\nPassword: ${adminPassword}\n\n⚠️  Please change the password after first login!\n`
     );
 
-    // Display success message in a box
-    const credentialsBox = boxMessage(
-      `Email: ${adminEmail}\nPassword: ${adminPassword}\n\n⚠️  Please change the password after first login!`,
-      {
-        title: "✅ Admin User Created",
-        color: "green",
-        padding: 1,
-      }
-    );
-
-    logger.app.info(credentialsBox);
+    const result = signUpResult;
     logger.app.info(`User ID: ${result.user.id}`);
     logger.app.info(`Role: admin`);
   } catch (error) {

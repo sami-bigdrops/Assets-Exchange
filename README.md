@@ -191,6 +191,7 @@ assets-exchange/
 │   ├── schema.ts                 # Database schema definitions
 │   ├── get-user.ts               # Server-side user retrieval
 │   ├── auth-helpers.ts           # Route protection helpers
+│   ├── logger.ts                 # Server-side logging utility
 │   ├── utils.ts                  # Utility functions
 │   └── rpc/                      # oRPC router and client
 │       ├── router.ts             # RPC router definitions

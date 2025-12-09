@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { env } from "../env.js";
 import { auth } from "../lib/auth";
 import { db } from "../lib/db";
-import { logger, withSpinner, boxMessage } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { user } from "../lib/schema";
 
 async function seedAdvertiser() {
@@ -18,85 +18,64 @@ async function seedAdvertiser() {
     logger.app.info(`Name: ${advertiserName}`);
 
     // Check if user already exists
-    const existingUser = await withSpinner(
-      "Checking if advertiser user exists...",
-      async () => {
-        return await db
-          .select()
-          .from(user)
-          .where(eq(user.email, advertiserEmail))
-          .limit(1);
-      },
-      "User check completed"
-    );
+    logger.app.info("Checking if advertiser user exists...");
+    const existingUser = await db
+      .select()
+      .from(user)
+      .where(eq(user.email, advertiserEmail))
+      .limit(1);
+    logger.app.success("User check completed");
 
     if (existingUser.length > 0) {
       logger.app.warn("Advertiser user already exists!");
 
       // Update role to advertiser if not already
       if (existingUser[0].role !== "advertiser") {
-        await withSpinner(
-          "Updating user role to advertiser...",
-          async () => {
-            await db
-              .update(user)
-              .set({ role: "advertiser", updatedAt: new Date() })
-              .where(eq(user.id, existingUser[0].id));
-          },
-          "User role updated to advertiser"
-        );
+        logger.app.info("Updating user role to advertiser...");
+        await db
+          .update(user)
+          .set({ role: "advertiser", updatedAt: new Date() })
+          .where(eq(user.id, existingUser[0].id));
+        logger.app.success("User role updated to advertiser");
       } else {
         logger.app.success("Advertiser user already has advertiser role");
       }
 
       logger.app.info(
-        boxMessage(
-          `Advertiser user already exists!\n\nEmail: ${advertiserEmail}\nRole: advertiser`,
-          { title: "ℹ️  Info", color: "blue" }
-        )
+        `\nℹ️  Info\n\nAdvertiser user already exists!\n\nEmail: ${advertiserEmail}\nRole: advertiser\n`
       );
       return;
     }
 
     // Create user using BetterAuth API
-    const result = await withSpinner(
-      "Creating advertiser user...",
-      async () => {
-        const signUpResult = await auth.api.signUpEmail({
-          body: {
-            email: advertiserEmail,
-            password: advertiserPassword,
-            name: advertiserName,
-          },
-          headers: new Headers(),
-        });
-
-        if (!signUpResult.user) {
-          throw new Error("User creation failed: No user data returned");
-        }
-
-        // Update user role to advertiser
-        await db
-          .update(user)
-          .set({ role: "advertiser", updatedAt: new Date() })
-          .where(eq(user.id, signUpResult.user.id));
-
-        return signUpResult;
+    logger.app.info("Creating advertiser user...");
+    const signUpResult = await auth.api.signUpEmail({
+      body: {
+        email: advertiserEmail,
+        password: advertiserPassword,
+        name: advertiserName,
       },
-      "Advertiser user created successfully!"
+      headers: new Headers(),
+    });
+
+    if (!signUpResult.user) {
+      throw new Error("User creation failed: No user data returned");
+    }
+
+    // Update user role to advertiser
+    await db
+      .update(user)
+      .set({ role: "advertiser", updatedAt: new Date() })
+      .where(eq(user.id, signUpResult.user.id));
+
+    logger.app.success("Advertiser user created successfully!");
+
+    // Display success message
+    logger.app.info(
+      `\n✅ Advertiser User Created\n\nEmail: ${advertiserEmail}\nPassword: ${advertiserPassword}\n\n⚠️  Please change the password after first login!\n`
     );
 
-    // Display success message in a box
-    const credentialsBox = boxMessage(
-      `Email: ${advertiserEmail}\nPassword: ${advertiserPassword}\n\n⚠️  Please change the password after first login!`,
-      {
-        title: "✅ Advertiser User Created",
-        color: "green",
-        padding: 1,
-      }
-    );
-
-    logger.app.info(credentialsBox);
+    const result = signUpResult;
     logger.app.info(`User ID: ${result.user.id}`);
     logger.app.info(`Role: advertiser`);
   } catch (error) {

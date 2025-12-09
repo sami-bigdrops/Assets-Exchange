@@ -1,21 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/better-auth-client";
-<<<<<<< Updated upstream
-import type { LoginCredentials, UserRole } from "../types/auth.types";
-=======
+import { useState } from "react";
 
-import type { LoginFormData } from "../validation/login.validation";
->>>>>>> Stashed changes
+import { signIn } from "@/lib/better-auth-client";
+
+import type { LoginCredentials } from "../types/auth.types";
 
 export function useLoginViewModel() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleLogin = async (credentials: LoginFormData) => {
+  const handleLogin = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     setError(null);
 
@@ -35,7 +32,9 @@ export function useLoginViewModel() {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred during login");
+      setError(
+        err instanceof Error ? err.message : "An error occurred during login"
+      );
       setIsLoading(false);
     }
   };
@@ -46,4 +45,3 @@ export function useLoginViewModel() {
     error,
   };
 }
-

@@ -1,5 +1,6 @@
-import { auth } from "./auth";
 import { headers } from "next/headers";
+
+import { auth } from "./auth";
 
 export async function getCurrentUser() {
   const session = await auth.api.getSession({
@@ -17,4 +18,3 @@ export async function getCurrentUser() {
     role: session.user.role as "admin" | "advertiser" | "administrator",
   };
 }
-

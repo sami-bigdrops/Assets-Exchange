@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+
 import { getCurrentUser } from "@/lib/get-user";
 
 export default async function DashboardLayout({
@@ -12,9 +13,5 @@ export default async function DashboardLayout({
     redirect("/auth");
   }
 
-  return (
-    <div className="h-screen overflow-y-auto">
-      {children}
-    </div>
-  );
+  return <div className="h-screen overflow-y-auto">{children}</div>;
 }

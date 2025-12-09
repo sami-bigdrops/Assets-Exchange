@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /auth/
+Disallow: /unauthorized/
+
+Sitemap: https://bdmg.assetsexchange.com/sitemap.xml
+

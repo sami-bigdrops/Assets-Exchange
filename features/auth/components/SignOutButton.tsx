@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { signOut } from "@/lib/better-auth-client";
+
 import { Button } from "@/components/ui/button";
+import { signOut } from "@/lib/better-auth-client";
 
 export function SignOutButton() {
   const router = useRouter();
@@ -19,4 +20,3 @@ export function SignOutButton() {
     </Button>
   );
 }
-

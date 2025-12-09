@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth-helpers";
 
 export default async function AdvertiserLayout({
@@ -8,9 +7,5 @@ export default async function AdvertiserLayout({
 }>) {
   await requireRole("advertiser");
 
-  return (
-    <div className="h-screen overflow-y-auto">
-      {children}
-    </div>
-  );
+  return <div className="h-screen overflow-y-auto">{children}</div>;
 }

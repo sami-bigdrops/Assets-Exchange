@@ -1,8 +1,15 @@
-import { getCurrentUser } from "@/lib/get-user";
 import { redirect } from "next/navigation";
-import { SignOutButton } from "@/features/auth/components/SignOutButton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { SignOutButton } from "@/features/auth/components/SignOutButton";
+import { getCurrentUser } from "@/lib/get-user";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -36,13 +43,17 @@ export default async function DashboardPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Email:</span>
-              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <span className="text-sm text-muted-foreground">
+                {user.email}
+              </span>
             </div>
           </div>
           <div className="p-4 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
-              ✅ Role-based authentication is working correctly. You have access to the{" "}
-              <span className="font-semibold capitalize">{user.role}</span> dashboard.
+              ✅ Role-based authentication is working correctly. You have access
+              to the{" "}
+              <span className="font-semibold capitalize">{user.role}</span>{" "}
+              dashboard.
             </p>
           </div>
         </CardContent>
@@ -50,4 +61,3 @@ export default async function DashboardPage() {
     </div>
   );
 }
-

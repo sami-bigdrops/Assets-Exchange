@@ -1,17 +1,12 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+
+import "server-only";
+
+import { env } from "@/env";
+
 import { db } from "./db";
-import * as dotenv from "dotenv";
-
-// Load environment variables if not already loaded
-if (!process.env.BETTER_AUTH_SECRET) {
-  dotenv.config({ path: ".env.local" });
-  dotenv.config({ path: ".env" });
-}
-
-if (!process.env.BETTER_AUTH_SECRET) {
-  throw new Error("BETTER_AUTH_SECRET environment variable is not set");
-}
+import { logger } from "./logger";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -34,9 +29,17 @@ export const auth = betterAuth({
       },
     },
   },
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL: env.BETTER_AUTH_URL || "http://localhost:3000",
   basePath: "/api/auth",
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: env.BETTER_AUTH_SECRET,
 });
+
+// Log auth initialization in development
+if (process.env.NODE_ENV === "development") {
+  logger.auth.info("BetterAuth initialized", {
+    baseURL: env.BETTER_AUTH_URL || "http://localhost:3000",
+    basePath: "/api/auth",
+  });
+}
 
 export type Session = typeof auth.$Infer.Session;

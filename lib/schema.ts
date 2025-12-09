@@ -1,5 +1,5 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createId } from "@paralleldrive/cuid2";
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id")
@@ -55,4 +55,3 @@ export const verification = pgTable("verification", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
-

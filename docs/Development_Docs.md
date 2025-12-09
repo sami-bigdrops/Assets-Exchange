@@ -35,7 +35,8 @@ assets-exchange/
 │   │   ├── view-models/           # Business logic
 │   │   ├── models/                # Data structures
 │   │   ├── services/              # API calls
-│   │   ├── hooks/                 # Custom hooks
+│   │   ├── hooks/                 # Custom hooks (e.g., useLoginForm)
+│   │   ├── validation/            # Zod validation schemas
 │   │   └── types/                 # TypeScript types
 │   ├── admin/                    # Admin feature
 │   ├── advertiser/               # Advertiser feature
@@ -254,6 +255,105 @@ Use CSS variables for colors:
 </div>
 ```
 
+<<<<<<< Updated upstream
+=======
+### Application Variables
+
+The project uses a centralized variable system for branding, colors, typography, and assets located in `components/_variables/`:
+
+**Structure:**
+
+- `variables.ts` - Defines `AppVariables` interface and `defaultVariables`
+- `index.ts` - Exports variables
+
+**Usage:**
+
+```typescript
+import { getVariables } from "@/components/_variables/variables";
+
+const variables = getVariables();
+
+// Access branding
+const appName = variables.branding.appName;
+const companyName = variables.branding.companyName;
+
+// Access colors
+const primaryColor = variables.colors.titleColor;
+const backgroundColor = variables.colors.background;
+const inputRingColor = variables.colors.inputRingColor;
+
+// Access assets
+const logoPath = variables.logo.path;
+const faviconPath = variables.favicon.path;
+
+// Access typography
+const fontFamily = variables.typography.fontFamily;
+```
+
+**Example: Using Variables in Components**
+
+```typescript
+// In a component
+const variables = getVariables();
+
+// Apply background color
+<div style={{ backgroundColor: variables.colors.background }}>
+
+// Apply input styling
+<input
+  style={{
+    backgroundColor: variables.colors.inputBackgrounColor,
+    color: variables.colors.inputTextColor,
+    borderColor: variables.colors.inputBorderColor,
+  }}
+  className="login-form-input"
+/>
+
+// Custom focus ring styling
+<style
+  dangerouslySetInnerHTML={{
+    __html: `
+    .login-form-input:focus-visible {
+      outline: none !important;
+      border-color: ${variables.colors.inputRingColor} !important;
+      box-shadow: 0 0 0 3px ${variables.colors.inputRingColor}50 !important;
+    }
+  `,
+  }}
+/>
+
+// Display logo
+<Image
+  src={variables.logo.path}
+  alt={variables.logo.alt}
+  width={1000}
+  height={1000}
+/>
+```
+
+**Variable Categories:**
+
+1. **Logo & Favicon**: Paths and alt text for branding assets
+2. **Colors**: Complete color palette including:
+   - Background colors (page and card backgrounds)
+   - Input colors (background, text, border, focus ring, error, disabled, placeholder)
+   - Button colors (default, outline, disabled, hover states)
+   - Text colors (title, label, description)
+   - Accent color
+3. **Branding**: App name and company name
+4. **Typography**: Font families for body and headings
+
+**Color Variables:**
+
+- `inputRingColor`: Used for custom focus ring styling on form inputs
+- `inputBorderFocusColor`: Border color when input is focused
+- All color variables support full customization per deployment/tenant
+
+**Customization:**
+
+To customize variables for different deployments or tenants, modify the `defaultVariables` object in `variables.ts` or implement a loader function that returns different variables based on environment or tenant configuration.
+
+>>>>>>> Stashed changes
 ## Authentication
 
 ### Better Auth Setup
@@ -327,11 +427,45 @@ export default async function AdminLayout({ children }) {
 
 ### Login Form
 
-The login form is built with MVVM architecture:
+The login form is built with MVVM architecture and includes enhanced features:
 
 - **View**: `features/auth/components/LoginForm.tsx`
 - **ViewModel**: `features/auth/view-models/useLoginViewModel.ts`
+- **Validation**: `features/auth/validation/login.validation.ts` - Zod schema for form validation
+- **Form Hook**: `features/auth/hooks/useLoginForm.ts` - React Hook Form setup with validation
 - **Types**: `features/auth/types/auth.types.ts`
+
+**Features:**
+
+- Password visibility toggle (show/hide password) with Eye/EyeOff icons
+- Responsive design with mobile, tablet, and desktop breakpoints:
+  - Mobile: Compact sizing with smaller text and spacing
+  - Tablet (md): Medium sizing with adjusted spacing
+  - Desktop (lg/xl): Larger sizing with increased spacing and text sizes
+- Custom form validation with React Hook Form and Zod:
+  - Real-time validation as user types
+  - Custom error messages displayed below each input
+  - Email validation: "Enter a valid email address"
+  - Password validation: "Password is required" and "Password must be at least 6 characters"
+  - No browser default validation popups
+- Full integration with application variables system for theming
+- Custom focus ring styling using `inputRingColor` variable
+- Chrome autofill styling to maintain consistent background colors
+- Custom text selection color matching theme
+- Logo display using variables with responsive sizing
+- Loading states with spinner animation and disabled states
+- Error handling and display with Alert component
+- Accessible form labels and ARIA attributes
+- Custom input styling with dynamic colors from variables
+
+**Variable Integration:**
+
+The login form uses the application variables system for:
+- Background colors (page and card)
+- Text colors (title, label, description)
+- Input styling (background, text, border, focus ring)
+- Button styling (background, text, disabled states)
+- Logo path and alt text
 
 After successful login, users are redirected to `/dashboard` which displays role-based content.
 
@@ -339,24 +473,93 @@ After successful login, users are redirected to `/dashboard` which displays role
 
 ### React Hook Form + Zod
 
+The project uses React Hook Form with Zod for type-safe form validation. Forms include custom validation with error messages displayed below inputs.
+
+**Validation Schema Example:**
+
 ```typescript
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+// features/auth/validation/login.validation.ts
 import { z } from "zod";
 
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Enter a valid email address"),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .min(6, "Password must be at least 6 characters"),
 });
 
-export function MyForm() {
+export type LoginFormData = z.infer<typeof loginSchema>;
+```
+
+**Form Hook Example:**
+
+```typescript
+// features/auth/hooks/useLoginForm.ts
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { loginSchema } from "../validation/login.validation";
+
+export function useLoginForm() {
   const form = useForm({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(loginSchema),
+    mode: "onChange", // Real-time validation
+    defaultValues: {
+      email: "",
+      password: "",
+    },
   });
+<<<<<<< Updated upstream
   
   return <form onSubmit={form.handleSubmit(onSubmit)}>...</form>;
+=======
+
+  return form;
+>>>>>>> Stashed changes
 }
 ```
+
+**Form Component Example:**
+
+```typescript
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useLoginForm } from "../hooks/useLoginForm";
+
+export function LoginForm() {
+  const form = useLoginForm();
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage /> {/* Error message appears here */}
+            </FormItem>
+          )}
+        />
+      </form>
+    </Form>
+  );
+}
+```
+
+**Key Features:**
+
+- Custom validation messages displayed below each input
+- Real-time validation as user types (`mode: "onChange"`)
+- No browser default validation (`noValidate` on form)
+- Type-safe with TypeScript and Zod
+- Error border colors applied automatically when validation fails
 
 ## Best Practices
 

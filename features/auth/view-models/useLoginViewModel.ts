@@ -3,14 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/better-auth-client";
+<<<<<<< Updated upstream
 import type { LoginCredentials, UserRole } from "../types/auth.types";
+=======
+
+import type { LoginFormData } from "../validation/login.validation";
+>>>>>>> Stashed changes
 
 export function useLoginViewModel() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleLogin = async (credentials: LoginCredentials) => {
+  const handleLogin = async (credentials: LoginFormData) => {
     setIsLoading(true);
     setError(null);
 

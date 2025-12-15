@@ -15,13 +15,37 @@ export interface AdminStats {
   }>;
 }
 
-export interface RecentRequest {
+export interface Request {
   id: string;
+  headerTitle: string;
+  buttonTitle: string;
+  requestHeader: RequestHeader[];
+  viewRequests: ViewRequests[];
+  approveRequest: ApproveRequest[];
+  rejectRequest: RejectRequest[];
+}
+export interface RequestHeader {
+  date: string;
   advertiserName: string;
-  publisherName: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: Date;
-  amount: number;
+  affId: string;
+  priority: string;
+}
+export interface ViewRequests {
+  offerId: string;
+  offerName: string;
+  buttonTitle: string;
+}
+export interface ApproveRequest {
+  clientId: string;
+  companyNameTitle: string;
+  buttonTitle: string;
+}
+export interface RejectRequest {
+  creativeTypeValue: string;
+  creattiveCountValue: string;
+  fromlinesCountValue: string;
+  subjectlinesCountValue: string;
+  buttonTitle: string;
 }
 
 export interface AdminDashboardData {

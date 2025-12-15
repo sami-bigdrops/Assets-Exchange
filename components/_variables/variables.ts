@@ -72,6 +72,20 @@ export interface AppVariables {
     pendingApprovalIconColor: string;
     cardHeaderBackgroundColor: string;
     cardHeaderTextColor: string;
+    requestCardTextColor: string;
+    requestCardBackgroundColor: string;
+    requestCardButtonTextColor: string;
+    requestCardBorderColor: string;
+    requestCardViewButtonBackgroundColor: string;
+    requestCardViewButtonTextColor: string;
+    requestCardViewButtonBorderColor: string;
+    requestCardApproveButtonBackgroundColor: string;
+    requestCardApproveButtonTextColor: string;
+    requestCardRejectedButtonBackgroundColor: string;
+    requestCardRejectedButtonTextColor: string;
+    requestCardRejectedButtonBorderColor: string;
+    requestCardOfferIdBackgroundColor: string;
+    requestCardOfferIdTextColor: string;
   };
   branding: {
     appName: string;
@@ -131,6 +145,22 @@ interface BaseColorPalette {
     statsCardTrendIconColorNegative: string;
     statsCardHistoricalDataLabelColor: string;
     statsCardHistoricalDataValueColor: string;
+  };
+  requestContent: {
+    requestCardTextColor: string;
+    requestCardBackgroundColor: string;
+    requestCardBorderColor: string;
+    requestCardButtonTextColor: string;
+    requestCardViewButtonBackgroundColor: string;
+    requestCardViewButtonTextColor: string;
+    requestCardViewButtonBorderColor: string;
+    requestCardRejectedButtonBackgroundColor: string;
+    requestCardRejectedButtonTextColor: string;
+    requestCardRejectedButtonBorderColor: string;
+    requestCardOfferIdBackgroundColor: string;
+    requestCardOfferIdTextColor: string;
+    requestCardApproveButtonBackgroundColor: string;
+    requestCardApproveButtonTextColor: string;
   };
 }
 
@@ -237,6 +267,32 @@ function generateColorsFromPalette(
     cardHeaderBackgroundColor:
       overrides?.cardHeaderBackgroundColor ?? "#2c91cc",
     cardHeaderTextColor: overrides?.cardHeaderTextColor ?? "#FFFFFF",
+    requestCardTextColor: overrides?.requestCardTextColor ?? "#3D3D3D",
+    requestCardBackgroundColor:
+      overrides?.requestCardBackgroundColor ?? "#F9F7FF",
+    requestCardBorderColor: overrides?.requestCardBorderColor ?? "#9B81D1",
+    requestCardButtonTextColor:
+      overrides?.requestCardButtonTextColor ?? "#F3F6FF",
+    requestCardViewButtonBackgroundColor:
+      overrides?.requestCardViewButtonBackgroundColor ?? "#F3F6FF",
+    requestCardViewButtonTextColor:
+      overrides?.requestCardViewButtonTextColor ?? "#2563EB",
+    requestCardViewButtonBorderColor:
+      overrides?.requestCardViewButtonBorderColor ?? "#2563EB",
+    requestCardApproveButtonBackgroundColor:
+      overrides?.requestCardApproveButtonBackgroundColor ?? "#3B82F6",
+    requestCardApproveButtonTextColor:
+      overrides?.requestCardApproveButtonTextColor ?? "#EFF8FF",
+    requestCardRejectedButtonBackgroundColor:
+      overrides?.requestCardRejectedButtonBackgroundColor ?? "#FFFFFF",
+    requestCardRejectedButtonTextColor:
+      overrides?.requestCardRejectedButtonTextColor ?? "#EF4444",
+    requestCardRejectedButtonBorderColor:
+      overrides?.requestCardRejectedButtonBorderColor ?? "#EF4444",
+    requestCardOfferIdBackgroundColor:
+      overrides?.requestCardOfferIdBackgroundColor ?? "#EBE4FF",
+    requestCardOfferIdTextColor:
+      overrides?.requestCardOfferIdTextColor ?? "#5B3E96",
   };
 }
 
@@ -284,6 +340,24 @@ const baseColorPalette: BaseColorPalette = {
     statsCardTrendIconColorNegative: "#DC2626",
     statsCardHistoricalDataLabelColor: "#3D3D3D",
     statsCardHistoricalDataValueColor: "#000000",
+  },
+
+  requestContent: {
+    requestCardTextColor: "#3D3D3D",
+    requestCardBackgroundColor: "#F9F7FF",
+    requestCardBorderColor: "#9B81D1",
+    requestCardButtonTextColor: "#F3F6FF",
+    requestCardViewButtonBackgroundColor: "#F3F6FF",
+    requestCardViewButtonTextColor: "#2563EB",
+    requestCardViewButtonBorderColor: "#2563EB",
+    requestCardApproveButtonBackgroundColor: "#3B82F6",
+    requestCardApproveButtonTextColor: "#EFF8FF",
+    requestCardRejectedButtonBackgroundColor: "#FFFFFF",
+    requestCardRejectedButtonTextColor: "#EF4444",
+
+    requestCardRejectedButtonBorderColor: "#EF4444",
+    requestCardOfferIdBackgroundColor: "#EBE4FF",
+    requestCardOfferIdTextColor: "#5B3E96",
   },
 };
 

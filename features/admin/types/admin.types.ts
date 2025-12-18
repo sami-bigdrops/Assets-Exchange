@@ -183,3 +183,19 @@ export interface PerformanceChartData {
   comparisonType: ComparisonType;
   xAxisLabel: string;
 }
+
+export interface Advertiser {
+  id: string;
+  advertiserName: string;
+  advPlatform: string;
+  createdMethod: string;
+  status: "Active" | "Inactive";
+}
+
+export interface Publisher {
+  id: string;
+  publisherName: string;
+  pubPlatform: string;
+  createdMethod: string;
+  status: "Active" | "Inactive";
+}

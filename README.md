@@ -239,11 +239,12 @@ assets-exchange/
 - **Dashboard Statistics**: 5 real-time statistics cards (Total Assets, New Requests, Approved Assets, Rejected Assets, Pending Approval)
 - **Performance Charts**: Interactive time-series charts with 4 comparison types (Today vs Yesterday, Today vs Last Week, Current Week vs Last Week, Current Month vs Last Month)
 - **Request Management**: Complete publisher request workflow with advanced filtering, sorting, search, and status management
-- **Response Management**: Advertiser response tracking with bidirectional linking to requests
-- **Approval System**: Two-stage approval workflow (Admin → Advertiser) with status transitions
-- **Status Indicators**: Visual badges for all request/response states (New, Pending, Approved, Rejected, Sent Back)
+- **Unified Workflow Model**: Single-entity approach where one creative submission flows through entire approval process (Publisher → Admin → Advertiser)
+- **Approval System**: Two-stage approval workflow (Admin → Advertiser) with status transitions tracked in one record
+- **Status Indicators**: Visual badges for all workflow states (New, Pending, Approved, Rejected, Sent Back)
 - **Conditional Actions**: Smart button display based on status and approval stage
 - **Intelligent Routing**: Sent-back items automatically appear in correct tabs for workflow management
+- **Data Integrity**: Offer and creative details remain immutable throughout workflow - no duplication or inconsistency
 
 ### UI & Design
 
@@ -415,11 +416,32 @@ A `robots.txt` file is configured in `public/robots.txt` to control search engin
 
 This project includes comprehensive backend implementation guides for integrating real APIs:
 
-### Documentation Files
+### Architecture Documentation
 
-- **[Backend_Implementation_TODOs.md](docs/Backend_Implementation_TODOs.md)** - Complete backend implementation guide (41KB)
-  - Database schema design with SQL
-  - 13 API endpoints with specifications
+- **[UNIFIED_MODEL_EXPLANATION.md](docs/UNIFIED_MODEL_EXPLANATION.md)** - Unified workflow model (18KB, 595 lines)
+  - Why requests and responses are ONE entity, not two
+  - Complete workflow visualization
+  - Database schema for unified model
+  - Benefits and comparison with old approach
+  - **READ THIS FIRST** to understand the architecture
+
+- **[WORKFLOW_VISUALIZATION.md](docs/WORKFLOW_VISUALIZATION.md)** - Visual workflow guide (36KB, 665 lines)
+  - Complete lifecycle diagrams
+  - UI display logic
+  - Real-world scenario walkthrough
+  - State matrix and transitions
+
+- **[MIGRATION_SUMMARY.md](docs/MIGRATION_SUMMARY.md)** - Refactoring changes (12KB, 409 lines)
+  - What changed and why
+  - Files updated
+  - API endpoint changes
+  - Before/after comparison
+
+### Implementation Guides
+
+- **[Backend_Implementation_TODOs.md](docs/Backend_Implementation_TODOs.md)** - Complete backend implementation guide (41KB, 1644 lines)
+  - Unified database schema design with SQL
+  - 11 API endpoints with specifications (unified endpoints)
   - Authentication & authorization
   - Business logic & workflows
   - Error handling & validation
@@ -429,7 +451,7 @@ This project includes comprehensive backend implementation guides for integratin
   - Monitoring & logging
   - Deployment checklist
 
-- **[BACKEND_TODOS_SUMMARY.md](docs/BACKEND_TODOS_SUMMARY.md)** - Quick reference guide (7.7KB)
+- **[BACKEND_TODOS_SUMMARY.md](docs/BACKEND_TODOS_SUMMARY.md)** - Quick reference guide (7.7KB, 296 lines)
   - File-by-file TODO locations
   - Priority implementation order (4 phases, 8 weeks)
   - Critical business logic
@@ -437,7 +459,7 @@ This project includes comprehensive backend implementation guides for integratin
   - Environment setup
   - Quick start guide for backend engineers
 
-- **[STATS_AND_CHARTS_BACKEND_TODOS.md](docs/STATS_AND_CHARTS_BACKEND_TODOS.md)** - Dashboard statistics guide (17KB)
+- **[STATS_AND_CHARTS_BACKEND_TODOS.md](docs/STATS_AND_CHARTS_BACKEND_TODOS.md)** - Dashboard statistics guide (17KB, 799 lines)
   - Dashboard statistics calculations
   - Performance chart aggregations
   - SQL queries for all metrics

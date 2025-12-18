@@ -1,3 +1,22 @@
+/**
+ * Response Component - Dashboard widget for "Incoming Advertiser Response"
+ *
+ * UNIFIED MODEL:
+ * Displays the 3 most recent creative requests that are with advertiser.
+ * These are the SAME requests that admin previously approved.
+ *
+ * What this shows:
+ * - Requests admin forwarded to advertiser for review
+ * - Requests advertiser has acted upon (approved/rejected)
+ * - All from the SAME creative_requests table
+ *
+ * Data Source: creative_requests WHERE approvalStage IN ('advertiser', 'completed')
+ * View All: Links to /response page
+ *
+ * KEY: These are NOT separate "response" entities. They are creative requests
+ * that have progressed past admin approval and are now with/past advertiser.
+ */
+
 "use client";
 
 import Link from "next/link";

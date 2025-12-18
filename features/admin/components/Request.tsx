@@ -1,3 +1,14 @@
+/**
+ * Request Component - Dashboard widget for "Incoming Publisher Requests"
+ *
+ * UNIFIED MODEL:
+ * Displays the 3 most recent creative submissions from publishers.
+ * These are requests that need admin review or are in various states.
+ *
+ * Data Source: Same creative_requests table, showing recent submissions
+ * View All: Links to /requests page for complete management
+ */
+
 "use client";
 
 import Link from "next/link";

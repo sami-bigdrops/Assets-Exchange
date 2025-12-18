@@ -1,3 +1,20 @@
+/**
+ * RequestItem Component - Displays a single creative request in accordion format
+ *
+ * IMPORTANT - UNIFIED MODEL:
+ * This component displays ONE creative request that flows through the entire workflow.
+ * It is NOT showing separate "request" and "response" entities.
+ *
+ * The same creative (same offer, same details) goes through:
+ * Publisher Submit → Admin Review → Advertiser Review → Final Status
+ *
+ * Button logic reflects who can act at each stage:
+ * - status='new' + approvalStage='admin': Admin can approve or reject
+ * - status='pending' + approvalStage='advertiser': Advertiser acts (not shown in admin view)
+ * - status='sent-back' + approvalStage='advertiser': Admin can reject and send back to advertiser
+ * - All other states: View only
+ */
+
 "use client";
 
 import * as Accordion from "@radix-ui/react-accordion";
@@ -236,21 +253,26 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
               variables.colors.requestCardViewButtonBackgroundColor,
             border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
           }}
-          // TODO: BACKEND - Implement View Request Navigation
+          // TODO: BACKEND - Implement View Request Navigation (UNIFIED MODEL)
           //
           // onClick={() => {
-          //   // Navigate to detailed request view page
           //   router.push(`/requests/${request.id}`);
           // }}
           //
-          // Note: Create a detailed view page at /requests/[id]/page.tsx
-          // This page should display:
-          // - Full request details
-          // - Status history timeline
-          // - Related response (if exists)
-          // - All comments/notes
-          // - Action buttons based on current status
-          // - Download/export functionality for request data
+          // Create detailed view page at /requests/[id]/page.tsx showing:
+          // - Full creative/offer details (immutable)
+          // - Complete approval timeline from creative_request_history table
+          // - Admin approval info (who, when, comments)
+          // - Advertiser response info (who, when, comments)
+          // - Current status and next steps
+          // - Action buttons if applicable
+          // - Export functionality
+          //
+          // Example timeline:
+          // [Dec 20, 10:30] Publisher submitted creative
+          // [Dec 21, 14:15] Admin approved and forwarded to advertiser
+          // [Dec 22, 09:00] Advertiser sent back for reconsideration
+          // [Dec 22, 16:30] Admin rejected and sent to advertiser
         >
           View Request
         </Button>
@@ -308,13 +330,15 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                   backgroundColor:
                     variables.colors.requestCardApproveButtonBackgroundColor,
                 }}
-                // TODO: BACKEND - Implement Approve and Forward Handler
+                // TODO: BACKEND - Implement Admin Approve Handler (UNIFIED MODEL)
+                //
+                // This updates the SAME record, NOT creating a new response entity
                 //
                 // onClick={async () => {
                 //   try {
                 //     setIsLoading(true);
                 //
-                //     const response = await fetch(`/api/admin/requests/${request.id}/approve-and-forward`, {
+                //     const response = await fetch(`/api/admin/creative-requests/${request.id}/admin-approve`, {
                 //       method: 'POST',
                 //       headers: {
                 //         'Content-Type': 'application/json',
@@ -332,10 +356,10 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                 //
                 //     const data = await response.json();
                 //
-                //     // Show success toast/notification
+                //     // The request is now: status='pending', approvalStage='advertiser'
+                //     // It will appear in /response page for advertiser to review
                 //     toast.success('Request approved and forwarded to advertiser');
                 //
-                //     // Refresh the data
                 //     await refreshRequests();
                 //
                 //   } catch (error) {
@@ -358,17 +382,18 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                     variables.colors.requestCardRejectedButtonBackgroundColor,
                   border: `1px solid ${variables.colors.requestCardRejectedButtonBorderColor}`,
                 }}
-                // TODO: BACKEND - Implement Reject and Send Back Handler
+                // TODO: BACKEND - Implement Admin Reject Handler (UNIFIED MODEL)
+                //
+                // This updates the SAME record's status to rejected
                 //
                 // onClick={async () => {
                 //   try {
-                //     // Optional: Show modal to collect rejection reason
                 //     const rejectionReason = await showRejectionModal();
-                //     if (!rejectionReason) return; // User cancelled
+                //     if (!rejectionReason) return;
                 //
                 //     setIsLoading(true);
                 //
-                //     const response = await fetch(`/api/admin/requests/${request.id}/reject-and-send-back`, {
+                //     const response = await fetch(`/api/admin/creative-requests/${request.id}/admin-reject`, {
                 //       method: 'POST',
                 //       headers: {
                 //         'Content-Type': 'application/json',
@@ -384,8 +409,7 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                 //       throw new Error('Failed to reject request');
                 //     }
                 //
-                //     const data = await response.json();
-                //
+                //     // The SAME request is now: status='rejected', approvalStage='admin'
                 //     toast.success('Request rejected and sent back to publisher');
                 //     await refreshRequests();
                 //
@@ -414,9 +438,12 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                     variables.colors.requestCardRejectedButtonBackgroundColor,
                   border: `1px solid ${variables.colors.requestCardRejectedButtonBorderColor}`,
                 }}
-                // TODO: BACKEND - Implement Reject Button for Advertiser Responses
+                // TODO: BACKEND - Implement Send Back to Advertiser Handler (UNIFIED MODEL)
                 //
-                // This button appears for responses that were sent-back by advertiser
+                // This button appears when advertiser sent back the request for reconsideration
+                // Admin reviews again and can reject it back to advertiser
+                //
+                // IMPORTANT: This is the SAME creative request, just updating its status again
                 //
                 // onClick={async () => {
                 //   try {
@@ -425,8 +452,8 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                 //
                 //     setIsLoading(true);
                 //
-                //     // Note: This uses /responses endpoint since it's an advertiser response
-                //     const response = await fetch(`/api/admin/responses/${request.id}/reject-and-send-back`, {
+                //     // Same endpoint pattern, just updating the same record
+                //     const response = await fetch(`/api/admin/creative-requests/${request.id}/advertiser-send-back`, {
                 //       method: 'POST',
                 //       headers: {
                 //         'Content-Type': 'application/json',
@@ -439,15 +466,16 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                 //     });
                 //
                 //     if (!response.ok) {
-                //       throw new Error('Failed to reject response');
+                //       throw new Error('Failed to send back request');
                 //     }
                 //
-                //     toast.success('Response rejected and sent back to advertiser');
+                //     // The SAME request status might change or stay sent-back with new comments
+                //     toast.success('Request sent back to advertiser for reconsideration');
                 //     await refreshRequests();
                 //
                 //   } catch (error) {
-                //     console.error('Error rejecting response:', error);
-                //     toast.error('Failed to reject response. Please try again.');
+                //     console.error('Error sending back request:', error);
+                //     toast.error('Failed to send back request. Please try again.');
                 //   } finally {
                 //     setIsLoading(false);
                 //   }

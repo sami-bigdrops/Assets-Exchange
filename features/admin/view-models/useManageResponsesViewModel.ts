@@ -1,3 +1,16 @@
+/**
+ * useManageResponsesViewModel - Fetches creative requests for /response page
+ *
+ * UNIFIED MODEL:
+ * Fetches creative requests that are in advertiser stage or completed.
+ * These are the SAME creative requests, just filtered differently.
+ *
+ * IMPORTANT: These are NOT separate "response" entities!
+ * They are creative requests that admin approved and forwarded to advertiser.
+ *
+ * Data source: Same creative_requests table, filtered for approvalStage IN ('advertiser', 'completed')
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";

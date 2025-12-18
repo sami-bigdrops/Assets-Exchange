@@ -29,7 +29,7 @@ export const adminMenuConfig: SidebarMenuConfig = [
         id: "manage-response",
         label: "Manage Response",
         icon: "MessageSquareReply",
-        href: "/manage-response",
+        href: "/response",
       },
       {
         id: "manage-advertisers",

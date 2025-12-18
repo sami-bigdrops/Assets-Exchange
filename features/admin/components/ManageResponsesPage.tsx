@@ -1,3 +1,31 @@
+/**
+ * ManageResponsesPage - Admin's view of advertiser responses
+ *
+ * UNIFIED MODEL EXPLANATION:
+ *
+ * This page shows the SAME creative requests, but filtered for advertiser stage.
+ * It displays requests that have been forwarded to advertisers.
+ *
+ * TABS BREAKDOWN:
+ * - All: All requests currently with or completed by advertiser
+ * - New: Awaiting advertiser review (status='pending', approvalStage='advertiser')
+ * - Approved: Advertiser approved (status='approved', approvalStage='completed')
+ * - Rejected: Advertiser rejected (status='rejected', approvalStage='advertiser')
+ * - Sent Back: [EXCLUDED] These appear in /requests page instead
+ *
+ * KEY POINT:
+ * - These are NOT separate "response" entities
+ * - They are the SAME creative requests that admin approved
+ * - They are now at the advertiser approval stage
+ * - The advertiser is reviewing the SAME offer and creative details
+ * - The advertiser's action updates the SAME record
+ *
+ * DATA SOURCE:
+ * Filtered from the same creative_requests table where:
+ * - approvalStage IN ('advertiser', 'completed')
+ * - Excluding: status='sent-back' (those go to /requests "Sent Back" tab)
+ */
+
 "use client";
 
 import { Filter, Search } from "lucide-react";

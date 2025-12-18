@@ -1,3 +1,13 @@
+/**
+ * useManageRequestsViewModel - Fetches creative requests for /requests page
+ *
+ * UNIFIED MODEL:
+ * Fetches all creative requests from the system.
+ * The ManageRequestsPage component filters these by tabs (status + approvalStage).
+ *
+ * Data source: Same creative_requests table that contains the complete workflow
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";

@@ -1,34 +1,32 @@
 /**
- * TODO: BACKEND - Request Service Layer
+ * TODO: BACKEND - Unified Request Service Layer
  *
- * This file currently uses mock data. Replace all mock data imports and
- * function implementations with actual API calls to the backend.
+ * IMPORTANT: This service now uses the UNIFIED model where ONE creative
+ * submission flows through the entire workflow as ONE record.
  *
  * Required Backend API Endpoints:
- * - GET  /api/admin/requests (with pagination, filtering, sorting)
- * - GET  /api/admin/requests/:id
- * - GET  /api/admin/responses (with pagination, filtering, sorting)
- * - GET  /api/admin/responses/:id
- * - POST /api/admin/requests/:id/approve
- * - POST /api/admin/requests/:id/reject
- * - POST /api/admin/requests/:id/send-back
- * - GET  /api/admin/requests/:id/related-response
- * - GET  /api/admin/responses/:id/related-request
+ * - GET  /api/admin/creative-requests (with pagination, filtering, sorting)
+ * - GET  /api/admin/creative-requests/:id
+ * - POST /api/admin/creative-requests/:id/admin-approve
+ * - POST /api/admin/creative-requests/:id/admin-reject
+ * - POST /api/admin/creative-requests/:id/advertiser-approve
+ * - POST /api/admin/creative-requests/:id/advertiser-reject
+ * - POST /api/admin/creative-requests/:id/advertiser-send-back
+ * - GET  /api/admin/creative-requests/:id/history
  *
  * Authentication Requirements:
  * - All endpoints must validate JWT token
- * - Verify user has admin role/permissions
- * - Log all actions for audit trail
+ * - Verify user has appropriate role (admin/advertiser)
+ * - Log all actions for audit trail in creative_request_history table
  */
 
-import { allPublisherRequests } from "../models/request.model";
-import { advertiserResponses } from "../models/response.model";
+import { creativeRequests } from "../models/creative-request.model";
 import type { Request } from "../types/admin.types";
 
 /**
  * TODO: BACKEND - Implement getRequests API
  *
- * Replace with: GET /api/admin/requests
+ * Replace with: GET /api/admin/creative-requests
  *
  * Query Parameters:
  * - page: number (default: 1)
@@ -46,63 +44,55 @@ import type { Request } from "../types/admin.types";
  *   pagination: { total: number, page: number, limit: number, totalPages: number }
  * }
  *
- * Error Handling:
- * - 401: Unauthorized (invalid/expired token)
- * - 403: Forbidden (not admin)
- * - 500: Internal Server Error
+ * Note: This returns ALL creative requests. Filter client-side or use query params.
  */
 export async function getRequests(): Promise<Request[]> {
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  return [...allPublisherRequests];
+  return [...creativeRequests];
 }
 
 /**
- * TODO: BACKEND - Implement getAllRequests with filtering
+ * TODO: BACKEND - Implement getAllRequests for /requests page
  *
- * Replace with: GET /api/admin/requests/all
+ * Replace with: GET /api/admin/creative-requests?view=admin-requests
  *
- * This endpoint should combine:
- * 1. All publisher requests from publisher_requests table
- * 2. Advertiser responses that were sent-back (status='sent-back' AND approvalStage='advertiser')
+ * For /requests page, show:
+ * 1. All requests awaiting admin action (status='new', approvalStage='admin')
+ * 2. All requests sent-back by advertiser (status='sent-back', approvalStage='advertiser')
+ * 3. All other requests for reference (approved, rejected, pending)
  *
  * SQL Query Example:
- * SELECT * FROM publisher_requests
- * UNION ALL
- * SELECT * FROM advertiser_responses
- * WHERE status = 'sent-back' AND approval_stage = 'advertiser'
- * ORDER BY date DESC
+ * SELECT * FROM creative_requests
+ * ORDER BY submitted_at DESC
  *
- * Important: Ensure proper indexing on status and approval_stage columns for performance
+ * Note: In unified model, NO UNION needed. It's all in one table!
  */
 export async function getAllRequests(): Promise<Request[]> {
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  const responsesSentBackToAdmin = advertiserResponses.filter(
-    (resp) => resp.status === "sent-back" && resp.approvalStage === "advertiser"
-  );
-
-  return [...allPublisherRequests, ...responsesSentBackToAdmin];
+  // In unified model, all data is in one array
+  // The UI will filter based on tabs (status + approvalStage)
+  return [...creativeRequests];
 }
 
 /**
- * TODO: BACKEND - Implement getRecentPublisherRequests
+ * TODO: BACKEND - Implement getRecentPublisherRequests for dashboard
  *
- * Replace with: GET /api/admin/requests/recent?limit={limit}
+ * Replace with: GET /api/admin/creative-requests/recent?limit={limit}
  *
  * Query Parameters:
  * - limit: number (default: 3) - Number of most recent requests to return
  *
  * SQL Query Example:
- * (SELECT * FROM publisher_requests
- *  UNION ALL
- *  SELECT * FROM advertiser_responses
- *  WHERE status = 'sent-back' AND approval_stage = 'advertiser')
- * ORDER BY date DESC
+ * SELECT * FROM creative_requests
+ * ORDER BY submitted_at DESC
  * LIMIT ?
  *
- * Performance: Use LIMIT clause at database level, not application level
- * Cache: Consider caching this data with 1-minute TTL for dashboard performance
+ * Performance: Use LIMIT clause at database level
+ * Cache: Consider caching with 1-minute TTL for dashboard
+ *
+ * Note: In unified model, NO UNION needed! Much simpler.
  */
 export async function getRecentPublisherRequests(
   limit: number = 3
@@ -136,13 +126,8 @@ export async function getRecentPublisherRequests(
     );
   };
 
-  const responsesSentBackToAdmin = advertiserResponses.filter(
-    (resp) => resp.status === "sent-back" && resp.approvalStage === "advertiser"
-  );
-
-  const allRequests = [...allPublisherRequests, ...responsesSentBackToAdmin];
-
-  const sorted = allRequests.sort((a, b) => {
+  // Unified model: all data in one array
+  const sorted = [...creativeRequests].sort((a, b) => {
     return parseDate(b.date).getTime() - parseDate(a.date).getTime();
   });
 
@@ -150,42 +135,55 @@ export async function getRecentPublisherRequests(
 }
 
 /**
- * TODO: BACKEND - Implement getAllAdvertiserResponses
+ * TODO: BACKEND - Implement getAllAdvertiserResponses for /response page
  *
- * Replace with: GET /api/admin/responses
+ * Replace with: GET /api/admin/creative-requests?view=advertiser-responses
  *
- * Query Parameters: Same as getRequests (pagination, filtering, sorting)
+ * For /response page, show requests that are with advertiser:
+ * - status='pending' AND approvalStage='advertiser' (awaiting advertiser action)
+ * - status='approved' AND approvalStage='completed' (advertiser approved)
+ * - status='rejected' AND approvalStage='advertiser' (advertiser rejected)
  *
- * Filter Condition:
- * - Exclude responses with status='sent-back' AND approvalStage='advertiser'
- *   (these appear in /requests page instead)
+ * EXCLUDE:
+ * - status='sent-back' AND approvalStage='advertiser' (these go to /requests page)
  *
  * SQL Query Example:
- * SELECT * FROM advertiser_responses
- * WHERE NOT (status = 'sent-back' AND approval_stage = 'advertiser')
- * ORDER BY date DESC
+ * SELECT * FROM creative_requests
+ * WHERE approval_stage IN ('advertiser', 'completed')
+ *   AND NOT (status = 'sent-back' AND approval_stage = 'advertiser')
+ * ORDER BY submitted_at DESC
+ *
+ * Note: Much cleaner with unified model!
  */
 export async function getAllAdvertiserResponses(): Promise<Request[]> {
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  return advertiserResponses.filter(
-    (resp) =>
-      !(resp.status === "sent-back" && resp.approvalStage === "advertiser")
+  // Filter requests that are in advertiser stage or completed
+  // but exclude sent-back items (they appear in /requests page)
+  return creativeRequests.filter(
+    (req) =>
+      (req.approvalStage === "advertiser" ||
+        req.approvalStage === "completed") &&
+      !(req.status === "sent-back" && req.approvalStage === "advertiser")
   );
 }
 
 /**
- * TODO: BACKEND - Implement getRecentAdvertiserResponses
+ * TODO: BACKEND - Implement getRecentAdvertiserResponses for dashboard
  *
- * Replace with: GET /api/admin/responses/recent?limit={limit}
+ * Replace with: GET /api/admin/creative-requests/recent?view=advertiser-responses&limit={limit}
+ *
+ * For dashboard "Incoming Advertiser Response" section, show recent requests
+ * that are currently with advertiser (excluding sent-back).
  *
  * SQL Query Example:
- * SELECT * FROM advertiser_responses
- * WHERE NOT (status = 'sent-back' AND approval_stage = 'advertiser')
- * ORDER BY date DESC
+ * SELECT * FROM creative_requests
+ * WHERE approval_stage IN ('advertiser', 'completed')
+ *   AND NOT (status = 'sent-back' AND approval_stage = 'advertiser')
+ * ORDER BY submitted_at DESC
  * LIMIT ?
  *
- * Cache: Consider caching with 1-minute TTL for dashboard
+ * Cache: 1-minute TTL for dashboard
  */
 export async function getRecentAdvertiserResponses(
   limit: number = 3
@@ -219,12 +217,15 @@ export async function getRecentAdvertiserResponses(
     );
   };
 
-  const filteredResponses = advertiserResponses.filter(
-    (resp) =>
-      !(resp.status === "sent-back" && resp.approvalStage === "advertiser")
+  // Filter for advertiser stage, exclude sent-back
+  const filteredRequests = creativeRequests.filter(
+    (req) =>
+      (req.approvalStage === "advertiser" ||
+        req.approvalStage === "completed") &&
+      !(req.status === "sent-back" && req.approvalStage === "advertiser")
   );
 
-  const sorted = filteredResponses.sort((a, b) => {
+  const sorted = filteredRequests.sort((a, b) => {
     return parseDate(b.date).getTime() - parseDate(a.date).getTime();
   });
 
@@ -234,161 +235,152 @@ export async function getRecentAdvertiserResponses(
 /**
  * TODO: BACKEND - Implement getRequestById
  *
- * Replace with: GET /api/admin/requests/:id
+ * Replace with: GET /api/admin/creative-requests/:id
  *
  * Path Parameters:
  * - id: string (request ID)
  *
- * Returns: Single Request object or 404 if not found
+ * Returns: Single Request object with complete history
  *
- * Error Handling:
- * - 404: Request not found
- * - 401: Unauthorized
- * - 403: Forbidden
+ * SQL Query Example:
+ * SELECT * FROM creative_requests WHERE id = ?
+ *
+ * Response should include:
+ * - All creative details
+ * - Current status and approval stage
+ * - Admin approval info (if exists)
+ * - Advertiser response info (if exists)
+ * - Complete history from creative_request_history table
  */
 export async function getRequestById(
   requestId: string
 ): Promise<Request | null> {
   await new Promise((resolve) => setTimeout(resolve, 100));
 
-  return allPublisherRequests.find((req) => req.id === requestId) || null;
+  return creativeRequests.find((req) => req.id === requestId) || null;
 }
 
 /**
- * TODO: BACKEND - Implement getResponseById
+ * DEPRECATED: getResponseById, getRelatedResponse, getRelatedRequest
  *
- * Replace with: GET /api/admin/responses/:id
+ * These functions are NO LONGER NEEDED in the unified model.
+ * Use getRequestById() instead - it returns the complete record with all approval info.
  *
- * Path Parameters:
- * - id: string (response ID)
- *
- * Returns: Single Request object (advertiser response) or 404 if not found
+ * Reason: In unified model, there's no separate "response" entity.
+ * The advertiser's response is just a status update on the same request record.
  */
-export async function getResponseById(
-  responseId: string
-): Promise<Request | null> {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  return advertiserResponses.find((resp) => resp.id === responseId) || null;
-}
 
 /**
- * TODO: BACKEND - Implement getRelatedResponse
+ * TODO: BACKEND - Implement Request Action APIs (UNIFIED MODEL)
  *
- * Replace with: GET /api/admin/requests/:id/related-response
+ * All actions update the SAME record in creative_requests table.
  *
- * Retrieves the advertiser response linked to a publisher request via childResponseId
- *
- * SQL Query Example:
- * SELECT ar.* FROM advertiser_responses ar
- * JOIN publisher_requests pr ON pr.child_response_id = ar.id
- * WHERE pr.id = ?
- */
-export async function getRelatedResponse(
-  requestId: string
-): Promise<Request | null> {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  const request = allPublisherRequests.find((req) => req.id === requestId);
-  if (!request || !request.childResponseId) {
-    return null;
-  }
-
-  return (
-    advertiserResponses.find((resp) => resp.id === request.childResponseId) ||
-    null
-  );
-}
-
-/**
- * TODO: BACKEND - Implement getRelatedRequest
- *
- * Replace with: GET /api/admin/responses/:id/related-request
- *
- * Retrieves the publisher request linked to an advertiser response via parentRequestId
- *
- * SQL Query Example:
- * SELECT pr.* FROM publisher_requests pr
- * JOIN advertiser_responses ar ON ar.parent_request_id = pr.id
- * WHERE ar.id = ?
- */
-export async function getRelatedRequest(
-  responseId: string
-): Promise<Request | null> {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  const response = advertiserResponses.find((resp) => resp.id === responseId);
-  if (!response || !response.parentRequestId) {
-    return null;
-  }
-
-  return (
-    allPublisherRequests.find((req) => req.id === response.parentRequestId) ||
-    null
-  );
-}
-
-/**
- * TODO: BACKEND - Implement Request Action APIs
- *
- * Create the following endpoints for request actions:
- *
- * 1. POST /api/admin/requests/:id/approve-and-forward
- *    - Updates request status from 'new' to 'pending'
- *    - Updates approvalStage from 'admin' to 'advertiser'
- *    - Creates advertiser_response record linked via parent_request_id
- *    - Updates publisher_request.child_response_id
- *    - Logs action in request_status_history
+ * 1. POST /api/admin/creative-requests/:id/admin-approve
+ *    What it does:
+ *    - Updates status: 'new' → 'pending'
+ *    - Updates approvalStage: 'admin' → 'advertiser'
+ *    - Sets admin_status = 'approved'
+ *    - Sets admin_approved_by, admin_approved_at, admin_comments
+ *    - Logs action in creative_request_history
  *    - Sends notification to advertiser
  *    - Returns updated Request object
  *
- * 2. POST /api/admin/requests/:id/reject-and-send-back
- *    - Updates request status to 'rejected'
- *    - Keeps approvalStage as 'admin' or sets based on current stage
- *    - Logs action in request_status_history with rejection reason
+ *    SQL Example:
+ *    UPDATE creative_requests
+ *    SET status = 'pending',
+ *        approval_stage = 'advertiser',
+ *        admin_status = 'approved',
+ *        admin_approved_by = ?,
+ *        admin_approved_at = NOW(),
+ *        admin_comments = ?,
+ *        updated_at = NOW()
+ *    WHERE id = ? AND status = 'new' AND approval_stage = 'admin';
+ *
+ * 2. POST /api/admin/creative-requests/:id/admin-reject
+ *    What it does:
+ *    - Updates status: 'new' → 'rejected'
+ *    - Keeps approvalStage as 'admin'
+ *    - Sets admin_status = 'rejected'
+ *    - Logs action with rejection reason
  *    - Sends notification to publisher
  *    - Returns updated Request object
  *
- * 3. POST /api/admin/responses/:id/reject-and-send-back
- *    - Updates response status to 'sent-back'
- *    - Updates approvalStage to 'advertiser'
- *    - This makes the response appear in admin's /requests "Sent Back" tab
- *    - Logs action in request_status_history
+ *    SQL Example:
+ *    UPDATE creative_requests
+ *    SET status = 'rejected',
+ *        admin_status = 'rejected',
+ *        admin_approved_by = ?,
+ *        admin_approved_at = NOW(),
+ *        admin_comments = ?,
+ *        updated_at = NOW()
+ *    WHERE id = ? AND status = 'new' AND approval_stage = 'admin';
+ *
+ * 3. POST /api/admin/creative-requests/:id/advertiser-send-back
+ *    What it does:
+ *    - Updates status: 'pending' → 'sent-back'  OR  'sent-back' → 'rejected'
+ *    - Updates approvalStage: stays 'advertiser'
+ *    - Sets advertiser_status = 'sent_back'
+ *    - Logs action
  *    - Sends notification to advertiser
- *    - Returns updated Request object
+ *    - Request now appears in admin's /requests "Sent Back" tab
+ *
+ *    SQL Example:
+ *    UPDATE creative_requests
+ *    SET status = 'sent-back',
+ *        advertiser_status = 'sent_back',
+ *        advertiser_responded_by = ?,
+ *        advertiser_responded_at = NOW(),
+ *        advertiser_comments = ?,
+ *        updated_at = NOW()
+ *    WHERE id = ? AND status IN ('pending', 'sent-back') AND approval_stage = 'advertiser';
+ *
+ * 4. POST /api/admin/creative-requests/:id/advertiser-approve
+ *    (Called by advertiser, not admin)
+ *    What it does:
+ *    - Updates status: 'pending' → 'approved'
+ *    - Updates approvalStage: 'advertiser' → 'completed'
+ *    - Sets advertiser_status = 'approved'
+ *    - Workflow is now complete
+ *
+ * 5. POST /api/admin/creative-requests/:id/advertiser-reject
+ *    (Called by advertiser, not admin)
+ *    What it does:
+ *    - Updates status: 'pending' → 'rejected'
+ *    - Keeps approvalStage: 'advertiser'
+ *    - Sets advertiser_status = 'rejected'
  *
  * Request Body for all actions:
  * {
- *   comments?: string,  // Optional comments/reason for action
- *   actionBy: string    // Admin user ID performing the action
+ *   comments?: string,  // Optional comments/reason
+ *   actionBy: string    // User ID performing the action
  * }
  *
  * Response Format:
  * {
  *   success: boolean,
- *   data: Request,
+ *   data: {
+ *     request: Request,  // Updated request object
+ *     history: {         // Latest history entry
+ *       action: string,
+ *       actionBy: string,
+ *       actionAt: Date,
+ *       comments: string
+ *     }
+ *   },
  *   message: string
  * }
  *
  * Important Business Logic:
- * - Validate current status before allowing state transitions
- * - Only 'new' requests at 'admin' stage can be approved/rejected by admin
- * - Only 'sent-back' responses at 'advertiser' stage can be rejected again
- * - Implement database transaction to ensure atomicity
- * - Update both publisher_requests.child_response_id and advertiser_responses.parent_request_id
+ * - Validate current status before allowing transitions
+ * - Use database transaction for atomicity
+ * - ALWAYS log in creative_request_history table
+ * - Send appropriate notifications
  *
- * Error Handling:
- * - 400: Invalid status transition
- * - 404: Request/Response not found
- * - 401: Unauthorized
- * - 403: Forbidden (user not admin)
- * - 409: Conflict (request already processed)
- * - 500: Internal Server Error
- *
- * Security:
- * - Validate JWT token
- * - Check admin role/permissions
- * - Sanitize input (comments field)
- * - Rate limiting to prevent abuse
- * - Log all actions for audit trail
+ * Valid State Transitions:
+ * - new + admin → pending + advertiser (admin approve)
+ * - new + admin → rejected + admin (admin reject)
+ * - pending + advertiser → approved + completed (advertiser approve)
+ * - pending + advertiser → rejected + advertiser (advertiser reject)
+ * - pending + advertiser → sent-back + advertiser (advertiser send back)
+ * - sent-back + advertiser → rejected + advertiser (admin final reject)
  */

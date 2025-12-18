@@ -15,3 +15,6 @@ export type {
   RequestStatus,
   ApprovalStage,
 } from "./types/admin.types";
+
+// UNIFIED MODEL EXPORT
+export { creativeRequests } from "./models/creative-request.model";

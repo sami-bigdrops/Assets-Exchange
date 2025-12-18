@@ -1,3 +1,29 @@
+/**
+ * ManageRequestsPage - Admin's view of all creative requests
+ *
+ * UNIFIED MODEL EXPLANATION:
+ *
+ * This page shows creative requests from the ADMIN's perspective.
+ * It displays the SAME creative requests in different states:
+ *
+ * TABS BREAKDOWN:
+ * - All: Every creative request in the system
+ * - New: Requests awaiting admin review (status='new', approvalStage='admin')
+ * - Pending Approvals: Forwarded to advertiser (status='pending', approvalStage='advertiser')
+ * - Approved: Both admin & advertiser approved (status='approved', approvalStage='completed')
+ * - Rejected: Rejected by either party
+ * - Sent Back: Advertiser returned for reconsideration (status='sent-back', approvalStage='advertiser')
+ *
+ * KEY POINT: The "Sent Back" tab shows requests that:
+ * - Admin previously approved
+ * - Were forwarded to advertiser
+ * - Advertiser sent back for reconsideration
+ * - Now need admin to review again
+ *
+ * This is NOT a separate "response" entity - it's the SAME creative request
+ * that has cycled back to admin for another review.
+ */
+
 "use client";
 
 import { ArrowDownAZ, ArrowUpAZ, Filter, Search, X } from "lucide-react";

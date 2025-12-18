@@ -1,3 +1,23 @@
+/**
+ * TODO: BACKEND - Remove Mock Performance Chart Data
+ *
+ * This file contains MOCK DATA for performance charts (development/testing only).
+ *
+ * Action Items:
+ * 1. Remove this entire file once backend APIs are integrated
+ * 2. All chart data should come from database aggregations
+ * 3. Update imports in performance-chart.service.ts to remove references to this file
+ * 4. Ensure no production code depends on this mock data
+ *
+ * Note: Keep this file during development for frontend testing
+ *
+ * Backend should provide:
+ * - Time-series data aggregated by hour/day/month
+ * - Comparison data for current vs previous periods
+ * - Proper data point counts (24 hours, 7 days, 31 days)
+ * - Fill missing data points with zeros
+ */
+
 import type {
   ComparisonType,
   PerformanceChartData,

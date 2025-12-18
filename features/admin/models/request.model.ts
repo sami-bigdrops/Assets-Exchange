@@ -1,3 +1,17 @@
+/**
+ * TODO: BACKEND - Remove Mock Data
+ *
+ * This file contains MOCK DATA for development/testing purposes only.
+ *
+ * Action Items:
+ * 1. Remove this entire file once backend APIs are integrated
+ * 2. All data should come from the database via API calls
+ * 3. Update imports in request.service.ts to remove references to this file
+ * 4. Ensure no production code depends on this mock data
+ *
+ * Note: Keep this file during development for frontend testing
+ */
+
 import type { Request } from "../types/admin.types";
 
 export const allPublisherRequests: Request[] = [
@@ -18,6 +32,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 3,
     status: "new",
     approvalStage: "admin",
+    childResponseId: "resp-1",
   },
   {
     id: "req-2",
@@ -36,6 +51,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 0,
     status: "new",
     approvalStage: "admin",
+    childResponseId: "resp-2",
   },
   {
     id: "req-3",
@@ -54,6 +70,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 2,
     status: "new",
     approvalStage: "admin",
+    childResponseId: "resp-3",
   },
   {
     id: "req-4",
@@ -72,6 +89,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 0,
     status: "pending",
     approvalStage: "advertiser",
+    childResponseId: "resp-4",
   },
   {
     id: "req-5",
@@ -90,6 +108,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 4,
     status: "pending",
     approvalStage: "advertiser",
+    childResponseId: "resp-10",
   },
   {
     id: "req-6",
@@ -108,6 +127,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 3,
     status: "approved",
     approvalStage: "completed",
+    childResponseId: "resp-8",
   },
   {
     id: "req-7",
@@ -126,6 +146,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 2,
     status: "approved",
     approvalStage: "completed",
+    childResponseId: "resp-6",
   },
   {
     id: "req-8",
@@ -144,6 +165,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 4,
     status: "approved",
     approvalStage: "completed",
+    childResponseId: "resp-5",
   },
   {
     id: "req-9",
@@ -162,6 +184,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 0,
     status: "rejected",
     approvalStage: "admin",
+    childResponseId: "resp-7",
   },
   {
     id: "req-10",
@@ -180,6 +203,7 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 0,
     status: "rejected",
     approvalStage: "advertiser",
+    childResponseId: "resp-9",
   },
   {
     id: "req-11",
@@ -197,7 +221,7 @@ export const allPublisherRequests: Request[] = [
     fromLinesCount: 0,
     subjectLinesCount: 0,
     status: "sent-back",
-    approvalStage: "advertiser",
+    approvalStage: "admin",
   },
   {
     id: "req-12",
@@ -234,5 +258,41 @@ export const allPublisherRequests: Request[] = [
     subjectLinesCount: 2,
     status: "pending",
     approvalStage: "advertiser",
+  },
+  {
+    id: "req-14",
+    date: "8th December 2024",
+    advertiserName: "Shopify Partners",
+    affiliateId: "AFF-8914",
+    priority: "High Priority",
+    offerId: "5023",
+    offerName:
+      "E-COMMERCE - PLATFORM - [Store Setup] - [Global] - [Email/Display] - [All Days]",
+    clientId: "CLI-1023",
+    clientName: "E-commerce Publishers Hub",
+    creativeType: "Email",
+    creativeCount: 4,
+    fromLinesCount: 3,
+    subjectLinesCount: 4,
+    status: "sent-back",
+    approvalStage: "admin",
+  },
+  {
+    id: "req-15",
+    date: "7th December 2024",
+    advertiserName: "HubSpot Marketing",
+    affiliateId: "AFF-8915",
+    priority: "Medium Priority",
+    offerId: "5024",
+    offerName:
+      "MARKETING - AUTOMATION - [CRM Integration] - [US/CA/EU] - [Email] - [Business Hours]",
+    clientId: "CLI-1024",
+    clientName: "Marketing Tech Publishers",
+    creativeType: "Email",
+    creativeCount: 3,
+    fromLinesCount: 2,
+    subjectLinesCount: 3,
+    status: "sent-back",
+    approvalStage: "admin",
   },
 ];

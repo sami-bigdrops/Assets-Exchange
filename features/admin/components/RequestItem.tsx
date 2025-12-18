@@ -63,11 +63,11 @@ const getStatusLabel = (status: string, approvalStage: string) => {
   }
 
   if (normalizedStatus === "sent-back" && normalizedStage === "admin") {
-    return "Sent Back by Admin";
+    return "Sent Back to Publisher";
   }
 
   if (normalizedStatus === "sent-back" && normalizedStage === "advertiser") {
-    return "Sent Back by Advertiser";
+    return "Returned by Advertiser";
   }
 
   switch (normalizedStatus) {
@@ -94,6 +94,16 @@ const shouldShowActionButtons = (
   const normalizedStage = approvalStage.toLowerCase();
 
   return normalizedStatus === "new" && normalizedStage === "admin";
+};
+
+const shouldShowRejectButtonOnly = (
+  status: string,
+  approvalStage: string
+): boolean => {
+  const normalizedStatus = status.toLowerCase();
+  const normalizedStage = approvalStage.toLowerCase();
+
+  return normalizedStatus === "sent-back" && normalizedStage === "advertiser";
 };
 
 const getAccordionColors = (
@@ -226,6 +236,21 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
               variables.colors.requestCardViewButtonBackgroundColor,
             border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
           }}
+          // TODO: BACKEND - Implement View Request Navigation
+          //
+          // onClick={() => {
+          //   // Navigate to detailed request view page
+          //   router.push(`/requests/${request.id}`);
+          // }}
+          //
+          // Note: Create a detailed view page at /requests/[id]/page.tsx
+          // This page should display:
+          // - Full request details
+          // - Status history timeline
+          // - Related response (if exists)
+          // - All comments/notes
+          // - Action buttons based on current status
+          // - Download/export functionality for request data
         >
           View Request
         </Button>
@@ -283,6 +308,43 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                   backgroundColor:
                     variables.colors.requestCardApproveButtonBackgroundColor,
                 }}
+                // TODO: BACKEND - Implement Approve and Forward Handler
+                //
+                // onClick={async () => {
+                //   try {
+                //     setIsLoading(true);
+                //
+                //     const response = await fetch(`/api/admin/requests/${request.id}/approve-and-forward`, {
+                //       method: 'POST',
+                //       headers: {
+                //         'Content-Type': 'application/json',
+                //         'Authorization': `Bearer ${getAuthToken()}`
+                //       },
+                //       body: JSON.stringify({
+                //         actionBy: getCurrentUserId(),
+                //         comments: '' // Optional: Add modal for comments
+                //       })
+                //     });
+                //
+                //     if (!response.ok) {
+                //       throw new Error('Failed to approve request');
+                //     }
+                //
+                //     const data = await response.json();
+                //
+                //     // Show success toast/notification
+                //     toast.success('Request approved and forwarded to advertiser');
+                //
+                //     // Refresh the data
+                //     await refreshRequests();
+                //
+                //   } catch (error) {
+                //     console.error('Error approving request:', error);
+                //     toast.error('Failed to approve request. Please try again.');
+                //   } finally {
+                //     setIsLoading(false);
+                //   }
+                // }}
               >
                 Approve and Forward
               </Button>
@@ -296,6 +358,100 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
                     variables.colors.requestCardRejectedButtonBackgroundColor,
                   border: `1px solid ${variables.colors.requestCardRejectedButtonBorderColor}`,
                 }}
+                // TODO: BACKEND - Implement Reject and Send Back Handler
+                //
+                // onClick={async () => {
+                //   try {
+                //     // Optional: Show modal to collect rejection reason
+                //     const rejectionReason = await showRejectionModal();
+                //     if (!rejectionReason) return; // User cancelled
+                //
+                //     setIsLoading(true);
+                //
+                //     const response = await fetch(`/api/admin/requests/${request.id}/reject-and-send-back`, {
+                //       method: 'POST',
+                //       headers: {
+                //         'Content-Type': 'application/json',
+                //         'Authorization': `Bearer ${getAuthToken()}`
+                //       },
+                //       body: JSON.stringify({
+                //         actionBy: getCurrentUserId(),
+                //         comments: rejectionReason
+                //       })
+                //     });
+                //
+                //     if (!response.ok) {
+                //       throw new Error('Failed to reject request');
+                //     }
+                //
+                //     const data = await response.json();
+                //
+                //     toast.success('Request rejected and sent back to publisher');
+                //     await refreshRequests();
+                //
+                //   } catch (error) {
+                //     console.error('Error rejecting request:', error);
+                //     toast.error('Failed to reject request. Please try again.');
+                //   } finally {
+                //     setIsLoading(false);
+                //   }
+                // }}
+              >
+                Reject and Send Back
+              </Button>
+            </div>
+          ) : shouldShowRejectButtonOnly(
+              request.status,
+              request.approvalStage
+            ) ? (
+            <div className="flex flex-col gap-4 xl:gap-4 justify-self-end">
+              <Button
+                variant="outline"
+                className=" xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] "
+                style={{
+                  color: variables.colors.requestCardRejectedButtonTextColor,
+                  backgroundColor:
+                    variables.colors.requestCardRejectedButtonBackgroundColor,
+                  border: `1px solid ${variables.colors.requestCardRejectedButtonBorderColor}`,
+                }}
+                // TODO: BACKEND - Implement Reject Button for Advertiser Responses
+                //
+                // This button appears for responses that were sent-back by advertiser
+                //
+                // onClick={async () => {
+                //   try {
+                //     const rejectionReason = await showRejectionModal();
+                //     if (!rejectionReason) return;
+                //
+                //     setIsLoading(true);
+                //
+                //     // Note: This uses /responses endpoint since it's an advertiser response
+                //     const response = await fetch(`/api/admin/responses/${request.id}/reject-and-send-back`, {
+                //       method: 'POST',
+                //       headers: {
+                //         'Content-Type': 'application/json',
+                //         'Authorization': `Bearer ${getAuthToken()}`
+                //       },
+                //       body: JSON.stringify({
+                //         actionBy: getCurrentUserId(),
+                //         comments: rejectionReason
+                //       })
+                //     });
+                //
+                //     if (!response.ok) {
+                //       throw new Error('Failed to reject response');
+                //     }
+                //
+                //     toast.success('Response rejected and sent back to advertiser');
+                //     await refreshRequests();
+                //
+                //   } catch (error) {
+                //     console.error('Error rejecting response:', error);
+                //     toast.error('Failed to reject response. Please try again.');
+                //   } finally {
+                //     setIsLoading(false);
+                //   }
+                // }}
               >
                 Reject and Send Back
               </Button>

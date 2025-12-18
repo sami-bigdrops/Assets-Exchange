@@ -4,6 +4,15 @@
 
 This document provides development guidelines for the Assets Exchange project. The project uses Next.js 15 with MVVM architecture and role-based access control.
 
+### Current Features
+
+The project currently includes:
+
+- Complete authentication system with BetterAuth
+- Admin dashboard with statistics, charts, and request/response management
+- Two-stage approval workflow (Admin → Advertiser)
+- Comprehensive backend implementation documentation (see [Backend Implementation](#backend-implementation))
+
 ## Architecture
 
 ### MVVM Pattern
@@ -1051,17 +1060,390 @@ Search engine crawling is controlled via `public/robots.txt`:
 13. **CORS errors**: Verify `CORS_ALLOWED_ORIGINS` includes your domain
 14. **Formatting conflicts**: Run `pnpm format` to ensure consistent formatting
 
+## Admin Dashboard Features
+
+### Overview
+
+The admin dashboard includes comprehensive request/response management with statistics and analytics.
+
+### Dashboard Statistics
+
+**Location:** `features/admin/components/StatsCard.tsx`
+
+Five statistics cards display real-time metrics:
+
+1. **Total Assets** - Combined count of all requests and responses
+2. **New Requests** - Publisher requests awaiting admin review
+3. **Approved Assets** - Fully approved requests (completed workflow)
+4. **Rejected Assets** - Rejected requests from both stages
+5. **Pending Approval** - Requests awaiting any approval
+
+**Features:**
+
+- Real-time calculations from database
+- Trend indicators (today vs yesterday)
+- Historical data (Yesterday, Current Month, Last Month)
+- Color-coded by metric type
+- Responsive design
+
+**Backend Requirements:** See [STATS_AND_CHARTS_BACKEND_TODOS.md](./STATS_AND_CHARTS_BACKEND_TODOS.md)
+
+### Performance Chart
+
+**Location:** `features/admin/components/PerformanceChart.tsx`
+
+Interactive time-series chart with multiple comparison types:
+
+**Comparison Types:**
+
+1. **Today vs Yesterday** - 24 hourly data points
+2. **Today vs Last Week** - 24 hourly data points (same day)
+3. **Current Week vs Last Week** - 7 daily data points
+4. **Current Month vs Last Month** - 31 daily data points
+
+**Metrics:**
+
+- Total Assets
+- New Requests
+- Approved Assets
+- Rejected Assets
+- Pending Approval
+
+**Features:**
+
+- Dropdown selection for metric and comparison type
+- Area + Line chart composition (Recharts)
+- Dynamic color coding per metric
+- Responsive with custom legend
+- Real-time data from aggregations
+
+**Backend Requirements:** See [STATS_AND_CHARTS_BACKEND_TODOS.md](./STATS_AND_CHARTS_BACKEND_TODOS.md)
+
+### Request Management
+
+**Location:** `features/admin/components/ManageRequestsPage.tsx`
+
+Complete publisher request workflow management:
+
+**Features:**
+
+- **Tabs**: All, New, Pending Approvals, Approved, Rejected, Sent Back
+- **Search**: Real-time search across advertiser name, offer name, client name
+- **Sorting**: By Date, Priority, Advertiser Name
+- **Filtering**: By Priority (High, Medium)
+- **Accordion View**: Expandable request details
+- **Status Badges**: Visual indicators for each state
+- **Conditional Actions**: Approve/Reject buttons based on status and stage
+- **Intelligent Routing**: Sent-back items appear in correct tabs
+
+**Request Data Model:**
+
+```typescript
+interface Request {
+  id: string;
+  date: string;
+  advertiserName: string;
+  affiliateId: string;
+  priority: string;
+  offerId: string;
+  offerName: string;
+  clientId: string;
+  clientName: string;
+  creativeType: string;
+  creativeCount: number;
+  fromLinesCount: number;
+  subjectLinesCount: number;
+  status: RequestStatus; // "new" | "pending" | "approved" | "rejected" | "sent-back"
+  approvalStage: ApprovalStage; // "admin" | "advertiser" | "completed"
+  parentRequestId?: string;
+  childResponseId?: string;
+}
+```
+
+**Backend Requirements:** See [Backend_Implementation_TODOs.md](./Backend_Implementation_TODOs.md)
+
+### Response Management
+
+**Location:** `features/admin/components/ManageResponsesPage.tsx`
+
+Advertiser response tracking mirroring request management:
+
+**Features:**
+
+- **Tabs**: All, New, Approved, Rejected, Sent Back (5 tabs)
+- Same search, sorting, and filtering as requests
+- Bidirectional linking to parent requests
+- Status indicators and conditional actions
+
+**Workflow:**
+
+1. Admin approves publisher request → Creates advertiser response
+2. Response forwarded to advertiser for review
+3. Advertiser approves/rejects/sends back
+4. If sent back, appears in admin's "Sent Back" tab
+
+### Two-Stage Approval System
+
+**Workflow:**
+
+```
+Publisher Request (new, admin)
+    ↓ Admin clicks "Approve and Forward"
+Publisher Request (pending, advertiser) + Advertiser Response (pending, advertiser)
+    ↓ Advertiser Approves
+Publisher Request (approved, completed)
+```
+
+**State Transitions:**
+
+- `new + admin` → Admin can approve or reject
+- `pending + advertiser` → Awaiting advertiser decision
+- `approved + completed` → Final approved state
+- `rejected + admin/advertiser` → Rejected by admin or advertiser
+- `sent-back + advertiser` → Advertiser returned to admin
+
+**Button Display Logic:**
+
+- **New requests at admin stage**: Show "Approve and Forward" + "Reject and Send Back"
+- **Sent-back responses from advertiser**: Show "Reject and Send Back" only
+- **All other states**: Show "View Request" only
+
+### MVVM Architecture
+
+All admin features follow MVVM pattern:
+
+```
+features/admin/
+├── components/          # View layer
+│   ├── AdminDashboard.tsx
+│   ├── StatsCard.tsx
+│   ├── PerformanceChart.tsx
+│   ├── ManageRequestsPage.tsx
+│   ├── ManageResponsesPage.tsx
+│   ├── Request.tsx
+│   ├── Response.tsx
+│   ├── RequestSection.tsx
+│   └── RequestItem.tsx
+├── view-models/         # Business logic
+│   ├── useAdminDashboardViewModel.ts
+│   ├── usePerformanceChartViewModel.ts
+│   ├── useManageRequestsViewModel.ts
+│   └── useManageResponsesViewModel.ts
+├── services/            # API calls (currently mock, needs backend)
+│   ├── admin.service.ts
+│   ├── performance-chart.service.ts
+│   └── request.service.ts
+├── models/              # Mock data (to be removed)
+│   ├── admin.model.ts
+│   ├── performance-chart.model.ts
+│   ├── request.model.ts
+│   └── response.model.ts
+└── types/               # TypeScript interfaces
+    └── admin.types.ts
+```
+
+## Backend Implementation
+
+### Documentation Overview
+
+The project includes comprehensive backend implementation guides:
+
+#### 1. Complete Implementation Guide
+
+**[Backend_Implementation_TODOs.md](./Backend_Implementation_TODOs.md)** (41KB, 1591 lines)
+
+Covers:
+
+- **Database Schema Design**
+  - publisher_requests table with full SQL
+  - advertiser_responses table with full SQL
+  - request_status_history table for audit trail
+  - dashboard_stats_cache table for performance
+  - Indexes, foreign keys, triggers
+- **API Endpoints** (13 endpoints total)
+  - Dashboard statistics endpoint
+  - Performance chart endpoint
+  - Request CRUD endpoints (7 endpoints)
+  - Response endpoints (3 endpoints)
+  - All with query parameters, response formats, SQL examples
+- **Authentication & Authorization**
+  - JWT token structure
+  - Session management with Redis
+  - Role-based access control
+- **Business Logic & Workflows**
+  - Request approval workflow
+  - State transition validation
+  - Business rules
+- **Error Handling & Validation**
+  - Error codes and formats
+  - Input validation with Zod
+- **Performance & Optimization**
+  - Database indexing strategy
+  - Redis caching with TTLs
+  - Query optimization
+  - Pagination strategies
+- **Security Requirements**
+  - Input sanitization
+  - Rate limiting
+  - CORS configuration
+  - Security headers
+- **Testing Requirements**
+  - Unit, integration, and load tests
+- **Monitoring & Logging**
+  - Metrics to track
+  - Health check endpoint
+- **Deployment Checklist**
+
+#### 2. Quick Reference Guide
+
+**[BACKEND_TODOS_SUMMARY.md](./BACKEND_TODOS_SUMMARY.md)** (7.7KB, 271 lines)
+
+Quick reference with:
+
+- File-by-file TODO locations
+- Priority implementation order:
+  - Phase 1: Foundation (Week 1-2)
+  - Phase 2: Core APIs (Week 3-4)
+  - Phase 3: Actions (Week 5-6)
+  - Phase 4: Enhancement (Week 7-8)
+- Critical business logic summary
+- Testing checklist
+- Environment setup
+- Quick start for backend engineers
+
+#### 3. Statistics & Charts Guide
+
+**[STATS_AND_CHARTS_BACKEND_TODOS.md](./STATS_AND_CHARTS_BACKEND_TODOS.md)** (17KB, 751 lines)
+
+Dedicated guide for dashboard:
+
+- 5 statistics calculations with SQL
+- 4 chart comparison types with aggregations
+- Trend calculation formulas
+- Data processing examples in JavaScript
+- Performance optimization with cache table
+- Database indexes
+- Testing guidelines
+
+### TODOs in Code
+
+All backend implementation points are marked with `TODO: BACKEND` prefix:
+
+```bash
+# Find all TODOs
+grep -r "TODO: BACKEND" features/ app/
+
+# TODOs by file type
+features/admin/types/admin.types.ts          # Database schema design
+features/admin/services/admin.service.ts     # Dashboard stats API
+features/admin/services/performance-chart.service.ts  # Chart API
+features/admin/services/request.service.ts   # Request/Response APIs
+features/admin/components/RequestItem.tsx    # Button handlers
+features/admin/models/*.ts                   # Mock data (to remove)
+app/(dashboard)/*/page.tsx                   # Authentication
+```
+
+**Total:** 29+ comprehensive TODOs with:
+
+- SQL queries and examples
+- API specifications
+- Error handling requirements
+- Caching strategies
+- Implementation examples
+
+### Backend Integration Process
+
+1. **Read Documentation**
+
+   ```bash
+   cat docs/Backend_Implementation_TODOs.md
+   cat docs/BACKEND_TODOS_SUMMARY.md
+   cat docs/STATS_AND_CHARTS_BACKEND_TODOS.md
+   ```
+
+2. **Set Up Database**
+   - Create tables from SQL in `admin.types.ts`
+   - Run migrations
+   - Create indexes
+   - Set up triggers
+
+3. **Implement APIs**
+   - Start with GET endpoints
+   - Add caching layer
+   - Implement POST endpoints
+   - Add error handling
+
+4. **Update Service Layer**
+   - Replace mock imports with API calls
+   - Add error handling
+   - Implement retry logic
+
+5. **Remove Mock Data**
+   - Delete `features/admin/models/*.ts` files
+   - Update imports in services
+   - Test all features
+
+6. **Test Integration**
+   - Verify statistics calculations
+   - Test chart aggregations
+   - Verify request/response workflows
+   - Test error scenarios
+
+### Environment Variables for Backend
+
+Add to `.env.local`:
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@host/database
+
+# Redis (for caching)
+REDIS_URL=redis://localhost:6379
+REDIS_PASSWORD=your_redis_password
+
+# JWT
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRATION=24h
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=100
+```
+
 ## Resources
 
+### Project Documentation
+
+- [Backend Implementation TODOs](./Backend_Implementation_TODOs.md) - Complete backend guide
+- [Backend TODOs Summary](./BACKEND_TODOS_SUMMARY.md) - Quick reference
+- [Stats & Charts Backend TODOs](./STATS_AND_CHARTS_BACKEND_TODOS.md) - Dashboard guide
+
+### Framework & Core
+
 - [Next.js Docs](https://nextjs.org/docs)
-- [Better Auth Docs](https://www.better-auth.com)
+- [React Docs](https://react.dev)
+- [TypeScript Docs](https://www.typescriptlang.org/docs)
+
+### Backend & Database
+
 - [Neon Docs](https://neon.tech/docs)
 - [Drizzle ORM Docs](https://orm.drizzle.team)
+- [Better Auth Docs](https://www.better-auth.com)
+
+### Type Safety & APIs
+
 - [oRPC Docs](https://orpc.dev)
 - [t3-env Docs](https://env.t3.gg)
+- [Zod Docs](https://zod.dev)
+
+### UI & Styling
+
 - [shadcn/ui Docs](https://ui.shadcn.com)
 - [Tailwind CSS Docs](https://tailwindcss.com/docs)
-- [React Docs](https://react.dev)
+- [Recharts Docs](https://recharts.org)
+
+### Development Tools
+
 - [Jest Docs](https://jestjs.io/docs/getting-started)
 - [React Testing Library Docs](https://testing-library.com/react)
 - [Prettier Docs](https://prettier.io/docs/en/)

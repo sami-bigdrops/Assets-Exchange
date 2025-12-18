@@ -4,6 +4,7 @@ import { useAdminDashboardViewModel } from "../view-models/useAdminDashboardView
 
 import { PerformanceChart } from "./PerformanceChart";
 import { Request } from "./Request";
+import { Response } from "./Response";
 import { StatsCard } from "./StatsCard";
 
 export function AdminDashboard() {
@@ -44,6 +45,7 @@ export function AdminDashboard() {
       </div>
       <PerformanceChart />
       <Request />
+      <Response />
     </div>
   );
 }

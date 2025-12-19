@@ -1,8 +1,16 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
+
 import { getVariables } from "@/components/_variables/variables";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface EntityDataTableColumn {
   header: string;
@@ -61,23 +69,29 @@ export function EntityDataTable<T>({
 interface EntityDataCardProps {
   id: string;
   name: string;
-  platform: string;
+  platform?: string;
+  advName?: string;
   createdMethod: string;
-  status: "Active" | "Inactive";
+  status: "Active" | "Pending" | "Inactive";
   variant?: "purple" | "blue";
+  visibility?: "Public" | "Internal" | "Hidden";
   onEditDetails?: () => void;
   onBrandGuidelines?: () => void;
+  onVisibilityChange?: (visibility: "Public" | "Internal" | "Hidden") => void;
 }
 
 export function EntityDataCard({
   id,
   name,
   platform,
+  advName,
   createdMethod,
   status,
   variant = "purple",
+  visibility,
   onEditDetails,
   onBrandGuidelines,
+  onVisibilityChange,
 }: EntityDataCardProps) {
   const variables = getVariables();
   const isPurple = variant === "purple";
@@ -111,7 +125,7 @@ export function EntityDataCard({
         </div>
 
         <div
-          className="font-inter text-center text-xs xl:text-sm"
+          className="font-inter text-center  text-xs xl:text-sm"
           style={{ color: variables.colors.requestCardTextColor }}
         >
           {name}
@@ -121,7 +135,7 @@ export function EntityDataCard({
           className="font-inter text-center text-xs xl:text-sm"
           style={{ color: variables.colors.requestCardTextColor }}
         >
-          {platform}
+          {advName || platform}
         </div>
 
         <div
@@ -131,23 +145,87 @@ export function EntityDataCard({
           {createdMethod}
         </div>
 
-        <div className="flex justify-center items-center">
+        <div className="flex flex-col gap-2 justify-center items-center">
           <Badge
             className="h-7 w-28 p-0 text-xs xl:text-sm font-medium rounded-[20px] border flex items-center justify-center"
             style={{
               backgroundColor:
                 status === "Active"
                   ? variables.colors.approvedAssetsBackgroundColor
-                  : variables.colors.rejectedAssetsBackgroundColor,
-              borderColor: status === "Active" ? "#86EFAC" : "#FFC2A3",
+                  : status === "Pending"
+                    ? "#FEF3C7"
+                    : variables.colors.rejectedAssetsBackgroundColor,
+              borderColor:
+                status === "Active"
+                  ? "#86EFAC"
+                  : status === "Pending"
+                    ? "#FCD34D"
+                    : "#FFC2A3",
               color:
                 status === "Active"
                   ? variables.colors.approvedAssetsIconColor
-                  : variables.colors.rejectedAssetsIconColor,
+                  : status === "Pending"
+                    ? "#92400E"
+                    : variables.colors.rejectedAssetsIconColor,
             }}
           >
             {status}
           </Badge>
+          {visibility && onVisibilityChange && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-8 w-28 text-xs font-medium rounded-md border pointer-events-auto"
+                  style={{
+                    color: variables.colors.buttonOutlineTextColor,
+                    borderColor: variables.colors.buttonOutlineBorderColor,
+                    backgroundColor: variables.colors.cardBackground,
+                  }}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  {visibility}
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                className="min-w-[7rem] z-[100]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    onVisibilityChange("Public");
+                  }}
+                  className="text-xs cursor-pointer"
+                >
+                  Public
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    onVisibilityChange("Internal");
+                  }}
+                  className="text-xs cursor-pointer"
+                >
+                  Internal
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    onVisibilityChange("Hidden");
+                  }}
+                  className="text-xs cursor-pointer"
+                >
+                  Hidden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         <div className="flex flex-row gap-2.5 items-center justify-center">

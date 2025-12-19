@@ -7,6 +7,7 @@ export { ManageRequestsPage } from "./components/ManageRequestsPage";
 export { ManageResponsesPage } from "./components/ManageResponsesPage";
 export { Advertiser } from "./components/Advertiser";
 export { Publisher } from "./components/Publisher";
+export { Offers } from "./components/Offers";
 export { EntityDataTable, EntityDataCard } from "./components/EntityDataTable";
 export { useAdminDashboardViewModel } from "./view-models/useAdminDashboardViewModel";
 export { useAdvertiserViewModel } from "./view-models/useAdvertiserViewModel";

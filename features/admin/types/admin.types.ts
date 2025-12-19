@@ -199,3 +199,12 @@ export interface Publisher {
   createdMethod: string;
   status: "Active" | "Inactive";
 }
+
+export interface Offer {
+  id: string;
+  offerName: string;
+  advName: string;
+  createdMethod: string;
+  status: "Active" | "Pending" | "Inactive";
+  visibility: "Public" | "Internal" | "Hidden";
+}

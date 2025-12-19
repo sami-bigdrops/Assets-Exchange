@@ -18,17 +18,30 @@ import { usePublisherViewModel } from "../view-models/usePublisherViewModel";
 
 import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 
-type StatusFilter = "Active" | "Inactive" | "Pending" | null;
-type VisibilityFilter = "Hidden" | "Internal" | "Public" | null;
+type StatusFilter = "Active" | "Inactive" | null;
+type PlatformFilter =
+  | "Cake"
+  | "HasOffers"
+  | "Tune"
+  | "Impact"
+  | "Everflow"
+  | null;
+type CreationMethodFilter = "Manually" | "API" | null;
 type SortByFilter = "New to Old" | "Old to New" | null;
-type FilterCategory = "status" | "visibility" | "sortBy" | null;
+type FilterCategory =
+  | "status"
+  | "platform"
+  | "creationMethod"
+  | "sortBy"
+  | null;
 
 export function Publisher() {
   const variables = getVariables();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
-  const [visibilityFilter, setVisibilityFilter] =
-    useState<VisibilityFilter>(null);
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(null);
+  const [creationMethodFilter, setCreationMethodFilter] =
+    useState<CreationMethodFilter>(null);
   const [sortByFilter, setSortByFilter] = useState<SortByFilter>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>(null);
@@ -53,8 +66,18 @@ export function Publisher() {
         publisher.pubPlatform.toLowerCase().includes(query);
 
       const matchesStatus = !statusFilter || publisher.status === statusFilter;
+      const matchesPlatform =
+        !platformFilter || publisher.pubPlatform === platformFilter;
+      const matchesCreationMethod =
+        !creationMethodFilter ||
+        publisher.createdMethod === creationMethodFilter;
 
-      return matchesSearch && matchesStatus;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesPlatform &&
+        matchesCreationMethod
+      );
     })
     .sort((a, b) => {
       if (!sortByFilter) return 0;
@@ -101,7 +124,14 @@ export function Publisher() {
     <div className="w-full">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3 flex-wrap">
-          <Button className="h-10 font-inter font-medium text-[#2563EB] rounded-md border border-[#2563EB] bg-white shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent">
+          <Button
+            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent"
+            style={{
+              color: variables.colors.buttonOutlineTextColor,
+              borderColor: variables.colors.buttonOutlineBorderColor,
+              backgroundColor: variables.colors.cardBackground,
+            }}
+          >
             <Plus className="h-5 w-5" />
             Create New Manually
           </Button>
@@ -118,7 +148,12 @@ export function Publisher() {
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="h-10 font-inter font-medium text-[#2563EB] rounded-md border border-[#2563EB] bg-white shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:text-[#2563EB] hover:bg-transparent"
+                className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)]"
+                style={{
+                  color: variables.colors.buttonOutlineTextColor,
+                  borderColor: variables.colors.buttonOutlineBorderColor,
+                  backgroundColor: variables.colors.cardBackground,
+                }}
               >
                 <ListFilter className="h-5 w-5" />
                 Filter
@@ -144,14 +179,25 @@ export function Publisher() {
                     <ChevronRight className="h-4 w-4 text-gray-400" />
                   </button>
                   <button
-                    onClick={() => setActiveCategory("visibility")}
+                    onClick={() => setActiveCategory("platform")}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "visibility"
+                      activeCategory === "platform"
                         ? "bg-gray-100 text-gray-900 font-medium"
                         : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <span>Visibility</span>
+                    <span>Platform</span>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => setActiveCategory("creationMethod")}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
+                      activeCategory === "creationMethod"
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>Creation Method</span>
                     <ChevronRight className="h-4 w-4 text-gray-400" />
                   </button>
                   <button
@@ -171,7 +217,7 @@ export function Publisher() {
                   <div className="w-1/2 p-3">
                     {activeCategory === "status" && (
                       <div className="space-y-1">
-                        {["Active", "Inactive", "Pending"].map((status) => (
+                        {["Active", "Inactive"].map((status) => (
                           <button
                             key={status}
                             onClick={() => {
@@ -189,23 +235,49 @@ export function Publisher() {
                       </div>
                     )}
 
-                    {activeCategory === "visibility" && (
+                    {activeCategory === "platform" && (
                       <div className="space-y-1">
-                        {["Hidden", "Internal", "Public"].map((visibility) => (
+                        {[
+                          "Cake",
+                          "HasOffers",
+                          "Tune",
+                          "Impact",
+                          "Everflow",
+                        ].map((platform) => (
                           <button
-                            key={visibility}
+                            key={platform}
                             onClick={() => {
-                              setVisibilityFilter(
-                                visibility as VisibilityFilter
-                              );
+                              setPlatformFilter(platform as PlatformFilter);
                             }}
                             className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                              visibilityFilter === visibility
+                              platformFilter === platform
                                 ? "bg-gray-100 text-gray-900 font-medium"
                                 : "text-gray-600 hover:bg-gray-50"
                             }`}
                           >
-                            {visibility}
+                            {platform}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {activeCategory === "creationMethod" && (
+                      <div className="space-y-1">
+                        {["Manually", "API"].map((method) => (
+                          <button
+                            key={method}
+                            onClick={() => {
+                              setCreationMethodFilter(
+                                method as CreationMethodFilter
+                              );
+                            }}
+                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
+                              creationMethodFilter === method
+                                ? "bg-gray-100 text-gray-900 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {method}
                           </button>
                         ))}
                       </div>
@@ -237,14 +309,14 @@ export function Publisher() {
           </Popover>
         </div>
 
-        <div className="relative w-full sm:w-80">
+        <div className="relative w-full sm:w-100">
           <Search
             className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4"
             style={{ color: variables.colors.inputPlaceholderColor }}
           />
           <Input
             type="text"
-            placeholder="Search by Company Name / ID / Email"
+            placeholder="Search by Publisher Name / ID / Platform"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-10 font-inter"

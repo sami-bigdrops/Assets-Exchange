@@ -1,5 +1,6 @@
 "use client";
 
+import { getVariables } from "@/components/_variables/variables";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -19,9 +20,14 @@ export function EntityDataTable<T>({
   columns,
   renderRow,
 }: EntityDataTableProps<T>) {
+  const variables = getVariables();
+
   return (
     <div className="w-full">
-      <div className="bg-[#3B9FD5] rounded-t-2xl px-6 py-4">
+      <div
+        className="rounded-t-2xl px-6 py-4"
+        style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
+      >
         <div
           className="grid gap-6 items-center justify-center text-center"
           style={{
@@ -33,7 +39,8 @@ export function EntityDataTable<T>({
           {columns.map((column, index) => (
             <div
               key={index}
-              className="text-white font-inter font-medium text-base"
+              className="font-inter font-medium text-xs xl:text-sm"
+              style={{ color: variables.colors.cardHeaderTextColor }}
             >
               {column.header}
             </div>
@@ -71,9 +78,14 @@ export function EntityDataCard({
   onEditDetails,
   onBrandGuidelines,
 }: EntityDataCardProps) {
+  const variables = getVariables();
   const isPurple = variant === "purple";
-  const backgroundColor = isPurple ? "#F9F7FF" : "#F1F9FF";
-  const borderColor = isPurple ? "#9B81D1" : "#7C90CF";
+  const backgroundColor = isPurple
+    ? variables.colors.AccordionPurpleBackgroundColor
+    : variables.colors.AccordionBlueBackgroundColor;
+  const borderColor = isPurple
+    ? variables.colors.AccordionPurpleBorderColor
+    : variables.colors.AccordionBlueBorderColor;
 
   return (
     <div
@@ -84,32 +96,48 @@ export function EntityDataCard({
       }}
     >
       <div className="grid grid-cols-[100px_1.2fr_1.2fr_1.2fr_140px_200px] gap-6 items-start ">
-        <div className="text-[#374151] font-inter text-center text-base">
+        <div
+          className="font-inter text-center text-xs xl:text-sm"
+          style={{ color: variables.colors.requestCardTextColor }}
+        >
           {id}
         </div>
 
-        <div className="text-[#374151] font-inter text-center text-base">
+        <div
+          className="font-inter text-center text-xs xl:text-sm"
+          style={{ color: variables.colors.requestCardTextColor }}
+        >
           {name}
         </div>
 
-        <div className="text-[#374151] font-inter text-center text-base">
+        <div
+          className="font-inter text-center text-xs xl:text-sm"
+          style={{ color: variables.colors.requestCardTextColor }}
+        >
           {platform}
         </div>
 
-        <div className="text-[#374151] font-inter text-center text-base">
+        <div
+          className="font-inter text-center text-xs xl:text-sm"
+          style={{ color: variables.colors.requestCardTextColor }}
+        >
           {createdMethod}
         </div>
 
         <div className="flex justify-center items-center">
           <Badge
-            className={`
-              h-9 w-28 p-0
-              text-sm font-medium 
-              rounded-[20px]
-              border border-[#86EFAC] 
-              bg-[#E0FCE2] 
-              text-[#267A46]
-            `}
+            className="h-7 w-28 p-0 text-xs xl:text-sm font-medium rounded-[20px] border"
+            style={{
+              backgroundColor:
+                status === "Active"
+                  ? variables.colors.approvedAssetsBackgroundColor
+                  : variables.colors.rejectedAssetsBackgroundColor,
+              borderColor: status === "Active" ? "#86EFAC" : "#FFC2A3",
+              color:
+                status === "Active"
+                  ? variables.colors.approvedAssetsIconColor
+                  : variables.colors.rejectedAssetsIconColor,
+            }}
           >
             {status}
           </Badge>
@@ -118,13 +146,24 @@ export function EntityDataCard({
         <div className="flex flex-col gap-3 items-center justify-self-end">
           <Button
             variant="outline"
-            className="h-11.5 w-42 font-inter text-base font-medium text-[#2563EB] rounded-[6px] border border-[#2563EB] bg-[#F3F6FF] shadow-[0_2px_4px_0_rgba(30,64,175,0.15)] hover:bg-[#EFF6FF] hover:text-[#2563EB]"
+            className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] border shadow-[0_2px_4px_0_rgba(30,64,175,0.15)]"
+            style={{
+              color: variables.colors.requestCardViewButtonTextColor,
+              borderColor: variables.colors.requestCardViewButtonBorderColor,
+              backgroundColor:
+                variables.colors.requestCardViewButtonBackgroundColor,
+            }}
             onClick={onEditDetails}
           >
             Edit Details
           </Button>
           <Button
-            className="h-11.5 w-42 font-inter text-base font-medium text-[#EFF8FF] rounded-[6px] border-0 bg-[#3B82F6] hover:bg-[#1D4ED8] shadow-[0_2px_4px_0_rgba(30,64,175,0.15)]"
+            className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] border-0 shadow-[0_2px_4px_0_rgba(30,64,175,0.15)]"
+            style={{
+              color: variables.colors.requestCardApproveButtonTextColor,
+              backgroundColor:
+                variables.colors.requestCardApproveButtonBackgroundColor,
+            }}
             onClick={onBrandGuidelines}
           >
             Brand Guidelines

@@ -15,7 +15,6 @@ import { redirect } from "next/navigation";
 import { ManageResponsesPage } from "@/features/admin/components/ManageResponsesPage";
 import { getCurrentUser } from "@/lib/get-user";
 
-
 export default async function ResponsePage() {
   const user = await getCurrentUser();
 
@@ -25,7 +24,7 @@ export default async function ResponsePage() {
 
   if (user.role === "admin") {
     return (
-      <div className="flex flex-1 flex-col gap-6 p-6">
+      <div className="flex flex-1 flex-col gap-6">
         <ManageResponsesPage />
       </div>
     );
@@ -40,7 +39,7 @@ export default async function ResponsePage() {
    * - Filter by their advertiser_id
    */
   return (
-    <div className="flex items-center justify-center p-8">
+    <div className="flex items-center justify-center">
       <div>Response page for other roles coming soon...</div>
     </div>
   );

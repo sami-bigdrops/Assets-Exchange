@@ -15,7 +15,7 @@ export default async function PublishersPage() {
   }
 
   return (
-    <div className="container mx-auto">
+    <div>
       <Publisher />
     </div>
   );

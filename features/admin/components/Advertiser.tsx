@@ -54,7 +54,7 @@ export function Advertiser() {
     { header: "Adv Platform", width: "1.2fr" },
     { header: "Created Manually / via API", width: "1.2fr" },
     { header: "Status", width: "140px" },
-    { header: "Actions", width: "200px" },
+    { header: "Actions", width: "340px" },
   ];
 
   const filteredAdvertisers = manageAdvertisers
@@ -122,8 +122,8 @@ export function Advertiser() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Button
             className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent"
             style={{

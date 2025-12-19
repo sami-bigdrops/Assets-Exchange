@@ -15,7 +15,7 @@ export default async function AdvertisersPage() {
   }
 
   return (
-    <div className="container mx-auto">
+    <div>
       <Advertiser />
     </div>
   );

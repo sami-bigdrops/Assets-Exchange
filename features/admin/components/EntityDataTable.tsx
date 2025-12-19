@@ -25,15 +25,16 @@ export function EntityDataTable<T>({
   return (
     <div className="w-full">
       <div
-        className="rounded-t-2xl px-6 py-4"
+        className="rounded-t-2xl px-5 py-3.5"
         style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
       >
         <div
-          className="grid gap-6 items-center justify-center text-center"
+          className="grid items-center justify-center text-center"
           style={{
             gridTemplateColumns: columns
               .map((col) => col.width || "1fr")
               .join(" "),
+            gap: "1.5rem",
           }}
         >
           {columns.map((column, index) => (
@@ -48,7 +49,7 @@ export function EntityDataTable<T>({
         </div>
       </div>
 
-      <div className="space-y-3.5 mt-3">
+      <div className="space-y-2.5 mt-2">
         {data.map((item, index) => (
           <div key={index}>{renderRow(item, index)}</div>
         ))}
@@ -89,13 +90,19 @@ export function EntityDataCard({
 
   return (
     <div
-      className="rounded-2xl border px-6 py-5 shadow-sm"
+      className="rounded-2xl border px-5 py-5 shadow-sm"
       style={{
         backgroundColor,
         borderColor,
       }}
     >
-      <div className="grid grid-cols-[100px_1.2fr_1.2fr_1.2fr_140px_200px] gap-6 items-start ">
+      <div
+        className="grid items-center"
+        style={{
+          gridTemplateColumns: "100px 1.2fr 1.2fr 1.2fr 140px 340px",
+          gap: "1.5rem",
+        }}
+      >
         <div
           className="font-inter text-center text-xs xl:text-sm"
           style={{ color: variables.colors.requestCardTextColor }}
@@ -126,7 +133,7 @@ export function EntityDataCard({
 
         <div className="flex justify-center items-center">
           <Badge
-            className="h-7 w-28 p-0 text-xs xl:text-sm font-medium rounded-[20px] border"
+            className="h-7 w-28 p-0 text-xs xl:text-sm font-medium rounded-[20px] border flex items-center justify-center"
             style={{
               backgroundColor:
                 status === "Active"
@@ -143,10 +150,10 @@ export function EntityDataCard({
           </Badge>
         </div>
 
-        <div className="flex flex-col gap-3 items-center justify-self-end">
+        <div className="flex flex-row gap-2.5 items-center justify-center">
           <Button
             variant="outline"
-            className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] border shadow-[0_2px_4px_0_rgba(30,64,175,0.15)]"
+            className="h-9 w-36 font-inter text-xs xl:text-sm font-medium rounded-md border shadow-sm hover:shadow transition-shadow"
             style={{
               color: variables.colors.requestCardViewButtonTextColor,
               borderColor: variables.colors.requestCardViewButtonBorderColor,
@@ -158,7 +165,7 @@ export function EntityDataCard({
             Edit Details
           </Button>
           <Button
-            className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] border-0 shadow-[0_2px_4px_0_rgba(30,64,175,0.15)]"
+            className="h-9 w-36 font-inter text-xs xl:text-sm font-medium rounded-md border-0 shadow-sm hover:shadow transition-shadow"
             style={{
               color: variables.colors.requestCardApproveButtonTextColor,
               backgroundColor:

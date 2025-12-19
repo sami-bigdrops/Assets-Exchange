@@ -37,12 +37,12 @@ export const adminMenuConfig: SidebarMenuConfig = [
         icon: "Megaphone",
         href: "/advertisers",
       },
-      {
-        id: "manage-publishers",
-        label: "Manage Publishers",
-        icon: "UsersRound",
-        href: "/publishers",
-      },
+      // {
+      //   id: "manage-publishers",
+      //   label: "Manage Publishers",
+      //   icon: "UsersRound",
+      //   href: "/publishers",
+      // },
       {
         id: "offers",
         label: "Offers",

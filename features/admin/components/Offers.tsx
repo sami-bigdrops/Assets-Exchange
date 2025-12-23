@@ -67,6 +67,7 @@ import {
 import type { Offer as OfferType } from "../types/admin.types";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";
 
+import { EditDetailsModal } from "./EditDetailsModal";
 import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { NewOfferManuallyModal } from "./NewOfferManuallyModal";
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
@@ -98,6 +99,7 @@ export function Offers() {
   >({});
   const [isNewOfferModalOpen, setIsNewOfferModalOpen] = useState(false);
   const [isPullingViaAPI, setIsPullingViaAPI] = useState(false);
+  const [isEditDetailsModalOpen, setIsEditDetailsModalOpen] = useState(false);
   const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] = useState(false);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [selectedOfferName, setSelectedOfferName] = useState<string>("");
@@ -203,10 +205,9 @@ export function Offers() {
    *    - Show success notification
    *    - Update local state if needed
    */
-  const handleEditDetails = (_id: string) => {
-    // TODO: Implement API call to fetch offer details
-    // TODO: Open edit modal with fetched data
-    // TODO: Handle form submission and API update
+  const handleEditDetails = (id: string) => {
+    setSelectedOfferId(id);
+    setIsEditDetailsModalOpen(true);
   };
 
   /**
@@ -739,13 +740,25 @@ export function Offers() {
         }}
       />
 
-      {selectedOfferId && (
+      {selectedOfferId && selectedOfferName && (
         <BrandGuidelinesModal
           open={brandGuidelinesModalOpen}
           onOpenChange={setBrandGuidelinesModalOpen}
           entityId={selectedOfferId}
           entityName={selectedOfferName}
           entityType="offer"
+        />
+      )}
+
+      {selectedOfferId && (
+        <EditDetailsModal
+          open={isEditDetailsModalOpen}
+          onOpenChange={setIsEditDetailsModalOpen}
+          offerId={selectedOfferId}
+          onSuccess={() => {
+            setIsEditDetailsModalOpen(false);
+            setSelectedOfferId(null);
+          }}
         />
       )}
     </div>

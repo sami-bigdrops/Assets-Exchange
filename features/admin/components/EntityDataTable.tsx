@@ -119,7 +119,7 @@ function VisibilityDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="center"
-        className="min-w-[7rem] z-[100]"
+        className="min-w-28 z-100"
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenuItem
@@ -151,7 +151,7 @@ interface EntityDataCardProps {
   platform?: string;
   advName?: string;
   createdMethod: string;
-  status: "Active" | "Pending" | "Inactive";
+  status: "Active" | "Inactive";
   variant?: "purple" | "blue";
   visibility?: "Public" | "Internal" | "Hidden";
   nameAlign?: "left" | "center" | "right";
@@ -241,21 +241,12 @@ export function EntityDataCard({
               backgroundColor:
                 status === "Active"
                   ? variables.colors.approvedAssetsBackgroundColor
-                  : status === "Pending"
-                    ? "#FEF3C7"
-                    : variables.colors.rejectedAssetsBackgroundColor,
-              borderColor:
-                status === "Active"
-                  ? "#86EFAC"
-                  : status === "Pending"
-                    ? "#FCD34D"
-                    : "#FFC2A3",
+                  : variables.colors.rejectedAssetsBackgroundColor,
+              borderColor: status === "Active" ? "#86EFAC" : "#FFC2A3",
               color:
                 status === "Active"
                   ? variables.colors.approvedAssetsIconColor
-                  : status === "Pending"
-                    ? "#92400E"
-                    : variables.colors.rejectedAssetsIconColor,
+                  : variables.colors.rejectedAssetsIconColor,
             }}
           >
             {status}

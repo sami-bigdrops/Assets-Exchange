@@ -166,7 +166,7 @@ export function RequestItem({ request, colorVariant }: RequestItemProps) {
     >
       <Accordion.Header>
         <Accordion.Trigger className="flex w-full items-center justify-between px-5 py-4 text-left group transition-all duration-200 hover:opacity-90">
-          <div className="flex flex-wrap items-center xlg:gap-3 gap-2 text-xs xl:text-sm leading-relaxed">
+          <div className="flex flex-wrap items-center lg:gap-3 gap-2 text-xs xl:text-sm leading-relaxed">
             <span
               className="font-inter"
               style={{ color: variables.colors.requestCardTextColor }}

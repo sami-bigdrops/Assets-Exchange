@@ -205,6 +205,6 @@ export interface Offer {
   offerName: string;
   advName: string;
   createdMethod: string;
-  status: "Active" | "Pending" | "Inactive";
+  status: "Active" | "Inactive";
   visibility: "Public" | "Internal" | "Hidden";
 }

@@ -17,6 +17,7 @@ import type { Publisher as PublisherType } from "../types/admin.types";
 import { usePublisherViewModel } from "../view-models/usePublisherViewModel";
 
 import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
+import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type PlatformFilter =
@@ -45,13 +46,16 @@ export function Publisher() {
   const [sortByFilter, setSortByFilter] = useState<SortByFilter>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>(null);
+  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] = useState(false);
+  const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
+  const [selectedPublisherName, setSelectedPublisherName] = useState<string>("");
 
   const { publishers, isLoading, error } = usePublisherViewModel();
 
   const columns = [
     { header: "ID", width: "100px" },
     { header: "Publisher Name", width: "1.2fr" },
-    { header: "Adv Platform", width: "1.2fr" },
+    { header: "Advertiser Platform", width: "1.2fr" },
     { header: "Created Manually / via API", width: "1.2fr" },
     { header: "Status", width: "140px" },
     { header: "Actions", width: "340px" },
@@ -94,7 +98,12 @@ export function Publisher() {
 
   const handleEditDetails = (_id: string) => {};
 
-  const handleBrandGuidelines = (_id: string) => {};
+  const handleBrandGuidelines = (id: string) => {
+    const publisher = publishers?.find((p) => p.id === id);
+    setSelectedPublisherId(id);
+    setSelectedPublisherName(publisher?.publisherName || "");
+    setBrandGuidelinesModalOpen(true);
+  };
 
   const clearAllFilters = () => {
     setStatusFilter(null);
@@ -385,6 +394,16 @@ export function Publisher() {
           />
         )}
       />
+
+      {selectedPublisherId && (
+        <BrandGuidelinesModal
+          open={brandGuidelinesModalOpen}
+          onOpenChange={setBrandGuidelinesModalOpen}
+          entityId={selectedPublisherId}
+          entityName={selectedPublisherName}
+          entityType="publisher"
+        />
+      )}
     </div>
   );
 }

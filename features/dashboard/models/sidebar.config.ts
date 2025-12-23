@@ -49,18 +49,18 @@ export const adminMenuConfig: SidebarMenuConfig = [
         icon: "Target",
         href: "/offers",
       },
-      {
-        id: "analytics",
-        label: "Analytics",
-        icon: "ChartColumnIncreasing",
-        href: "/analytics",
-      },
-      {
-        id: "ai-settings",
-        label: "AI Settings",
-        icon: "Settings",
-        href: "/ai-settings",
-      },
+      // {
+      //   id: "analytics",
+      //   label: "Analytics",
+      //   icon: "ChartColumnIncreasing",
+      //   href: "/analytics",
+      // },
+      // {
+      //   id: "ai-settings",
+      //   label: "AI Settings",
+      //   icon: "Settings",
+      //   href: "/ai-settings",
+      // },
       {
         id: "publisher-form-settings",
         label: "Publisher Form Settings",

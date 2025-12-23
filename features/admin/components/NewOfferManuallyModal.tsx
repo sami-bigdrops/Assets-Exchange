@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -58,6 +59,7 @@ export function NewOfferManuallyModal({
     brandGuidelinesUrl: "",
     brandGuidelinesFile: null,
     brandGuidelinesText: "",
+    brandGuidelinesNotes: "",
   });
 
   const [validationErrors, setValidationErrors] = useState<
@@ -78,6 +80,7 @@ export function NewOfferManuallyModal({
         brandGuidelinesUrl: "",
         brandGuidelinesFile: null,
         brandGuidelinesText: "",
+        brandGuidelinesNotes: "",
       });
       setValidationErrors({});
     }
@@ -773,14 +776,36 @@ export function NewOfferManuallyModal({
                     </div>
                   )}
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="brandGuidelinesNotes" className="font-inter text-sm">
+                    Brand Guidelines Notes
+                  </Label>
+                  <Textarea
+                    id="brandGuidelinesNotes"
+                    value={formData.brandGuidelinesNotes || ""}
+                    onChange={(e) =>
+                      updateFormField("brandGuidelinesNotes", e.target.value)
+                    }
+                    placeholder="Enter any additional notes about the brand guidelines..."
+                    disabled={isSubmitting}
+                    rows={4}
+                    className="font-inter resize-none offer-modal-input"
+                    style={{
+                      backgroundColor: variables.colors.inputBackgroundColor,
+                      borderColor: variables.colors.inputBorderColor,
+                      color: variables.colors.inputTextColor,
+                    }}
+                  />
+                </div>
               </div>
+            </div>
 
               {error && (
                 <div className="rounded-md bg-destructive/10 p-3">
                   <p className="text-sm text-destructive">{error}</p>
                 </div>
               )}
-            </div>
           </DialogBody>
 
           <DialogFooter className="flex flex-col gap-3 sm:flex-row sm:justify-between">

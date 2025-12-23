@@ -16,6 +16,7 @@ export interface NewOfferFormData {
   brandGuidelinesUrl?: string;
   brandGuidelinesFile?: File | null;
   brandGuidelinesText?: string;
+  brandGuidelinesNotes?: string;
 }
 
 export function useNewOfferManuallyViewModel() {

@@ -156,6 +156,7 @@ interface EntityDataCardProps {
   visibility?: "Public" | "Internal" | "Hidden";
   nameAlign?: "left" | "center" | "right";
   gridTemplateColumns?: string;
+  actionButtonsLayout?: "row" | "col";
   onEditDetails?: () => void;
   onBrandGuidelines?: () => void;
   onVisibilityChange?: (visibility: "Public" | "Internal" | "Hidden") => void;
@@ -172,6 +173,7 @@ export function EntityDataCard({
   visibility,
   nameAlign = "left",
   gridTemplateColumns = "100px 2.5fr 1fr 1fr 140px 340px",
+  actionButtonsLayout = "col",
   onEditDetails,
   onBrandGuidelines,
   onVisibilityChange,
@@ -260,7 +262,7 @@ export function EntityDataCard({
           )}
         </div>
 
-        <div className="flex flex-col gap-2.5 items-center justify-center">
+        <div className={`flex ${actionButtonsLayout === "row" ? "flex-row" : "flex-col"} gap-2.5 items-center justify-center`}>
           <Button
             variant="outline"
             className="h-9 w-36 font-inter text-xs xl:text-sm font-medium rounded-md border shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"

@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronRight, ListFilter, Plus, Search, X } from "lucide-react";
+import { ChevronRight, Download, ListFilter, Plus, Search, X } from "lucide-react";
 import { useState } from "react";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Popover,
   PopoverContent,
@@ -17,6 +18,7 @@ import type { Advertiser as AdvertiserType } from "../types/admin.types";
 import { useAdvertiserViewModel } from "../view-models/useAdvertiserViewModel";
 
 import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
+import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type PlatformFilter =
@@ -45,16 +47,20 @@ export function Advertiser() {
   const [sortByFilter, setSortByFilter] = useState<SortByFilter>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>(null);
+  const [isPullingViaAPI, setIsPullingViaAPI] = useState(false);
+  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] = useState(false);
+  const [selectedAdvertiserId, setSelectedAdvertiserId] = useState<string | null>(null);
+  const [selectedAdvertiserName, setSelectedAdvertiserName] = useState<string>("");
 
   const { advertisers, isLoading, error } = useAdvertiserViewModel();
 
   const columns = [
     { header: "ID", width: "100px" },
     { header: "Advertiser Name", width: "1.8fr", align: "center" as const },
-    { header: "Adv Platform", width: "1fr" },
-    { header: "Created Manually / via API", width: "1fr" },
+    { header: "Advertiser Platform", width: "1fr" },
+    { header: "Created Manually / via API", width: "1.2fr" },
     { header: "Status", width: "1fr" },
-    { header: "Actions", width: "1fr" },
+    { header: "Actions", width: "1.8fr" },
   ];
 
   const filteredAdvertisers = manageAdvertisers
@@ -94,7 +100,29 @@ export function Advertiser() {
 
   const handleEditDetails = (_id: string) => {};
 
-  const handleBrandGuidelines = (_id: string) => {};
+  const handleBrandGuidelines = (id: string) => {
+    const advertiser = advertisers?.find((a) => a.id === id);
+    setSelectedAdvertiserId(id);
+    setSelectedAdvertiserName(advertiser?.advertiserName || "");
+    setBrandGuidelinesModalOpen(true);
+  };
+
+  const handlePullViaAPI = async () => {
+    setIsPullingViaAPI(true);
+    try {
+      // TODO: Implement API pull functionality
+      // TODO: Call POST /api/admin/advertisers/pull-from-api
+      // TODO: Handle response and refresh advertisers list
+      // TODO: Show success/error notification
+      
+      // Simulate API call for now
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    } catch (error) {
+      console.error("Failed to pull advertisers via API:", error);
+    } finally {
+      setIsPullingViaAPI(false);
+    }
+  };
 
   const clearAllFilters = () => {
     setStatusFilter(null);
@@ -140,7 +168,7 @@ export function Advertiser() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-2.5 flex-wrap">
           <Button
-            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent"
+            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
             style={{
               color: variables.colors.buttonOutlineTextColor,
               borderColor: variables.colors.buttonOutlineBorderColor,
@@ -153,14 +181,26 @@ export function Advertiser() {
 
           <Button
             variant="outline"
-            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)]"
+            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
             style={{
               color: variables.colors.buttonOutlineTextColor,
               borderColor: variables.colors.buttonOutlineBorderColor,
               backgroundColor: variables.colors.cardBackground,
             }}
+            onClick={handlePullViaAPI}
+            disabled={isPullingViaAPI}
           >
-            Pull Via API
+            {isPullingViaAPI ? (
+              <>
+                <Spinner className="h-5 w-5" />
+                Pulling...
+              </>
+            ) : (
+              <>
+                <Download className="h-5 w-5" />
+                Pull Via API
+              </>
+            )}
           </Button>
 
           <Popover
@@ -175,7 +215,7 @@ export function Advertiser() {
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)]"
+                className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
                 style={{
                   color: variables.colors.buttonOutlineTextColor,
                   borderColor: variables.colors.buttonOutlineBorderColor,
@@ -396,11 +436,22 @@ export function Advertiser() {
             gridTemplateColumns={columns
               .map((col) => col.width || "1fr")
               .join(" ")}
+            actionButtonsLayout="row"
             onEditDetails={() => handleEditDetails(advertiser.id)}
             onBrandGuidelines={() => handleBrandGuidelines(advertiser.id)}
           />
         )}
       />
+
+      {selectedAdvertiserId && (
+        <BrandGuidelinesModal
+          open={brandGuidelinesModalOpen}
+          onOpenChange={setBrandGuidelinesModalOpen}
+          entityId={selectedAdvertiserId}
+          entityName={selectedAdvertiserName}
+          entityType="advertiser"
+        />
+      )}
     </div>
   );
 }

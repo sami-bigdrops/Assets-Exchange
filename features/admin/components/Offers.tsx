@@ -57,6 +57,7 @@ import { useState } from "react";
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Popover,
   PopoverContent,
@@ -68,6 +69,7 @@ import { useOffersViewModel } from "../view-models/useOffersViewModel";
 
 import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { NewOfferManuallyModal } from "./NewOfferManuallyModal";
+import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type VisibilityFilter = "Public" | "Internal" | "Hidden" | null;
@@ -95,13 +97,17 @@ export function Offers() {
     Record<string, "Public" | "Internal" | "Hidden">
   >({});
   const [isNewOfferModalOpen, setIsNewOfferModalOpen] = useState(false);
+  const [isPullingViaAPI, setIsPullingViaAPI] = useState(false);
+  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] = useState(false);
+  const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+  const [selectedOfferName, setSelectedOfferName] = useState<string>("");
 
   const { offers, isLoading, error } = useOffersViewModel();
 
   const columns = [
     { header: "ID", width: "100px" },
     { header: "Offer Name", width: "1.8fr" },
-    { header: "Adv Name", width: "1fr" },
+    { header: "Advertiser Name", width: "1fr" },
     { header: "Created Manually / via API", width: "1fr" },
     { header: "Status", width: "1fr" },
     { header: "Actions", width: "1fr" },
@@ -250,10 +256,11 @@ export function Offers() {
    *    - Show success notification
    *    - Optionally refresh offer data
    */
-  const handleBrandGuidelines = (_id: string) => {
-    // TODO: Implement API call to fetch brand guidelines
-    // TODO: Open brand guidelines viewer/modal
-    // TODO: Handle editing and file uploads
+  const handleBrandGuidelines = (id: string) => {
+    const offer = offers?.find((o) => o.id === id);
+    setSelectedOfferId(id);
+    setSelectedOfferName(offer?.offerName || "");
+    setBrandGuidelinesModalOpen(true);
   };
 
   /**
@@ -455,16 +462,35 @@ export function Offers() {
               borderColor: variables.colors.buttonOutlineBorderColor,
               backgroundColor: variables.colors.cardBackground,
             }}
-            onClick={() => {
-              // TODO: Implement API pull functionality
-              // TODO: Show loading/progress indicator
-              // TODO: Call POST /api/admin/offers/pull-from-api
-              // TODO: Handle response and refresh offers list
-              // TODO: Show success/error notification with statistics
+            onClick={async () => {
+              setIsPullingViaAPI(true);
+              try {
+                // TODO: Implement API pull functionality
+                // TODO: Call POST /api/admin/offers/pull-from-api
+                // TODO: Handle response and refresh offers list
+                // TODO: Show success/error notification with statistics
+                
+                // Simulate API call for now
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+              } catch (error) {
+                console.error("Failed to pull offers via API:", error);
+              } finally {
+                setIsPullingViaAPI(false);
+              }
             }}
+            disabled={isPullingViaAPI}
           >
-            <Download className="h-5 w-5" />
-            Pull Via API
+            {isPullingViaAPI ? (
+              <>
+                <Spinner className="h-5 w-5" />
+                Pulling...
+              </>
+            ) : (
+              <>
+                <Download className="h-5 w-5" />
+                Pull Via API
+              </>
+            )}
           </Button>
 
           <Popover
@@ -712,6 +738,16 @@ export function Offers() {
           setIsNewOfferModalOpen(false);
         }}
       />
+
+      {selectedOfferId && (
+        <BrandGuidelinesModal
+          open={brandGuidelinesModalOpen}
+          onOpenChange={setBrandGuidelinesModalOpen}
+          entityId={selectedOfferId}
+          entityName={selectedOfferName}
+          entityType="offer"
+        />
+      )}
     </div>
   );
 }

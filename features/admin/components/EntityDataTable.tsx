@@ -262,7 +262,9 @@ export function EntityDataCard({
           )}
         </div>
 
-        <div className={`flex ${actionButtonsLayout === "row" ? "flex-row" : "flex-col"} gap-2.5 items-center justify-center`}>
+        <div
+          className={`flex ${actionButtonsLayout === "row" ? "flex-row" : "flex-col"} gap-2.5 items-center justify-center`}
+        >
           <Button
             variant="outline"
             className="h-9 w-36 font-inter text-xs xl:text-sm font-medium rounded-md border shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"

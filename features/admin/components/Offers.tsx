@@ -57,20 +57,20 @@ import { useState } from "react";
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Spinner } from "@/components/ui/spinner";
 
 import type { Offer as OfferType } from "../types/admin.types";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";
 
-import { EditDetailsModal } from "./EditDetailsModal";
+import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { NewOfferManuallyModal } from "./NewOfferManuallyModal";
-import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
+import { EditDetailsModal } from "./OfferDetailsModal";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type VisibilityFilter = "Public" | "Internal" | "Hidden" | null;
@@ -100,7 +100,8 @@ export function Offers() {
   const [isNewOfferModalOpen, setIsNewOfferModalOpen] = useState(false);
   const [isPullingViaAPI, setIsPullingViaAPI] = useState(false);
   const [isEditDetailsModalOpen, setIsEditDetailsModalOpen] = useState(false);
-  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] = useState(false);
+  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] =
+    useState(false);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [selectedOfferName, setSelectedOfferName] = useState<string>("");
 
@@ -470,7 +471,7 @@ export function Offers() {
                 // TODO: Call POST /api/admin/offers/pull-from-api
                 // TODO: Handle response and refresh offers list
                 // TODO: Show success/error notification with statistics
-                
+
                 // Simulate API call for now
                 await new Promise((resolve) => setTimeout(resolve, 2000));
               } catch (error) {

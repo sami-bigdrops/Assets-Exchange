@@ -14,9 +14,20 @@ function Dialog({
   useEffect(() => {
     if (open) {
       const originalStyle = window.getComputedStyle(document.body).overflow;
+      const originalPaddingRight = window.getComputedStyle(
+        document.body
+      ).paddingRight;
+      const scrollbarWidth =
+        window.innerWidth - document.documentElement.clientWidth;
+
       document.body.style.overflow = "hidden";
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
+
       return () => {
         document.body.style.overflow = originalStyle;
+        document.body.style.paddingRight = originalPaddingRight;
       };
     }
   }, [open]);
@@ -57,7 +68,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-50 backdrop-blur-sm",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-50 bg-black/50",
         className
       )}
       {...props}

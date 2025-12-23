@@ -15,7 +15,7 @@ export default async function OffersPage() {
   }
 
   return (
-    <div className="container mx-auto">
+    <div>
       <Offers />
     </div>
   );

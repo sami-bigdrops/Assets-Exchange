@@ -184,7 +184,7 @@ export function RichTextEditor({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         className={cn(
-          "min-h-[200px] max-h-[500px] overflow-y-auto p-3 outline-none",
+          "min-h-[200px] max-h-[500px] overflow-y-auto p-3 outline-none ",
           "prose prose-sm max-w-none",
           "[&_ul]:list-disc [&_ul]:ml-4 [&_ul]:my-2",
           "[&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:my-2",

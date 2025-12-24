@@ -68,6 +68,7 @@ import type { Offer as OfferType } from "../types/admin.types";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";
 
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
+import { BulkEditModal } from "./BulkEditModal";
 import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { NewOfferManuallyModal } from "./NewOfferManuallyModal";
 import { EditDetailsModal } from "./OfferDetailsModal";
@@ -100,6 +101,7 @@ export function Offers() {
   const [isNewOfferModalOpen, setIsNewOfferModalOpen] = useState(false);
   const [isPullingViaAPI, setIsPullingViaAPI] = useState(false);
   const [isEditDetailsModalOpen, setIsEditDetailsModalOpen] = useState(false);
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] =
     useState(false);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
@@ -379,6 +381,7 @@ export function Offers() {
               borderColor: variables.colors.buttonOutlineBorderColor,
               backgroundColor: variables.colors.cardBackground,
             }}
+            onClick={() => setIsBulkEditModalOpen(true)}
           >
             <Edit className="h-5 w-5" />
             Bulk Edit
@@ -762,6 +765,14 @@ export function Offers() {
           }}
         />
       )}
+
+      <BulkEditModal
+        open={isBulkEditModalOpen}
+        onOpenChange={setIsBulkEditModalOpen}
+        onSuccess={() => {
+          setIsBulkEditModalOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { getVariables } from "@/components/_variables/variables";
@@ -29,10 +28,11 @@ import { useForm } from "../hooks/useForm";
 import { loginSchema } from "../validation/login.validation";
 import { useLoginViewModel } from "../view-models/useLoginViewModel";
 
-export function LoginForm() {
+function LoginFormContent() {
   const { handleLogin, isLoading, error } = useLoginViewModel();
-  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const [initialEmail, setInitialEmail] = useState<string>("");
+  const [initialPassword, setInitialPassword] = useState<string>("");
 
   const form = useForm(loginSchema, {
     defaultValues: {
@@ -42,15 +42,24 @@ export function LoginForm() {
   });
 
   useEffect(() => {
-    const email = searchParams.get("email");
-    const password = searchParams.get("password");
-    if (email) {
-      form.setValue("email", email);
+    if (typeof window !== "undefined") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const email = params.get("email");
+        const password = params.get("password");
+        if (email && !initialEmail) {
+          setInitialEmail(email);
+          form.setValue("email", email);
+        }
+        if (password && !initialPassword) {
+          setInitialPassword(password);
+          form.setValue("password", password);
+        }
+      } catch (err) {
+        console.error("Error reading search params:", err);
+      }
     }
-    if (password) {
-      form.setValue("password", password);
-    }
-  }, [searchParams, form]);
+  }, [form, initialEmail, initialPassword]);
 
   const onSubmit = async (data: { email: string; password: string }) => {
     await handleLogin(data);
@@ -247,4 +256,8 @@ export function LoginForm() {
       </Card>
     </>
   );
+}
+
+export function LoginForm() {
+  return <LoginFormContent />;
 }

@@ -36,8 +36,8 @@ export function LoginForm() {
 
   const form = useForm(loginSchema, {
     defaultValues: {
-      email: searchParams.get("email") || "",
-      password: searchParams.get("password") || "",
+      email: "",
+      password: "",
     },
   });
 

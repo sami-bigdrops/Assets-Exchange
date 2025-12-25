@@ -181,7 +181,7 @@ function LoginFormContent() {
                       Password
                     </FormLabel>
                     <FormControl>
-                      <div className="relative">
+                      <div className="relative" style={{ position: "relative" }}>
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder="Enter your password"
@@ -194,6 +194,7 @@ function LoginFormContent() {
                               ? variables.colors.inputErrorColor
                               : variables.colors.inputBorderColor,
                             paddingRight: "2.5rem",
+                            pointerEvents: "auto",
                           }}
                           className="font-inter text-sm lg:text-base h-12 lg:h-14 login-form-input"
                           {...field}
@@ -203,13 +204,22 @@ function LoginFormContent() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setShowPassword(!showPassword);
+                            setShowPassword((prev) => !prev);
+                          }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                           }}
                           disabled={isLoading}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed z-10 p-1"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed z-50 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                          style={{
+                            pointerEvents: isLoading ? "none" : "auto",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
                           aria-label={
                             showPassword ? "Hide password" : "Show password"
                           }
+                          tabIndex={0}
                         >
                           {showPassword ? (
                             <EyeOff className="h-5 w-5 lg:h-6 lg:w-6 xl:h-6 xl:w-6" />

@@ -21,6 +21,11 @@ const isAllowedOrigin = (origin: string | null): boolean => {
     return true;
   }
 
+  // Allow production domain (assetsexchange.net)
+  if (origin.includes("assetsexchange.net")) {
+    return true;
+  }
+
   return allowedOrigins.some((allowed) => {
     try {
       const originUrl = new URL(origin);

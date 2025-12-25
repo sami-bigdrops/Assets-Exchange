@@ -6,18 +6,36 @@ import { env } from "@/env";
 
 const getBaseURL = () => {
   if (typeof window !== "undefined") {
-    return window.location.origin;
+    const origin = window.location.origin;
+    if (process.env.NODE_ENV === "development") {
+      console.log("Auth client baseURL (client):", origin);
+    }
+    return origin;
   }
   if (env.NEXT_PUBLIC_BETTER_AUTH_URL) {
+    if (process.env.NODE_ENV === "development") {
+      console.log("Auth client baseURL (env):", env.NEXT_PUBLIC_BETTER_AUTH_URL);
+    }
     return env.NEXT_PUBLIC_BETTER_AUTH_URL;
   }
   if (env.NEXT_PUBLIC_APP_URL) {
+    if (process.env.NODE_ENV === "development") {
+      console.log("Auth client baseURL (app):", env.NEXT_PUBLIC_APP_URL);
+    }
     return env.NEXT_PUBLIC_APP_URL;
   }
   if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+    const vercelUrl = `https://${process.env.VERCEL_URL}`;
+    if (process.env.NODE_ENV === "development") {
+      console.log("Auth client baseURL (vercel):", vercelUrl);
+    }
+    return vercelUrl;
   }
-  return "http://localhost:3000";
+  const localhost = "http://localhost:3000";
+  if (process.env.NODE_ENV === "development") {
+    console.log("Auth client baseURL (default):", localhost);
+  }
+  return localhost;
 };
 
 export const authClient = createAuthClient({

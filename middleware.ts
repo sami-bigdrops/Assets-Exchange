@@ -5,12 +5,19 @@ const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
   ? process.env.CORS_ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
   : process.env.NEXT_PUBLIC_APP_URL
     ? [process.env.NEXT_PUBLIC_APP_URL]
-    : ["http://localhost:3000"];
+    : process.env.VERCEL_URL
+      ? [`https://${process.env.VERCEL_URL}`]
+      : ["http://localhost:3000"];
 
 const isAllowedOrigin = (origin: string | null): boolean => {
   if (!origin) return false;
 
   if (process.env.NODE_ENV === "development" && origin.includes("localhost")) {
+    return true;
+  }
+
+  // Allow Vercel preview URLs
+  if (origin.includes(".vercel.app") || origin.includes(".vercel.dev")) {
     return true;
   }
 

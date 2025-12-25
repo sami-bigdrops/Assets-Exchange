@@ -29,15 +29,24 @@ export const auth = betterAuth({
       },
     },
   },
-  baseURL: env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL:
+    env.BETTER_AUTH_URL ||
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000"),
   basePath: "/api/auth",
   secret: env.BETTER_AUTH_SECRET,
 });
 
 // Log auth initialization in development
 if (process.env.NODE_ENV === "development") {
+  const baseURL =
+    env.BETTER_AUTH_URL ||
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
   logger.auth.info("BetterAuth initialized", {
-    baseURL: env.BETTER_AUTH_URL || "http://localhost:3000",
+    baseURL,
     basePath: "/api/auth",
   });
 }

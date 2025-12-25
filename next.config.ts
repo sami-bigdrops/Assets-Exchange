@@ -11,8 +11,8 @@ const connectSrc = isDevelopment
 
 const cspDirectives = [
   "default-src 'self'",
-  `script-src 'self' ${isDevelopment ? "'unsafe-eval' 'unsafe-inline'" : "'unsafe-inline'"} https://vercel.live`,
-  `script-src-elem 'self' ${isDevelopment ? "'unsafe-inline'" : "'unsafe-inline'"} https://vercel.live`,
+  `script-src 'self' ${isDevelopment ? "'unsafe-eval' 'unsafe-inline'" : "'unsafe-inline'"} https://vercel.live https://*.vercel.live`,
+  `script-src-elem 'self' ${isDevelopment ? "'unsafe-inline'" : "'unsafe-inline'"} https://vercel.live https://*.vercel.live`,
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   "img-src 'self' data: https: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",

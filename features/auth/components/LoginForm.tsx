@@ -29,16 +29,17 @@ import { loginSchema } from "../validation/login.validation";
 import { useLoginViewModel } from "../view-models/useLoginViewModel";
 
 function LoginFormContent() {
-  const { handleLogin, isLoading, error } = useLoginViewModel();
+  const { handleLogin, isLoading, error, clearError } = useLoginViewModel();
   const [showPassword, setShowPassword] = useState(false);
   const [initialEmail, setInitialEmail] = useState<string>("");
   const [initialPassword, setInitialPassword] = useState<string>("");
-
   const form = useForm(loginSchema, {
     defaultValues: {
       email: "",
       password: "",
     },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
 
   useEffect(() => {
@@ -62,6 +63,7 @@ function LoginFormContent() {
   }, [form, initialEmail, initialPassword]);
 
   const onSubmit = async (data: { email: string; password: string }) => {
+    form.clearErrors();
     await handleLogin(data);
   };
 
@@ -160,6 +162,15 @@ function LoginFormContent() {
                         }}
                         className="font-inter text-sm lg:text-base h-12 lg:h-14 login-form-input"
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (form.formState.errors.email) {
+                            form.clearErrors("email");
+                          }
+                          if (error) {
+                            clearError();
+                          }
+                        }}
                       />
                     </FormControl>
                     <FormMessage
@@ -181,7 +192,10 @@ function LoginFormContent() {
                       Password
                     </FormLabel>
                     <FormControl>
-                      <div className="relative" style={{ position: "relative" }}>
+                      <div
+                        className="relative"
+                        style={{ position: "relative" }}
+                      >
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder="Enter your password"
@@ -198,6 +212,15 @@ function LoginFormContent() {
                           }}
                           className="font-inter text-sm lg:text-base h-12 lg:h-14 login-form-input"
                           {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            if (form.formState.errors.password) {
+                              form.clearErrors("password");
+                            }
+                            if (error) {
+                              clearError();
+                            }
+                          }}
                         />
                         <button
                           type="button"

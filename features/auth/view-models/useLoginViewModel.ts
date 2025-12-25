@@ -17,25 +17,42 @@ export function useLoginViewModel() {
     setError(null);
 
     try {
-      if (typeof window !== "undefined") {
-        console.log("Login attempt:", {
-          email: credentials.email,
-          baseURL: window.location.origin,
-        });
-      }
-
       const result = await signIn.email({
         email: credentials.email,
         password: credentials.password,
       });
 
-      console.log("Login result:", { hasError: !!result.error, hasData: !!result.data });
-
       if (result.error) {
-        const errorMessage =
-          result.error.message ||
-          result.error.code ||
-          "Login failed. Please check your credentials.";
+        let errorMessage = "Login failed. Please check your credentials.";
+
+        if (result.error.code) {
+          switch (result.error.code) {
+            case "INVALID_EMAIL_OR_PASSWORD":
+            case "INVALID_CREDENTIALS":
+              errorMessage =
+                "Invalid email or password. Please check your credentials and try again.";
+              break;
+            case "USER_NOT_FOUND":
+              errorMessage = "No account found with this email address.";
+              break;
+            case "INVALID_PASSWORD":
+              errorMessage = "Incorrect password. Please try again.";
+              break;
+            case "EMAIL_NOT_VERIFIED":
+              errorMessage =
+                "Please verify your email address before signing in.";
+              break;
+            case "ACCOUNT_LOCKED":
+            case "TOO_MANY_ATTEMPTS":
+              errorMessage = "Too many login attempts. Please try again later.";
+              break;
+            default:
+              errorMessage = result.error.message || errorMessage;
+          }
+        } else if (result.error.message) {
+          errorMessage = result.error.message;
+        }
+
         console.error("Login error:", result.error);
         setError(errorMessage);
         setIsLoading(false);
@@ -44,12 +61,11 @@ export function useLoginViewModel() {
 
       if (!result.data) {
         console.error("Login failed: No data received");
-        setError("Login failed. No data received from server.");
+        setError("Login failed. Please try again.");
         setIsLoading(false);
         return;
       }
 
-      console.log("Login successful, redirecting...");
       // Redirect to dashboard - it will handle role-based routing
       router.push("/dashboard");
       router.refresh();
@@ -64,9 +80,14 @@ export function useLoginViewModel() {
     }
   };
 
+  const clearError = () => {
+    setError(null);
+  };
+
   return {
     handleLogin,
     isLoading,
     error,
+    clearError,
   };
 }

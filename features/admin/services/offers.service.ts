@@ -413,3 +413,174 @@ export async function updateOfferVisibility(
     }, 100);
   });
 }
+
+/**
+ * TODO: BACKEND - Implement bulkUpdateOffers API
+ *
+ * Replace with: POST /api/admin/offers/bulk-update
+ *
+ * Requirements:
+ * 1. Update multiple offers with the same changes
+ *    - Accept array of offer IDs
+ *    - Apply same updates to all selected offers
+ *    - Return partial success if some offers fail
+ *
+ * 2. Request Body:
+ *    {
+ *      offerIds: string[],                    // Array of offer IDs to update
+ *      updates: {
+ *        visibility?: "Public" | "Internal" | "Hidden",
+ *        brandGuidelines?: {
+ *          type: "url" | "file" | "text",
+ *          url?: string,                       // If type is "url"
+ *          file?: File,                        // If type is "file" - use FormData
+ *          text?: string,                      // If type is "text"
+ *          notes?: string                      // Brand guidelines notes
+ *        }
+ *      }
+ *    }
+ *
+ * 3. For file uploads:
+ *    - Use multipart/form-data
+ *    - Validate file size (max 10MB)
+ *    - Validate file type (only .doc, .docx, .pdf)
+ *    - Store file in secure storage
+ *    - Apply same file to all offers OR create separate file per offer
+ *
+ * 4. Response:
+ *    {
+ *      success: boolean,
+ *      updated: number,                        // Number of offers successfully updated
+ *      failed: number,                         // Number of offers that failed
+ *      results: {
+ *        successful: string[],                 // Array of offer IDs that were updated
+ *        failed: {                            // Array of offers that failed
+ *          offerId: string,
+ *          error: string,
+ *          reason: string
+ *        }[]
+ *      },
+ *      message: string
+ *    }
+ *
+ * 5. Error Handling:
+ *    - 400: Validation errors (empty offerIds, invalid values)
+ *    - 401: Unauthorized
+ *    - 403: Forbidden
+ *    - 404: One or more offers not found
+ *    - 413: File too large
+ *    - 500: Server error
+ *
+ * 6. Performance:
+ *    - For large batches, consider background job processing
+ *    - Provide progress updates
+ *    - Allow cancellation
+ *
+ * 7. Business Rules:
+ *    - All offer IDs must exist
+ *    - Validate all updates before applying
+ *    - Process in transaction if possible (all or nothing)
+ *    - Or allow partial success with detailed results
+ *
+ * Example Implementation:
+ * ```typescript
+ * export async function bulkUpdateOffers(
+ *   offerIds: string[],
+ *   updates: {
+ *     visibility?: "Public" | "Internal" | "Hidden",
+ *     brandGuidelines?: {
+ *       type: "url" | "file" | "text",
+ *       url?: string,
+ *       file?: File,
+ *       text?: string,
+ *       notes?: string
+ *     }
+ *   }
+ * ): Promise<{
+ *   success: boolean,
+ *   updated: number,
+ *   failed: number,
+ *   results: {
+ *     successful: string[],
+ *     failed: Array<{ offerId: string, error: string, reason: string }>
+ *   },
+ *   message: string
+ * }> {
+ *   const formData = new FormData();
+ *   formData.append('offerIds', JSON.stringify(offerIds));
+ *
+ *   if (updates.visibility) {
+ *     formData.append('visibility', updates.visibility);
+ *   }
+ *
+ *   if (updates.brandGuidelines) {
+ *     formData.append('brandGuidelinesType', updates.brandGuidelines.type);
+ *
+ *     if (updates.brandGuidelines.type === 'file' && updates.brandGuidelines.file) {
+ *       formData.append('brandGuidelinesFile', updates.brandGuidelines.file);
+ *     } else if (updates.brandGuidelines.type === 'url' && updates.brandGuidelines.url) {
+ *       formData.append('brandGuidelinesUrl', updates.brandGuidelines.url);
+ *     } else if (updates.brandGuidelines.type === 'text' && updates.brandGuidelines.text) {
+ *       formData.append('brandGuidelinesText', updates.brandGuidelines.text);
+ *     }
+ *
+ *     if (updates.brandGuidelines.notes) {
+ *       formData.append('brandGuidelinesNotes', updates.brandGuidelines.notes);
+ *     }
+ *   }
+ *
+ *   const response = await fetch('/api/admin/offers/bulk-update', {
+ *     method: 'POST',
+ *     headers: {
+ *       'Authorization': `Bearer ${getAuthToken()}`
+ *     },
+ *     body: formData
+ *   });
+ *
+ *   if (!response.ok) {
+ *     const error = await response.json();
+ *     throw new Error(error.message || 'Failed to update offers');
+ *   }
+ *
+ *   return await response.json();
+ * }
+ * ```
+ */
+export async function bulkUpdateOffers(
+  offerIds: string[],
+  _updates: {
+    visibility?: "Public" | "Internal" | "Hidden";
+    brandGuidelines?: {
+      type: "url" | "file" | "text";
+      url?: string;
+      file?: File;
+      text?: string;
+      notes?: string;
+    };
+  }
+): Promise<{
+  success: boolean;
+  updated: number;
+  failed: number;
+  results: {
+    successful: string[];
+    failed: Array<{ offerId: string; error: string; reason: string }>;
+  };
+  message: string;
+}> {
+  // TODO: BACKEND - Replace with actual API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        success: true,
+        updated: offerIds.length,
+        failed: 0,
+        results: {
+          successful: offerIds,
+          failed: [],
+        },
+        message: `Successfully updated ${offerIds.length} offer(s)`,
+      });
+    }, 1000);
+  });
+}

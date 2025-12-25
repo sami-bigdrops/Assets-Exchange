@@ -166,6 +166,91 @@ export function EditDetailsModal({
     return Object.keys(errors).length === 0;
   };
 
+  /**
+   * TODO: BACKEND - Implement Offer Update with Brand Guidelines
+   *
+   * This function handles updating offer details including brand guidelines.
+   *
+   * Endpoint: PUT /api/admin/offers/:id
+   *
+   * Request Body:
+   * {
+   *   offerId?: string,                    // Only if offer was created manually
+   *   offerName?: string,                   // Only if offer was created manually
+   *   advertiserId?: string,
+   *   advertiserName?: string,
+   *   status?: "Active" | "Inactive",       // Only if offer was created manually
+   *   visibility?: "Public" | "Internal" | "Hidden",
+   *   brandGuidelines?: {                   // Optional
+   *     type: "url" | "file" | "text",
+   *     url?: string,                       // If type is "url"
+   *     file?: File,                        // If type is "file" - use FormData
+   *     text?: string,                      // If type is "text"
+   *     notes?: string                      // Brand guidelines notes
+   *   }
+   * }
+   *
+   * Business Rules:
+   * - Offer ID and Offer Name can only be updated if createdMethod is "Manually"
+   * - Status can only be updated if createdMethod is "Manually"
+   * - API-created offers: Only visibility, advertiserId, advertiserName, and brandGuidelines can be updated
+   * - Manually-created offers: All fields can be updated
+   *
+   * For file uploads:
+   * - Use multipart/form-data
+   * - Validate file size (max 10MB)
+   * - Validate file type (only .doc, .docx, .pdf)
+   * - If replacing existing file, delete old file from storage
+   * - Store new file in secure storage (S3, Azure Blob, etc.)
+   * - Return file URL or file ID for reference
+   *
+   * Response:
+   * {
+   *   id: string,
+   *   offerName: string,
+   *   advName: string,
+   *   createdMethod: "Manually" | "API",
+   *   status: "Active" | "Inactive",
+   *   visibility: "Public" | "Internal" | "Hidden",
+   *   brandGuidelines?: {
+   *     type: "url" | "file" | "text",
+   *     url?: string,
+   *     fileUrl?: string,                   // If type is "file"
+   *     fileName?: string,                  // If type is "file"
+   *     text?: string,                      // If type is "text"
+   *     notes?: string
+   *   },
+   *   updatedAt: string                     // ISO timestamp
+   * }
+   *
+   * Error Handling:
+   * - 400: Validation errors
+   *   - Invalid offerId format (if provided)
+   *   - Invalid status value (if provided)
+   *   - Invalid visibility value
+   *   - Invalid file type/size for brand guidelines
+   *   - Invalid URL format for brand guidelines
+   *   - Return field-specific errors
+   *
+   * - 401: Unauthorized - redirect to login
+   * - 403: Forbidden - show permission denied
+   * - 404: Offer not found
+   * - 409: Conflict - offerId already exists (if changing offerId)
+   * - 413: File too large - show specific error
+   * - 500: Server error - show error with retry option
+   *
+   * Success:
+   * - Return updated offer object
+   * - Show success notification
+   * - Refresh offers list
+   * - Close modal
+   *
+   * Audit Trail:
+   * - Log all update actions
+   * - Track which fields were changed
+   * - Store previous values for rollback if needed
+   * - Track who updated and when
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -176,6 +261,10 @@ export function EditDetailsModal({
     try {
       setIsSubmitting(true);
       setError(null);
+
+      // TODO: BACKEND - Include brand guidelines in update payload
+      // TODO: Handle file upload using FormData if brandGuidelinesFile exists
+      // TODO: Send brandGuidelinesNotes if provided
 
       const updatePayload: Partial<Offer> = {
         visibility: formData.visibility,

@@ -439,14 +439,20 @@ This project includes comprehensive backend implementation guides for integratin
 
 ### Implementation Guides
 
-- **[Backend_Implementation_TODOs.md](docs/Backend_Implementation_TODOs.md)** - Complete backend implementation guide (41KB, 1644 lines)
+- **[Backend_Implementation_TODOs.md](docs/Backend_Implementation_TODOs.md)** - Complete backend implementation guide (50KB+, 2000+ lines)
   - Unified database schema design with SQL
-  - 11 API endpoints with specifications (unified endpoints)
+  - 30+ API endpoints with specifications:
+    - Creative requests/responses (unified endpoints)
+    - Offers management (CRUD, bulk update, pull from API)
+    - Advertisers management (CRUD, pull from API)
+    - Publishers management (CRUD)
+    - Brand guidelines management (URL, file upload, rich text)
   - Authentication & authorization
   - Business logic & workflows
   - Error handling & validation
   - Performance optimization & caching
   - Security requirements
+  - File upload handling (FormData, multipart/form-data)
   - Testing guidelines
   - Monitoring & logging
   - Deployment checklist

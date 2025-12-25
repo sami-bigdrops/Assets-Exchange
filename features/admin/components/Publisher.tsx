@@ -1,5 +1,48 @@
 "use client";
 
+/**
+ * TODO: BACKEND - Publisher Component Backend Integration
+ *
+ * This component currently uses client-side filtering, sorting, and mock data.
+ * For production, consider the following backend integrations:
+ *
+ * 1. Server-Side Filtering & Sorting:
+ *    - Move filtering logic to backend for better performance with large datasets
+ *    - Endpoint: GET /api/admin/publishers with query parameters
+ *    - Query params: status, platform, creationMethod, search, sortBy, sortOrder
+ *    - Benefits: Reduced client-side processing, pagination support
+ *
+ * 2. Real-Time Updates:
+ *    - Consider WebSocket/SSE for real-time publisher updates
+ *    - Notify when publishers are created/updated/deleted by other users
+ *    - Auto-refresh publishers list when changes occur
+ *
+ * 3. Pagination:
+ *    - Implement server-side pagination for large publisher lists
+ *    - Add pagination controls (page numbers, items per page)
+ *    - Endpoint should return: { data: Publisher[], pagination: { page, limit, total, totalPages } }
+ *
+ * 4. Search Optimization:
+ *    - Consider full-text search on backend for better performance
+ *    - Support advanced search (filters combined with search)
+ *    - Add search suggestions/autocomplete
+ *
+ * 5. Caching Strategy:
+ *    - Implement caching for frequently accessed publishers
+ *    - Cache invalidation on updates
+ *    - Consider using React Query or SWR for data fetching
+ *
+ * 6. Error Handling:
+ *    - Implement retry logic for failed requests
+ *    - Show user-friendly error messages
+ *    - Log errors for debugging
+ *
+ * 7. Loading States:
+ *    - Add skeleton loaders for better UX
+ *    - Show progress indicators for long-running operations
+ *    - Implement optimistic updates where appropriate
+ */
+
 import { ChevronRight, ListFilter, Plus, Search, X } from "lucide-react";
 import { useState } from "react";
 
@@ -16,8 +59,8 @@ import { managePublishers } from "../models/publisher.model";
 import type { Publisher as PublisherType } from "../types/admin.types";
 import { usePublisherViewModel } from "../view-models/usePublisherViewModel";
 
-import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
+import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type PlatformFilter =
@@ -46,9 +89,13 @@ export function Publisher() {
   const [sortByFilter, setSortByFilter] = useState<SortByFilter>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>(null);
-  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] = useState(false);
-  const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
-  const [selectedPublisherName, setSelectedPublisherName] = useState<string>("");
+  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] =
+    useState(false);
+  const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(
+    null
+  );
+  const [selectedPublisherName, setSelectedPublisherName] =
+    useState<string>("");
 
   const { publishers, isLoading, error } = usePublisherViewModel();
 
@@ -96,7 +143,56 @@ export function Publisher() {
       }
     });
 
-  const handleEditDetails = (_id: string) => {};
+  /**
+   * TODO: BACKEND - Implement Edit Publisher Details Handler
+   *
+   * Endpoint: GET /api/admin/publishers/:id
+   *
+   * Requirements:
+   * 1. Fetch full publisher details by ID including:
+   *    - All publisher fields (publisherName, platform, status, etc.)
+   *    - Brand guidelines (URL, file, or text content)
+   *    - Creation metadata (createdAt, createdBy, updatedAt, etc.)
+   *
+   * 2. Open a modal/form with pre-filled data for editing
+   *    - Pre-populate all form fields with fetched data
+   *    - Handle brand guidelines based on type (url/file/text)
+   *
+   * 3. On save, call: PUT /api/admin/publishers/:id
+   *    - Request body: {
+   *        publisherName: string,
+   *        platform: string,
+   *        status: "Active" | "Inactive",
+   *        brandGuidelines?: {
+   *          type: "url" | "file" | "text",
+   *          url?: string,
+   *          file?: File,
+   *          text?: string
+   *        }
+   *      }
+   *    - Validate all required fields
+   *    - Return updated publisher object
+   *
+   * 4. Error Handling:
+   *    - 404: Publisher not found - show error message
+   *    - 400: Validation errors - show field-specific errors in form
+   *    - 401: Unauthorized - redirect to login
+   *    - 403: Forbidden - show permission denied message
+   *    - 500: Server error - show generic error with retry option
+   *
+   * 5. Success:
+   *    - Close edit modal
+   *    - Refresh publishers list
+   *    - Show success notification
+   *    - Update local state if needed
+   */
+  const handleEditDetails = (_id: string) => {
+    // TODO: BACKEND - Implement edit publisher details functionality
+    // 1. Fetch publisher details: GET /api/admin/publishers/:id
+    // 2. Open edit modal with pre-filled data
+    // 3. On save: PUT /api/admin/publishers/:id
+    // 4. Handle success/error and refresh list
+  };
 
   const handleBrandGuidelines = (id: string) => {
     const publisher = publishers?.find((p) => p.id === id);

@@ -1334,22 +1334,43 @@ All backend implementation points are marked with `TODO: BACKEND` prefix:
 grep -r "TODO: BACKEND" features/ app/
 
 # TODOs by file type
-features/admin/types/admin.types.ts          # Database schema design
-features/admin/services/admin.service.ts     # Dashboard stats API
-features/admin/services/performance-chart.service.ts  # Chart API
-features/admin/services/request.service.ts   # Request/Response APIs
-features/admin/components/RequestItem.tsx    # Button handlers
-features/admin/models/*.ts                   # Mock data (to remove)
-app/(dashboard)/*/page.tsx                   # Authentication
+features/admin/types/admin.types.ts                    # Database schema design
+features/admin/services/admin.service.ts                # Dashboard stats API
+features/admin/services/performance-chart.service.ts    # Chart API
+features/admin/services/request.service.ts              # Request/Response APIs
+features/admin/services/offers.service.ts               # Offers CRUD APIs
+features/admin/services/advertiser.service.ts          # Advertisers CRUD APIs
+features/admin/services/publisher.service.ts            # Publishers CRUD APIs
+features/admin/components/Offers.tsx                     # Offers component & Pull API
+features/admin/components/BulkEditModal.tsx             # Bulk update API
+features/admin/components/OfferDetailsModal.tsx         # Offer update API
+features/admin/components/BrandGuidelinesModal.tsx      # Brand guidelines API
+features/admin/components/Advertiser.tsx                # Advertiser Pull API & Edit
+features/admin/components/Publisher.tsx                 # Publisher Edit
+features/admin/components/RequestItem.tsx               # Button handlers
+features/admin/view-models/useNewOfferManuallyViewModel.ts  # Offer creation API
+features/admin/models/*.ts                              # Mock data (to remove)
+app/(dashboard)/*/page.tsx                              # Authentication
 ```
 
-**Total:** 29+ comprehensive TODOs with:
+**Total:** 50+ comprehensive TODOs with:
 
 - SQL queries and examples
 - API specifications
 - Error handling requirements
 - Caching strategies
+- File upload handling (FormData, multipart/form-data)
+- Business rules and validation
+- Performance considerations
 - Implementation examples
+
+**Recent Additions:**
+
+- Offers management (CRUD, bulk update, pull from API)
+- Advertisers management (CRUD, pull from API)
+- Publishers management (CRUD)
+- Brand guidelines management (URL, file upload, rich text)
+- Conditional editing based on creation method
 
 ### Backend Integration Process
 
@@ -1368,9 +1389,11 @@ app/(dashboard)/*/page.tsx                   # Authentication
    - Set up triggers
 
 3. **Implement APIs**
-   - Start with GET endpoints
+   - Start with GET endpoints (offers, advertisers, publishers)
    - Add caching layer
-   - Implement POST endpoints
+   - Implement POST endpoints (create, bulk update, pull from API)
+   - Implement PUT endpoints (update with brand guidelines)
+   - Add file upload handling (multipart/form-data)
    - Add error handling
 
 4. **Update Service Layer**

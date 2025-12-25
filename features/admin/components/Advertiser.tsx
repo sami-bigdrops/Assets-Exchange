@@ -1,24 +1,31 @@
 "use client";
 
-import { ChevronRight, Download, ListFilter, Plus, Search, X } from "lucide-react";
+import {
+  ChevronRight,
+  Download,
+  ListFilter,
+  Plus,
+  Search,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Spinner } from "@/components/ui/spinner";
 
 import { manageAdvertisers } from "../models/advertiser.model";
 import type { Advertiser as AdvertiserType } from "../types/admin.types";
 import { useAdvertiserViewModel } from "../view-models/useAdvertiserViewModel";
 
-import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
+import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type PlatformFilter =
@@ -48,9 +55,13 @@ export function Advertiser() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>(null);
   const [isPullingViaAPI, setIsPullingViaAPI] = useState(false);
-  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] = useState(false);
-  const [selectedAdvertiserId, setSelectedAdvertiserId] = useState<string | null>(null);
-  const [selectedAdvertiserName, setSelectedAdvertiserName] = useState<string>("");
+  const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] =
+    useState(false);
+  const [selectedAdvertiserId, setSelectedAdvertiserId] = useState<
+    string | null
+  >(null);
+  const [selectedAdvertiserName, setSelectedAdvertiserName] =
+    useState<string>("");
 
   const { advertisers, isLoading, error } = useAdvertiserViewModel();
 
@@ -98,7 +109,56 @@ export function Advertiser() {
       }
     });
 
-  const handleEditDetails = (_id: string) => {};
+  /**
+   * TODO: BACKEND - Implement Edit Advertiser Details Handler
+   *
+   * Endpoint: GET /api/admin/advertisers/:id
+   *
+   * Requirements:
+   * 1. Fetch full advertiser details by ID including:
+   *    - All advertiser fields (advertiserName, platform, status, etc.)
+   *    - Brand guidelines (URL, file, or text content)
+   *    - Creation metadata (createdAt, createdBy, updatedAt, etc.)
+   *
+   * 2. Open a modal/form with pre-filled data for editing
+   *    - Pre-populate all form fields with fetched data
+   *    - Handle brand guidelines based on type (url/file/text)
+   *
+   * 3. On save, call: PUT /api/admin/advertisers/:id
+   *    - Request body: {
+   *        advertiserName: string,
+   *        advPlatform: string,
+   *        status: "Active" | "Inactive",
+   *        brandGuidelines?: {
+   *          type: "url" | "file" | "text",
+   *          url?: string,
+   *          file?: File,
+   *          text?: string
+   *        }
+   *      }
+   *    - Validate all required fields
+   *    - Return updated advertiser object
+   *
+   * 4. Error Handling:
+   *    - 404: Advertiser not found - show error message
+   *    - 400: Validation errors - show field-specific errors in form
+   *    - 401: Unauthorized - redirect to login
+   *    - 403: Forbidden - show permission denied message
+   *    - 500: Server error - show generic error with retry option
+   *
+   * 5. Success:
+   *    - Close edit modal
+   *    - Refresh advertisers list
+   *    - Show success notification
+   *    - Update local state if needed
+   */
+  const handleEditDetails = (_id: string) => {
+    // TODO: BACKEND - Implement edit advertiser details functionality
+    // 1. Fetch advertiser details: GET /api/admin/advertisers/:id
+    // 2. Open edit modal with pre-filled data
+    // 3. On save: PUT /api/admin/advertisers/:id
+    // 4. Handle success/error and refresh list
+  };
 
   const handleBrandGuidelines = (id: string) => {
     const advertiser = advertisers?.find((a) => a.id === id);
@@ -107,14 +167,100 @@ export function Advertiser() {
     setBrandGuidelinesModalOpen(true);
   };
 
+  /**
+   * TODO: BACKEND - Implement Pull Via API Functionality for Advertisers
+   *
+   * Endpoint: POST /api/admin/advertisers/pull-from-api
+   *
+   * Requirements:
+   * 1. Trigger synchronization with external API to fetch new/updated advertisers
+   *    - Connect to external advertiser API (configure API credentials/endpoint)
+   *    - Fetch advertisers from external source
+   *    - Compare with existing advertisers (by advertiserId or external ID)
+   *    - Create new advertisers that don't exist
+   *    - Update existing advertisers that have changed
+   *    - Handle conflicts (e.g., manual edits vs API updates)
+   *
+   * 2. Request body (optional):
+   *    {
+   *      source?: string,                    // API source identifier if multiple sources
+   *      force?: boolean,                     // Force full sync vs incremental
+   *      filters?: {                          // Optional filters for what to pull
+   *        advertiserIds?: string[],
+   *        dateRange?: { from: string, to: string },
+   *        status?: "Active" | "Inactive"
+   *      }
+   *    }
+   *
+   * 3. Response:
+   *    {
+   *      success: boolean,
+   *      synced: number,                      // Number of advertisers synced
+   *      created: number,                     // Number of new advertisers created
+   *      updated: number,                     // Number of existing advertisers updated
+   *      skipped: number,                     // Number of advertisers skipped (no changes)
+   *      errors: Array<{                      // Any errors encountered
+   *        advertiserId?: string,
+   *        error: string,
+   *        reason: string
+   *      }>,
+   *      duration: number                     // Sync duration in milliseconds
+   *    }
+   *
+   * 4. Process Flow:
+   *    - Show loading state with progress indicator
+   *    - Display real-time sync progress if possible (WebSocket/SSE)
+   *    - Show success notification with statistics
+   *    - Refresh advertisers list after completion
+   *    - Display any errors/warnings
+   *
+   * 5. Error Handling:
+   *    - 400: Invalid request parameters - show validation errors
+   *    - 401: Unauthorized (API credentials invalid) - show error, link to settings
+   *    - 403: Forbidden (no permission to sync) - show permission denied
+   *    - 408: Request timeout (sync taking too long) - show timeout, offer retry
+   *    - 500: Server error or external API error - show error with retry
+   *    - 503: External API unavailable - show error, suggest retry later
+   *
+   * 6. Background Processing:
+   *    - Consider making this an async job if sync takes long (>30 seconds)
+   *    - Provide job status endpoint: GET /api/admin/advertisers/sync-status/:jobId
+   *    - Allow user to check progress and cancel if needed
+   *    - Show job status in UI (progress bar, estimated time remaining)
+   *
+   * 7. Configuration:
+   *    - Store API credentials securely (encrypted)
+   *    - Allow admin to configure sync schedule (auto-sync)
+   *    - Log all sync operations for audit
+   *    - Store sync history (last sync time, results, errors)
+   *
+   * 8. Conflict Resolution:
+   *    - Define strategy for handling conflicts
+   *    - Options: API wins, Manual wins, or prompt user
+   *    - Log all conflicts for review
+   */
   const handlePullViaAPI = async () => {
     setIsPullingViaAPI(true);
     try {
-      // TODO: Implement API pull functionality
-      // TODO: Call POST /api/admin/advertisers/pull-from-api
-      // TODO: Handle response and refresh advertisers list
-      // TODO: Show success/error notification
-      
+      // TODO: BACKEND - Replace with actual API call
+      // const response = await fetch('/api/admin/advertisers/pull-from-api', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Authorization': `Bearer ${getAuthToken()}`,
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify({})
+      // });
+      //
+      // if (!response.ok) {
+      //   const error = await response.json();
+      //   throw new Error(error.message || 'Failed to pull advertisers from API');
+      // }
+      //
+      // const result = await response.json();
+      // Show success notification with statistics
+      // Refresh advertisers list
+
       // Simulate API call for now
       await new Promise((resolve) => setTimeout(resolve, 2000));
     } catch (error) {

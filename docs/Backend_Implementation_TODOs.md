@@ -832,6 +832,616 @@ async function revokeSession(sessionId: string): Promise<void> {
 
 ---
 
+### Offers Management Endpoints
+
+#### 1. Get All Offers
+
+```
+GET /api/admin/offers
+
+Query Parameters:
+- page: number (default: 1)
+- limit: number (default: 20, max: 100)
+- status: "Active" | "Inactive" (optional filter)
+- visibility: "Public" | "Internal" | "Hidden" (optional filter)
+- creationMethod: "Manually" | "API" (optional filter)
+- search: string (search by offerName, advName, offerId)
+- sortBy: string (options: "id", "offerName", "advName", "status", "createdAt")
+- sortOrder: "asc" | "desc" (default: "desc")
+
+Response:
+{
+  "success": true,
+  "data": {
+    "offers": [
+      {
+        "id": "1952",
+        "offerName": "INSURANCE - E-FINANCIAL - [Super Sensitive]",
+        "advName": "Insurance Pro",
+        "createdMethod": "Manually" | "API",
+        "status": "Active" | "Inactive",
+        "visibility": "Public" | "Internal" | "Hidden"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 100,
+      "totalPages": 5
+    }
+  }
+}
+
+Error Responses:
+- 401: Unauthorized
+- 403: Forbidden
+- 500: Internal server error
+```
+
+#### 2. Get Offer by ID
+
+```
+GET /api/admin/offers/:id
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": "1952",
+    "offerName": "INSURANCE - E-FINANCIAL",
+    "advName": "Insurance Pro",
+    "createdMethod": "Manually",
+    "status": "Active",
+    "visibility": "Public",
+    "brandGuidelines": {
+      "type": "url" | "file" | "text",
+      "url": "https://example.com/guidelines",
+      "fileUrl": "https://storage.example.com/file.pdf",
+      "fileName": "guidelines.pdf",
+      "fileSize": 1024000,
+      "mimeType": "application/pdf",
+      "text": "<p>Rich text content</p>",
+      "notes": "Additional notes about brand guidelines"
+    },
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-20T14:45:00Z",
+    "createdBy": "user123",
+    "updatedBy": "user456"
+  }
+}
+
+Error Responses:
+- 404: Offer not found
+- 401: Unauthorized
+- 403: Forbidden
+- 500: Internal server error
+```
+
+#### 3. Create Offer
+
+```
+POST /api/admin/offers
+
+Request Body:
+{
+  "offerId": "1952",                    // Optional, must be unique if provided
+  "offerName": "INSURANCE - E-FINANCIAL", // Required
+  "advertiserId": "adv123",              // Required
+  "advertiserName": "Insurance Pro",     // Required
+  "status": "Active" | "Inactive",       // Required
+  "visibility": "Public" | "Internal" | "Hidden", // Required
+  "brandGuidelines": {                   // Optional
+    "type": "url" | "file" | "text",
+    "url": "https://example.com/guidelines", // If type is "url"
+    "file": File,                        // If type is "file" - use FormData
+    "text": "<p>Rich text content</p>",  // If type is "text"
+    "notes": "Additional notes"
+  }
+}
+
+For file uploads:
+- Use multipart/form-data
+- Validate file size (max 10MB)
+- Validate file type (only .doc, .docx, .pdf)
+- Store file in secure storage (S3, Azure Blob, etc.)
+- Return file URL or file ID for reference
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": "1952",
+    "offerName": "INSURANCE - E-FINANCIAL",
+    "advName": "Insurance Pro",
+    "createdMethod": "Manually",
+    "status": "Active",
+    "visibility": "Public",
+    "brandGuidelines": {
+      "type": "url",
+      "url": "https://example.com/guidelines",
+      "notes": "Additional notes"
+    },
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  }
+}
+
+Error Responses:
+- 400: Validation errors (missing required fields, invalid values)
+- 401: Unauthorized
+- 403: Forbidden
+- 409: Conflict (offerId already exists if provided)
+- 413: File too large
+- 500: Server error
+
+Business Rules:
+- Manually created offers can have "Active" or "Inactive" status
+- API-created offers are always "Active"
+- If offerId provided, check for uniqueness first
+- If no offerId provided, generate unique ID on backend
+```
+
+#### 4. Update Offer
+
+```
+PUT /api/admin/offers/:id
+
+Request Body:
+{
+  "offerId": "1952",                     // Only if offer was created manually
+  "offerName": "Updated Offer Name",     // Only if offer was created manually
+  "advertiserId": "adv123",
+  "advertiserName": "Updated Advertiser",
+  "status": "Active" | "Inactive",       // Only if offer was created manually
+  "visibility": "Public" | "Internal" | "Hidden",
+  "brandGuidelines": {                   // Optional
+    "type": "url" | "file" | "text",
+    "url": "https://example.com/guidelines",
+    "file": File,
+    "text": "<p>Rich text content</p>",
+    "notes": "Additional notes"
+  }
+}
+
+Business Rules:
+- Offer ID and Offer Name can only be updated if createdMethod is "Manually"
+- Status can only be updated if createdMethod is "Manually"
+- API-created offers: Only visibility, advertiserId, advertiserName, and brandGuidelines can be updated
+- Manually-created offers: All fields can be updated
+- If replacing existing brand guidelines file, delete old file from storage
+
+Response: Same as Get Offer by ID
+
+Error Responses:
+- 400: Validation errors
+- 401: Unauthorized
+- 403: Forbidden
+- 404: Offer not found
+- 409: Conflict (offerId already exists if changing offerId)
+- 413: File too large
+- 500: Server error
+```
+
+#### 5. Delete Offer
+
+```
+DELETE /api/admin/offers/:id
+
+Response:
+{
+  "success": true,
+  "message": "Offer deleted successfully"
+}
+
+Error Responses:
+- 404: Offer not found
+- 400: Cannot delete (has dependencies)
+- 401: Unauthorized
+- 403: Forbidden
+- 500: Server error
+
+Business Rules:
+- Check if offer has associated creative requests
+- Decide: Block deletion or cascade delete
+- If blocking: Return error with list of dependencies
+- If offer has brand guidelines file, delete from storage
+- Use soft delete for audit trail (recommended)
+```
+
+#### 6. Update Offer Status
+
+```
+PATCH /api/admin/offers/:id/status
+
+Request Body:
+{
+  "status": "Active" | "Inactive"
+}
+
+Response: Updated offer object
+
+Error Responses:
+- 404: Offer not found
+- 400: Invalid status value
+- 401: Unauthorized
+- 403: Forbidden
+- 500: Server error
+
+Business Rules:
+- API-created offers should always be "Active"
+- Manually-created offers can be "Active" or "Inactive"
+```
+
+#### 7. Update Offer Visibility
+
+```
+PATCH /api/admin/offers/:id/visibility
+
+Request Body:
+{
+  "visibility": "Public" | "Internal" | "Hidden"
+}
+
+Response: Updated offer object
+
+Error Responses:
+- 404: Offer not found
+- 400: Invalid visibility value
+- 401: Unauthorized
+- 403: Forbidden
+- 500: Server error
+
+Performance:
+- This is called frequently from UI dropdown
+- Consider optimistic updates on frontend
+- Use debouncing if user changes rapidly
+```
+
+#### 8. Bulk Update Offers
+
+```
+POST /api/admin/offers/bulk-update
+
+Request Body (multipart/form-data for file uploads, JSON otherwise):
+{
+  "offerIds": ["1952", "1953", "1954"],  // Array of offer IDs to update
+  "updates": {
+    "visibility": "Public" | "Internal" | "Hidden",
+    "brandGuidelines": {
+      "type": "url" | "file" | "text",
+      "url": "https://example.com/guidelines", // If type is "url"
+      "file": File,                             // If type is "file" - use FormData
+      "text": "<p>Rich text content</p>",      // If type is "text"
+      "notes": "Additional notes"
+    }
+  }
+}
+
+Response:
+{
+  "success": true,
+  "updated": 3,                              // Number of offers successfully updated
+  "failed": 0,                               // Number of offers that failed
+  "results": {
+    "successful": ["1952", "1953", "1954"],  // Array of offer IDs that were updated
+    "failed": [                               // Array of offers that failed
+      {
+        "offerId": "1955",
+        "error": "Offer not found",
+        "reason": "The offer with ID 1955 does not exist"
+      }
+    ]
+  },
+  "message": "Successfully updated 3 offer(s)"
+}
+
+Error Responses:
+- 400: Validation errors (empty offerIds, invalid values)
+- 401: Unauthorized
+- 403: Forbidden
+- 404: One or more offers not found
+- 413: File too large
+- 500: Server error
+
+Business Rules:
+- All selected offers must exist
+- If any offer fails, return partial success with details
+- Brand guidelines file: Decide if same file applies to all or separate files
+- Brand guidelines URL: Can be same for all offers
+- Brand guidelines text: Can be same for all offers
+- Brand guidelines notes: Can be same for all offers
+- Log all bulk update actions in audit trail
+- Track which user performed the bulk update
+
+Performance Considerations:
+- For large batches (100+ offers), consider:
+  - Processing in chunks
+  - Background job processing
+  - Progress updates via WebSocket/SSE
+  - Show progress bar to user
+```
+
+#### 9. Pull Offers Via API
+
+```
+POST /api/admin/offers/pull-from-api
+
+Request Body (optional):
+{
+  "source": "external-api-1",              // API source identifier if multiple sources
+  "force": false,                           // Force full sync vs incremental
+  "filters": {                              // Optional filters for what to pull
+    "advertiserIds": ["adv123", "adv456"],
+    "dateRange": {
+      "from": "2024-01-01T00:00:00Z",
+      "to": "2024-01-31T23:59:59Z"
+    },
+    "status": "Active" | "Inactive"
+  }
+}
+
+Response:
+{
+  "success": true,
+  "synced": 50,                             // Number of offers synced
+  "created": 10,                            // Number of new offers created
+  "updated": 40,                            // Number of existing offers updated
+  "skipped": 5,                             // Number of offers skipped (no changes)
+  "errors": [                               // Any errors encountered
+    {
+      "offerId": "ext-123",
+      "error": "Validation failed",
+      "reason": "Missing required field: offerName"
+    }
+  ],
+  "duration": 5234                          // Sync duration in milliseconds
+}
+
+Error Responses:
+- 400: Invalid request parameters
+- 401: Unauthorized (API credentials invalid)
+- 403: Forbidden (no permission to sync)
+- 408: Request timeout (sync taking too long)
+- 500: Server error or external API error
+- 503: External API unavailable
+
+Background Processing:
+- Consider making this an async job if sync takes long (>30 seconds)
+- Provide job status endpoint: GET /api/admin/offers/sync-status/:jobId
+- Allow user to check progress and cancel if needed
+- Show job status in UI (progress bar, estimated time remaining)
+
+Configuration:
+- Store API credentials securely (encrypted)
+- Allow admin to configure sync schedule (auto-sync)
+- Log all sync operations for audit
+- Store sync history (last sync time, results, errors)
+
+Conflict Resolution:
+- Define strategy for handling conflicts
+- Options: API wins, Manual wins, or prompt user
+- Log all conflicts for review
+```
+
+### Advertisers Management Endpoints
+
+#### 1. Get All Advertisers
+
+```
+GET /api/admin/advertisers
+
+Query Parameters: Same as Get All Offers
+
+Response: Same structure as Get All Offers
+```
+
+#### 2. Get Advertiser by ID
+
+```
+GET /api/admin/advertisers/:id
+
+Response: Same structure as Get Offer by ID
+```
+
+#### 3. Create Advertiser
+
+```
+POST /api/admin/advertisers
+
+Request Body: Similar to Create Offer
+```
+
+#### 4. Update Advertiser
+
+```
+PUT /api/admin/advertisers/:id
+
+Request Body: Similar to Update Offer
+```
+
+#### 5. Delete Advertiser
+
+```
+DELETE /api/admin/advertisers/:id
+
+Response: Same structure as Delete Offer
+```
+
+#### 6. Update Advertiser Status
+
+```
+PATCH /api/admin/advertisers/:id/status
+
+Request Body: Same as Update Offer Status
+```
+
+#### 7. Pull Advertisers Via API
+
+```
+POST /api/admin/advertisers/pull-from-api
+
+Request Body: Same structure as Pull Offers Via API
+
+Response: Same structure as Pull Offers Via API
+```
+
+### Publishers Management Endpoints
+
+#### 1. Get All Publishers
+
+```
+GET /api/admin/publishers
+
+Query Parameters: Same as Get All Offers
+
+Response: Same structure as Get All Offers
+```
+
+#### 2. Get Publisher by ID
+
+```
+GET /api/admin/publishers/:id
+
+Response: Same structure as Get Offer by ID
+```
+
+#### 3. Create Publisher
+
+```
+POST /api/admin/publishers
+
+Request Body: Similar to Create Offer
+```
+
+#### 4. Update Publisher
+
+```
+PUT /api/admin/publishers/:id
+
+Request Body: Similar to Update Offer
+```
+
+#### 5. Delete Publisher
+
+```
+DELETE /api/admin/publishers/:id
+
+Response: Same structure as Delete Offer
+```
+
+#### 6. Update Publisher Status
+
+```
+PATCH /api/admin/publishers/:id/status
+
+Request Body: Same as Update Offer Status
+```
+
+### Brand Guidelines Management Endpoints
+
+#### 1. Get Brand Guidelines
+
+```
+GET /api/admin/{entityType}s/:id/brand-guidelines
+
+Path Parameters:
+- entityType: "offers" | "advertisers" | "publishers"
+- id: string (entity ID)
+
+Response:
+{
+  "success": true,
+  "data": {
+    "type": "url" | "file" | "text",
+    "url": "https://example.com/guidelines",     // If type is "url"
+    "fileUrl": "https://storage.example.com/file.pdf", // If type is "file"
+    "fileName": "guidelines.pdf",                 // If type is "file"
+    "fileSize": 1024000,                          // If type is "file" (bytes)
+    "mimeType": "application/pdf",                // If type is "file"
+    "text": "<p>Rich text content</p>",           // If type is "text"
+    "notes": "Additional notes about brand guidelines",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-20T14:45:00Z"
+  }
+}
+
+Error Responses:
+- 404: Brand guidelines not found (return null, show "no guidelines" state)
+- 401: Unauthorized
+- 403: Forbidden
+- 500: Server error
+```
+
+#### 2. Create/Update Brand Guidelines
+
+```
+PUT /api/admin/{entityType}s/:id/brand-guidelines
+
+Path Parameters:
+- entityType: "offers" | "advertisers" | "publishers"
+- id: string (entity ID)
+
+Request Body (JSON for URL/text, FormData for file):
+
+For URL type:
+{
+  "type": "url",
+  "url": "https://example.com/guidelines",  // Required, must be valid HTTPS URL
+  "notes": "Additional notes"               // Optional
+}
+
+For Text type:
+{
+  "type": "text",
+  "text": "<p>Rich text content</p>",       // Required, HTML or plain text
+  "notes": "Additional notes"               // Optional
+}
+
+For File type (multipart/form-data):
+- type: "file"
+- file: File (multipart file upload)
+- notes: string (optional)
+
+File Upload Requirements:
+- Validate file size (max 10MB)
+- Validate file type (only .doc, .docx, .pdf)
+- Store file in secure storage (S3, Azure Blob, etc.)
+- If replacing existing file, delete old file from storage
+- Return file URL or file ID for reference
+
+Response:
+{
+  "success": true,
+  "data": {
+    "type": "url" | "file" | "text",
+    "url": "https://example.com/guidelines",
+    "fileUrl": "https://storage.example.com/file.pdf",
+    "fileName": "guidelines.pdf",
+    "fileSize": 1024000,
+    "mimeType": "application/pdf",
+    "text": "<p>Rich text content</p>",
+    "notes": "Additional notes",
+    "updatedAt": "2024-01-20T14:45:00Z"
+  }
+}
+
+Error Responses:
+- 400: Validation errors (invalid URL format, invalid file type/size, missing required fields)
+- 401: Unauthorized
+- 403: Forbidden
+- 404: Entity not found
+- 413: File too large
+- 500: Server error or file storage error
+
+Audit Trail:
+- Log all brand guidelines updates
+- Track which type was changed (url/file/text)
+- Store previous values for rollback if needed
+- Track who updated and when
+```
+
+---
+
 ## Business Logic & Workflows
 
 ### Request Approval Workflow

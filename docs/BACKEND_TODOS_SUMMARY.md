@@ -70,7 +70,102 @@ Each TODO includes:
 - Error handling requirements
 - SQL query examples
 
-### 3. UI Components
+### 3. Offers Management
+
+**Files:**
+
+- `/features/admin/components/Offers.tsx`
+- `/features/admin/components/BulkEditModal.tsx`
+- `/features/admin/components/OfferDetailsModal.tsx`
+- `/features/admin/components/NewOfferManuallyModal.tsx`
+- `/features/admin/services/offers.service.ts`
+
+**Endpoints Required:**
+
+- `GET /api/admin/offers` - Get all offers with pagination, filtering, sorting
+- `GET /api/admin/offers/:id` - Get offer by ID with brand guidelines
+- `POST /api/admin/offers` - Create new offer (manually)
+- `PUT /api/admin/offers/:id` - Update offer details
+- `DELETE /api/admin/offers/:id` - Delete offer
+- `PATCH /api/admin/offers/:id/status` - Update offer status
+- `PATCH /api/admin/offers/:id/visibility` - Update offer visibility
+- `POST /api/admin/offers/bulk-update` - Bulk update multiple offers
+- `POST /api/admin/offers/pull-from-api` - Sync offers from external API
+
+**Key Features:**
+
+- Bulk editing of offers (visibility, brand guidelines)
+- Brand guidelines support (URL, file upload, rich text)
+- Conditional editing based on creation method (Manually vs API)
+- File upload handling (max 10MB, .doc, .docx, .pdf)
+- Pull from external API with conflict resolution
+
+### 4. Advertisers Management
+
+**Files:**
+
+- `/features/admin/components/Advertiser.tsx`
+- `/features/admin/services/advertiser.service.ts`
+
+**Endpoints Required:**
+
+- `GET /api/admin/advertisers` - Get all advertisers
+- `GET /api/admin/advertisers/:id` - Get advertiser by ID
+- `POST /api/admin/advertisers` - Create new advertiser
+- `PUT /api/admin/advertisers/:id` - Update advertiser
+- `DELETE /api/admin/advertisers/:id` - Delete advertiser
+- `PATCH /api/admin/advertisers/:id/status` - Update advertiser status
+- `POST /api/admin/advertisers/pull-from-api` - Sync advertisers from external API
+
+**Key Features:**
+
+- Brand guidelines management
+- Pull from external API
+- Edit details functionality
+
+### 5. Publishers Management
+
+**Files:**
+
+- `/features/admin/components/Publisher.tsx`
+- `/features/admin/services/publisher.service.ts`
+
+**Endpoints Required:**
+
+- `GET /api/admin/publishers` - Get all publishers
+- `GET /api/admin/publishers/:id` - Get publisher by ID
+- `POST /api/admin/publishers` - Create new publisher
+- `PUT /api/admin/publishers/:id` - Update publisher
+- `DELETE /api/admin/publishers/:id` - Delete publisher
+- `PATCH /api/admin/publishers/:id/status` - Update publisher status
+
+**Key Features:**
+
+- Brand guidelines management
+- Edit details functionality
+
+### 6. Brand Guidelines Management
+
+**Files:**
+
+- `/features/admin/components/BrandGuidelinesModal.tsx`
+
+**Endpoints Required:**
+
+- `GET /api/admin/{entityType}s/:id/brand-guidelines` - Get brand guidelines
+  - Supports: offers, advertisers, publishers
+- `PUT /api/admin/{entityType}s/:id/brand-guidelines` - Create/update brand guidelines
+  - Supports: URL, file upload, rich text input
+  - File upload: multipart/form-data, max 10MB, .doc/.docx/.pdf
+
+**Key Features:**
+
+- Three input types: URL, file upload, rich text editor
+- File preview (PDF viewer, DOCX download)
+- Notes field for additional information
+- Works across offers, advertisers, and publishers
+
+### 7. UI Components
 
 **File:** `/features/admin/components/RequestItem.tsx`
 
@@ -136,10 +231,11 @@ TODOs:
 1. Dashboard statistics endpoint
 2. Performance chart endpoint
 3. GET endpoints for requests/responses
-4. Pagination and filtering
-5. Search functionality
-6. Caching layer
-7. Basic error handling
+4. GET endpoints for offers/advertisers/publishers
+5. Pagination and filtering
+6. Search functionality
+7. Caching layer
+8. Basic error handling
 
 ### Phase 3: Actions (Week 5-6)
 
@@ -148,6 +244,10 @@ TODOs:
 3. Status history tracking
 4. Notifications
 5. Transaction management
+6. Offer/Advertiser/Publisher CRUD operations
+7. Brand guidelines management (URL, file upload, rich text)
+8. Bulk update operations
+9. Pull from external API functionality
 
 ### Phase 4: Enhancement (Week 7-8)
 
@@ -254,10 +354,16 @@ JWT_SECRET=your_secret_key
 - [ ] Performance chart endpoint working
 - [ ] All request GET endpoints working
 - [ ] All response GET endpoints working
+- [ ] All offers GET endpoints working
+- [ ] All advertisers GET endpoints working
+- [ ] All publishers GET endpoints working
+- [ ] Brand guidelines endpoints working (GET/PUT)
 - [ ] Pagination working correctly
 - [ ] Filtering working correctly
 - [ ] Search working correctly
 - [ ] All POST endpoints working
+- [ ] Bulk update endpoint working
+- [ ] Pull from API endpoints working
 
 ### Business Logic
 
@@ -294,3 +400,29 @@ For detailed implementation guides, error codes, SQL examples, and more, see:
 # Find all backend TODOs
 grep -r "TODO: BACKEND" features/ app/
 ```
+
+## Recent Updates (Latest)
+
+### Comprehensive Backend TODOs Added
+
+All components now include detailed backend integration documentation:
+
+1. **BulkEditModal.tsx** - Complete bulk update API specification
+2. **OfferDetailsModal.tsx** - Offer update with brand guidelines
+3. **BrandGuidelinesModal.tsx** - Brand guidelines CRUD operations
+4. **Offers.tsx** - Pull from API functionality
+5. **Advertiser.tsx** - Pull from API and edit details
+6. **Publisher.tsx** - Edit details functionality
+7. **offers.service.ts** - All service functions with detailed API specs
+
+Each TODO includes:
+
+- Complete API endpoint specifications
+- Request/response formats
+- Error handling requirements
+- Business rules and validation
+- File upload handling (FormData, multipart/form-data)
+- Performance considerations
+- Implementation examples
+
+See [Backend_Implementation_TODOs.md](./Backend_Implementation_TODOs.md) for complete details.

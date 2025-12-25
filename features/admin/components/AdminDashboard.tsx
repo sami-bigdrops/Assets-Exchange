@@ -26,7 +26,9 @@ export function AdminDashboard() {
         </div>
       ) : !data ? (
         <div className="flex items-center justify-center p-8 border rounded-lg">
-          <div className="text-muted-foreground">No data available</div>
+          <div className="text-muted-foreground">
+            No data available for Admin Dashboard
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

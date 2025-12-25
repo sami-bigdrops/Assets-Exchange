@@ -23,7 +23,17 @@ export function useLoginViewModel() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Login failed");
+        const errorMessage =
+          result.error.message ||
+          result.error.code ||
+          "Login failed. Please check your credentials.";
+        setError(errorMessage);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!result.data) {
+        setError("Login failed. No data received from server.");
         setIsLoading(false);
         return;
       }
@@ -32,9 +42,12 @@ export function useLoginViewModel() {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An error occurred during login"
-      );
+      console.error("Login error:", err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "An error occurred during login. Please try again.";
+      setError(errorMessage);
       setIsLoading(false);
     }
   };

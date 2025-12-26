@@ -62,7 +62,7 @@ export const adminMenuConfig: SidebarMenuConfig = [
       //   href: "/ai-settings",
       // },
       {
-        id: "settings",
+        id: "settings test",
         label: "Settings",
         icon: "Settings2",
         href: "/settings",

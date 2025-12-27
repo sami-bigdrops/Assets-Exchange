@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 
 import "./globals.css";
 import { getVariables } from "@/components/_variables/variables";
+import { OfflineDetector } from "@/components/offline-detector";
 import { Toaster } from "@/components/ui/sonner";
 
 const variables = getVariables();
@@ -28,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
+        <OfflineDetector />
         <div className="h-screen overflow-y-auto overflow-x-hidden">
           {children}
         </div>

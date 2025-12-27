@@ -8,6 +8,39 @@ import { env } from "@/env";
 import { db } from "./db";
 import { logger } from "./logger";
 
+const getTrustedOrigins = (): string[] => {
+  const origins: string[] = [];
+
+  if (process.env.CORS_ALLOWED_ORIGINS) {
+    origins.push(
+      ...process.env.CORS_ALLOWED_ORIGINS.split(",").map((origin) =>
+        origin.trim()
+      )
+    );
+  }
+
+  if (env.NEXT_PUBLIC_APP_URL) {
+    origins.push(env.NEXT_PUBLIC_APP_URL);
+  }
+
+  if (env.BETTER_AUTH_URL) {
+    origins.push(env.BETTER_AUTH_URL);
+  }
+
+  if (process.env.VERCEL_URL) {
+    origins.push(`https://${process.env.VERCEL_URL}`);
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    origins.push("http://localhost:3000");
+  }
+
+  origins.push("https://assetsexchange.net");
+  origins.push("https://www.assetsexchange.net");
+
+  return [...new Set(origins)];
+};
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -36,6 +69,7 @@ export const auth = betterAuth({
       : "http://localhost:3000"),
   basePath: "/api/auth",
   secret: env.BETTER_AUTH_SECRET,
+  trustedOrigins: getTrustedOrigins(),
 });
 
 // Log auth initialization in development

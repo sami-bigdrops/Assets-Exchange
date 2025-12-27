@@ -1,19 +1,10 @@
-import { type LucideIcon } from "lucide-react";
+import type { StatsCardProps } from "@/features/dashboard/types/dashboard.types";
 
-export interface AdminStats {
-  title: string;
-  value: number;
-  icon: LucideIcon;
-  trend?: {
-    trendTextValue: string;
-    textValue: string;
-    trendIconValue: LucideIcon;
-  };
-  historicalData?: Array<{
-    label: string;
-    value: number | string;
-  }>;
-}
+/**
+ * AdminStats is an alias for StatsCardProps for backward compatibility
+ * Use StatsCardProps from @/features/dashboard/types/dashboard.types for new code
+ */
+export type AdminStats = StatsCardProps;
 
 /**
  * REQUEST STATUS represents the current state in the workflow
@@ -159,30 +150,14 @@ export interface AdminDashboardData {
   stats: AdminStats[];
 }
 
-export type ComparisonType =
-  | "Today vs Yesterday"
-  | "Today vs Last Week"
-  | "Current Week vs Last Week"
-  | "Current Month vs Last Month";
-
-export type MetricType =
-  | "Total Assets"
-  | "New Requests"
-  | "Approved Assets"
-  | "Rejected Assets"
-  | "Pending Approval";
-
-export interface PerformanceChartDataPoint {
-  label: string;
-  current: number;
-  previous: number;
-}
-
-export interface PerformanceChartData {
-  data: PerformanceChartDataPoint[];
-  comparisonType: ComparisonType;
-  xAxisLabel: string;
-}
+// Re-export dashboard types for backward compatibility
+// Use types from @/features/dashboard/types/dashboard.types for new code
+export type {
+  ComparisonType,
+  MetricType,
+  PerformanceChartDataPoint,
+  PerformanceChartData,
+} from "@/features/dashboard/types/dashboard.types";
 
 export interface Advertiser {
   id: string;

@@ -26,7 +26,7 @@ export function useNewAdvertiserManuallyViewModel() {
    *
    * Request Body:
    * {
-   *   advertiserId: string,        // Auto-generated: M + 4 digits (e.g., M1234)
+   *   advertiserId: string,        // Auto-generated incrementally: M0001, M0002, etc.
    *   companyName: string,          // Required
    *   firstName: string,            // Required
    *   lastName: string,             // Required
@@ -38,7 +38,7 @@ export function useNewAdvertiserManuallyViewModel() {
    *
    * Response:
    * {
-   *   id: string,                   // Advertiser ID (M + 4 digits)
+   *   id: string,                   // Advertiser ID (M0001, M0002, etc.)
    *   advertiserName: string,        // Company Name
    *   advPlatform: string,          // Default or empty
    *   createdMethod: "Manually",
@@ -70,7 +70,7 @@ export function useNewAdvertiserManuallyViewModel() {
    * - Close modal
    *
    * Implementation Notes:
-   * - Advertiser ID is auto-generated: M + 4 random digits
+   * - Advertiser ID is auto-generated incrementally: M001, M002, M003, etc.
    * - Backend should validate uniqueness of advertiserId and email
    * - Password should be hashed before storing
    * - Send welcome email to the advertiser with credentials

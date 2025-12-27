@@ -2234,24 +2234,211 @@ When transitioning from mock data to real backend:
 
 ### Notifications
 
+**TODO: BACKEND - Implement Comprehensive Notification System**
+
+#### Database Schema
+
+```sql
+CREATE TABLE notifications (
+  id VARCHAR(255) PRIMARY KEY,
+  user_id VARCHAR(255) NOT NULL,
+  type ENUM('request_approved', 'request_rejected', 'response_approved', 'response_rejected', 'offer_updated', 'bulk_update_complete', 'sync_complete', 'error') NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  entity_type ENUM('request', 'offer', 'advertiser', 'publisher', 'bulk_operation') NOT NULL,
+  entity_id VARCHAR(255),
+  read BOOLEAN NOT NULL DEFAULT FALSE,
+  read_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_user_unread (user_id, read, created_at DESC),
+  INDEX idx_user_created (user_id, created_at DESC),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+#### API Endpoints
+
+**GET /api/notifications**
+
+- Get user's notifications with pagination
+- Query params: `page`, `limit`, `read`, `type`
+- Response: `{ data: Notification[], pagination: {...} }`
+
+**GET /api/notifications/unread-count**
+
+- Get count of unread notifications
+- Response: `{ count: number }`
+
+**PATCH /api/notifications/:id/read**
+
+- Mark notification as read
+- Response: `{ success: boolean, notification: Notification }`
+
+**PATCH /api/notifications/read-all**
+
+- Mark all user notifications as read
+- Response: `{ success: boolean, updated: number }`
+
+**DELETE /api/notifications/:id**
+
+- Delete a notification
+- Response: `{ success: boolean }`
+
+#### Real-time Notifications (WebSocket/SSE)
+
+**WebSocket Endpoint: `/ws/notifications`**
+
+- Connect with JWT token
+- Send notifications in real-time when events occur
+- Message format:
+  ```json
+  {
+    "type": "notification",
+    "data": {
+      "id": "notif-123",
+      "type": "request_approved",
+      "title": "Request Approved",
+      "message": "Your request has been approved",
+      "entity_type": "request",
+      "entity_id": "req-456",
+      "created_at": "2024-12-20T10:30:00Z"
+    }
+  }
+  ```
+
+#### Notification Triggers
+
 Implement notification system for:
 
-- Request approved by admin → Notify advertiser
-- Request rejected by admin → Notify publisher
-- Response approved by advertiser → Notify admin & publisher
-- Response rejected by advertiser → Notify admin
+- **Request approved by admin** → Notify advertiser
+- **Request rejected by admin** → Notify publisher
+- **Response approved by advertiser** → Notify admin & publisher
+- **Response rejected by advertiser** → Notify admin
+- **Offer updated** → Notify relevant users
+- **Bulk update complete** → Notify initiator with statistics
+- **API sync complete** → Notify initiator with sync results
+- **Error occurred** → Notify admin (for critical errors)
+
+#### Email Notifications (Optional)
+
+**TODO: BACKEND - Implement Email Notification Service**
+
+- Configure SMTP settings
+- Send email for critical notifications
+- Support HTML email templates
+- Queue system for bulk emails
+- Email preferences per user
+
+### Error Tracking & Monitoring
+
+**TODO: BACKEND - Implement Error Tracking Service**
+
+#### Error Logging
+
+```sql
+CREATE TABLE error_logs (
+  id VARCHAR(255) PRIMARY KEY,
+  error_code VARCHAR(50) NOT NULL,
+  error_message TEXT NOT NULL,
+  stack_trace TEXT,
+  user_id VARCHAR(255),
+  request_id VARCHAR(255),
+  endpoint VARCHAR(255),
+  method VARCHAR(10),
+  status_code INT,
+  request_body JSON,
+  response_body JSON,
+  severity ENUM('low', 'medium', 'high', 'critical') NOT NULL DEFAULT 'medium',
+  resolved BOOLEAN NOT NULL DEFAULT FALSE,
+  resolved_at TIMESTAMP NULL,
+  resolved_by VARCHAR(255),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_severity_created (severity, created_at DESC),
+  INDEX idx_user_created (user_id, created_at DESC),
+  INDEX idx_resolved (resolved, created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+#### API Endpoints
+
+**POST /api/admin/errors/log**
+
+- Log application errors
+- Used by frontend error boundaries
+- Request body: `{ error: Error, context: {...} }`
+
+**GET /api/admin/errors**
+
+- Get error logs with filtering
+- Query params: `severity`, `resolved`, `page`, `limit`
+- Response: `{ data: ErrorLog[], pagination: {...} }`
+
+**PATCH /api/admin/errors/:id/resolve**
+
+- Mark error as resolved
+- Response: `{ success: boolean }`
+
+#### Integration with Monitoring Services
+
+- **Sentry Integration**: Forward critical errors to Sentry
+- **Datadog Integration**: Send metrics and logs
+- **Health Check Endpoint**: `GET /api/health` for monitoring
+- **Metrics Endpoint**: `GET /api/metrics` for Prometheus
+
+### Real-time Updates
+
+**TODO: BACKEND - Implement Real-time Update System**
+
+#### WebSocket Support
+
+**WebSocket Endpoint: `/ws/updates`**
+
+- Connect with JWT token
+- Subscribe to entity updates (offers, requests, advertisers, etc.)
+- Broadcast updates when entities change
+- Message format:
+  ```json
+  {
+    "type": "entity_update",
+    "entity_type": "offer",
+    "entity_id": "offer-123",
+    "action": "updated",
+    "data": {
+      /* updated entity data */
+    },
+    "timestamp": "2024-12-20T10:30:00Z"
+  }
+  ```
+
+#### Server-Sent Events (SSE) Alternative
+
+**SSE Endpoint: `/api/updates/stream`**
+
+- Alternative to WebSocket for simpler use cases
+- Stream updates as they occur
+- Automatic reconnection handling
+
+#### Use Cases
+
+- Real-time offer updates
+- Real-time request/response status changes
+- Dashboard statistics updates
+- Bulk operation progress
+- API sync progress
 
 ### Future Enhancements
 
-- [ ] WebSocket support for real-time updates
 - [ ] File attachments for requests/responses
 - [ ] Bulk operations (approve/reject multiple)
 - [ ] Advanced analytics dashboard
 - [ ] Export functionality (CSV, PDF)
-- [ ] Email notifications
 - [ ] Slack/Teams integrations
 - [ ] Automated workflow rules
 - [ ] SLA tracking and alerts
+- [ ] Advanced search with full-text indexing
+- [ ] Audit log export functionality
 
 ---
 

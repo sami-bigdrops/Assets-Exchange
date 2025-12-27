@@ -2,7 +2,6 @@
 
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { getVariables } from "@/components/_variables/variables";
@@ -29,30 +28,42 @@ import { useForm } from "../hooks/useForm";
 import { loginSchema } from "../validation/login.validation";
 import { useLoginViewModel } from "../view-models/useLoginViewModel";
 
-export function LoginForm() {
-  const { handleLogin, isLoading, error } = useLoginViewModel();
-  const searchParams = useSearchParams();
+function LoginFormContent() {
+  const { handleLogin, isLoading, error, clearError } = useLoginViewModel();
   const [showPassword, setShowPassword] = useState(false);
-
+  const [initialEmail, setInitialEmail] = useState<string>("");
+  const [initialPassword, setInitialPassword] = useState<string>("");
   const form = useForm(loginSchema, {
     defaultValues: {
       email: "",
       password: "",
     },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
 
   useEffect(() => {
-    const email = searchParams.get("email");
-    const password = searchParams.get("password");
-    if (email) {
-      form.setValue("email", email);
+    if (typeof window !== "undefined") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const email = params.get("email");
+        const password = params.get("password");
+        if (email && !initialEmail) {
+          setInitialEmail(email);
+          form.setValue("email", email);
+        }
+        if (password && !initialPassword) {
+          setInitialPassword(password);
+          form.setValue("password", password);
+        }
+      } catch (err) {
+        console.error("Error reading search params:", err);
+      }
     }
-    if (password) {
-      form.setValue("password", password);
-    }
-  }, [searchParams, form]);
+  }, [form, initialEmail, initialPassword]);
 
   const onSubmit = async (data: { email: string; password: string }) => {
+    form.clearErrors();
     await handleLogin(data);
   };
 
@@ -151,6 +162,15 @@ export function LoginForm() {
                         }}
                         className="font-inter text-sm lg:text-base h-12 lg:h-14 login-form-input"
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (form.formState.errors.email) {
+                            form.clearErrors("email");
+                          }
+                          if (error) {
+                            clearError();
+                          }
+                        }}
                       />
                     </FormControl>
                     <FormMessage
@@ -172,7 +192,10 @@ export function LoginForm() {
                       Password
                     </FormLabel>
                     <FormControl>
-                      <div className="relative">
+                      <div
+                        className="relative"
+                        style={{ position: "relative" }}
+                      >
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder="Enter your password"
@@ -185,22 +208,41 @@ export function LoginForm() {
                               ? variables.colors.inputErrorColor
                               : variables.colors.inputBorderColor,
                             paddingRight: "2.5rem",
+                            pointerEvents: "auto",
                           }}
                           className="font-inter text-sm lg:text-base h-12 lg:h-14 login-form-input"
                           {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            if (form.formState.errors.password) {
+                              form.clearErrors("password");
+                            }
+                            if (error) {
+                              clearError();
+                            }
+                          }}
                         />
                         <button
                           type="button"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setShowPassword(!showPassword);
+                            setShowPassword((prev) => !prev);
+                          }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                           }}
                           disabled={isLoading}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed z-10 p-1"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed z-50 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                          style={{
+                            pointerEvents: isLoading ? "none" : "auto",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
                           aria-label={
                             showPassword ? "Hide password" : "Show password"
                           }
+                          tabIndex={0}
                         >
                           {showPassword ? (
                             <EyeOff className="h-5 w-5 lg:h-6 lg:w-6 xl:h-6 xl:w-6" />
@@ -247,4 +289,8 @@ export function LoginForm() {
       </Card>
     </>
   );
+}
+
+export function LoginForm() {
+  return <LoginFormContent />;
 }

@@ -7,7 +7,8 @@ export type IconName =
   | "Target"
   | "ChartColumnIncreasing"
   | "Settings"
-  | "Settings2";
+  | "Settings2"
+  | "FileText";
 
 export interface SidebarMenuItem {
   id: string;

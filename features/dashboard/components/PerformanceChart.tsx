@@ -22,8 +22,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import type { ComparisonType, MetricType } from "../types/admin.types";
-import { usePerformanceChartViewModel } from "../view-models/usePerformanceChartViewModel";
+import type {
+  ComparisonType,
+  MetricType,
+  PerformanceChartData,
+} from "../types/dashboard.types";
 
 const getLastWeekDayName = (): string => {
   const days = [
@@ -47,12 +50,38 @@ const normalizeComparisonType = (comparison: string): ComparisonType => {
   return comparison as ComparisonType;
 };
 
-export function PerformanceChart() {
+interface PerformanceChartProps {
+  data: PerformanceChartData | null;
+  isLoading?: boolean;
+  error?: string | null;
+  onMetricChange?: (metric: MetricType) => void;
+  onComparisonChange?: (comparison: ComparisonType) => void;
+  defaultMetric?: MetricType;
+  defaultComparison?: ComparisonType;
+  metricOptions?: MetricType[];
+}
+
+export function PerformanceChart({
+  data: chartData,
+  isLoading = false,
+  error = null,
+  onMetricChange,
+  onComparisonChange,
+  defaultMetric = "Total Assets",
+  defaultComparison = "Today vs Yesterday",
+  metricOptions = [
+    "Total Assets",
+    "New Requests",
+    "Approved Assets",
+    "Rejected Assets",
+    "Pending Approval",
+  ],
+}: PerformanceChartProps) {
   const variables = getVariables();
   const [selectedMetric, setSelectedMetric] =
-    useState<MetricType>("Total Assets");
+    useState<MetricType>(defaultMetric);
   const [selectedComparison, setSelectedComparison] =
-    useState<string>("Today vs Yesterday");
+    useState<string>(defaultComparison);
 
   const lastWeekDayName = getLastWeekDayName();
   const comparisonOptions = [
@@ -63,16 +92,18 @@ export function PerformanceChart() {
   ];
 
   const comparisonType = normalizeComparisonType(selectedComparison);
-  const { data, isLoading, error } =
-    usePerformanceChartViewModel(comparisonType);
 
-  const metricOptions: MetricType[] = [
-    "Total Assets",
-    "New Requests",
-    "Approved Assets",
-    "Rejected Assets",
-    "Pending Approval",
-  ];
+  const handleMetricChange = (value: string) => {
+    const metric = value as MetricType;
+    setSelectedMetric(metric);
+    onMetricChange?.(metric);
+  };
+
+  const handleComparisonChange = (value: string) => {
+    setSelectedComparison(value);
+    const normalized = normalizeComparisonType(value);
+    onComparisonChange?.(normalized);
+  };
 
   const getMaxWidth = (options: string[]): string => {
     const maxLength = Math.max(...options.map((opt) => opt.length));
@@ -167,7 +198,7 @@ export function PerformanceChart() {
     );
   }
 
-  if (!data || !data.data || data.data.length === 0) {
+  if (!chartData || !chartData.data || chartData.data.length === 0) {
     return (
       <Card>
         <CardHeader className="py-4">
@@ -195,10 +226,7 @@ export function PerformanceChart() {
           Performance Overview
         </CardTitle>
         <div className="flex items-center  gap-3">
-          <Select
-            value={selectedMetric}
-            onValueChange={(value) => setSelectedMetric(value as MetricType)}
-          >
+          <Select value={selectedMetric} onValueChange={handleMetricChange}>
             <SelectTrigger
               className="font-inter font-medium rounded-[6px] [&_*[data-slot=select-value]]:text-xs [&_*[data-slot=select-value]]:lg:text-sm [&_*[data-slot=select-value]]:xl:text-[0.95rem]"
               style={{
@@ -220,7 +248,7 @@ export function PerformanceChart() {
           </Select>
           <Select
             value={selectedComparison}
-            onValueChange={setSelectedComparison}
+            onValueChange={handleComparisonChange}
           >
             <SelectTrigger
               className="font-inter font-medium rounded-[6px] [&_*[data-slot=select-value]]:text-xs [&_*[data-slot=select-value]]:lg:text-sm [&_*[data-slot=select-value]]:xl:text-[0.95rem]"
@@ -246,7 +274,7 @@ export function PerformanceChart() {
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
           <ComposedChart
-            data={data.data}
+            data={chartData.data}
             margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
           >
             <defs>
@@ -293,7 +321,7 @@ export function PerformanceChart() {
                   ? legendLabels.current
                   : legendLabels.previous,
               ]}
-              labelFormatter={(label) => `${data.xAxisLabel}: ${label}`}
+              labelFormatter={(label) => `${chartData.xAxisLabel}: ${label}`}
             />
             <Area
               type="monotone"

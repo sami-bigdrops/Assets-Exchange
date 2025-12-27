@@ -1,7 +1,7 @@
 "use client";
 
-import { Pencil, Check, X as XIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Loader2, Pencil, Check, X as XIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
@@ -71,9 +71,17 @@ export function AdvertiserDetailsModal({
     advPlatform: "Everflow",
   });
 
+  const [initialFormData, setInitialFormData] =
+    useState<EditAdvertiserFormData | null>(null);
+
   const [validationErrors, setValidationErrors] = useState<
     Partial<Record<keyof EditAdvertiserFormData, string>>
   >({});
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!initialFormData) return false;
+    return JSON.stringify(formData) !== JSON.stringify(initialFormData);
+  }, [formData, initialFormData]);
 
   /**
    * TODO: BACKEND - Fetch Advertiser Details
@@ -109,12 +117,14 @@ export function AdvertiserDetailsModal({
           const fetchedAdvertiser = await getAdvertiserById(advertiserId);
           if (fetchedAdvertiser) {
             setAdvertiser(fetchedAdvertiser);
-            setFormData({
+            const initialData = {
               advertiserId: fetchedAdvertiser.id,
               advertiserName: fetchedAdvertiser.advertiserName,
               status: fetchedAdvertiser.status,
               advPlatform: fetchedAdvertiser.advPlatform,
-            });
+            };
+            setFormData(initialData);
+            setInitialFormData(initialData);
             setIsEditingAdvertiserId(false);
             setIsEditingAdvertiserName(false);
           } else {
@@ -283,11 +293,24 @@ export function AdvertiserDetailsModal({
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (!isSubmitting && !open) {
+      if (isSubmitting) {
+        return;
+      }
+
+      if (!open && hasUnsavedChanges) {
+        if (
+          window.confirm(
+            "You have unsaved changes. Are you sure you want to close?"
+          )
+        ) {
+          setInitialFormData(null);
+          onOpenChange(false);
+        }
+      } else if (!open) {
         onOpenChange(false);
       }
     },
-    [isSubmitting, onOpenChange]
+    [isSubmitting, hasUnsavedChanges, onOpenChange]
   );
 
   const handleClose = useCallback(() => {
@@ -646,11 +669,6 @@ export function AdvertiserDetailsModal({
 
                 <div className="border-t pt-6">
                   <div className="space-y-6">
-                    <div>
-                      <h3 className="font-inter text-sm font-semibold text-foreground mb-4">
-                        Editable Fields
-                      </h3>
-                    </div>
                     <div className="space-y-1.5">
                       <Label
                         htmlFor="advPlatform"
@@ -730,7 +748,14 @@ export function AdvertiserDetailsModal({
                   : variables.colors.buttonDefaultTextColor,
               }}
             >
-              {isSubmitting ? "Saving..." : "Save Changes"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </DialogFooter>
         </form>

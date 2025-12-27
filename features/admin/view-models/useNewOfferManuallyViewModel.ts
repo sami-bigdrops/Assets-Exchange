@@ -34,7 +34,7 @@ export function useNewOfferManuallyViewModel() {
    *
    * Request Body:
    * {
-   *   offerId?: string,              // Optional, if provided use this ID
+   *   offerId?: string,              // Auto-generated incrementally: O0001, O0002, etc.
    *   offerName: string,               // Required
    *   advertiserId: string,           // Required
    *   advertiserName: string,          // Required

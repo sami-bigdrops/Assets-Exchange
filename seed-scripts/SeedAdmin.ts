@@ -1,15 +1,14 @@
 import { eq } from "drizzle-orm";
 
-import { env } from "../env.js";
 import { auth } from "../lib/auth";
 import { db } from "../lib/db";
 import { logger } from "../lib/logger";
 import { user } from "../lib/schema";
 
 async function seedAdmin() {
-  const adminEmail = env.ADMIN_EMAIL || "admin@assets-exchange.com";
-  const adminPassword = env.ADMIN_PASSWORD || "Admin@123";
-  const adminName = env.ADMIN_NAME || "Admin User";
+  const adminEmail = "admin@assets-exchange.com";
+  const adminPassword = "Admin@123";
+  const adminName = "Admin User";
 
   try {
     logger.app.info("Starting admin seed script...");

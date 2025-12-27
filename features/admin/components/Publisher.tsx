@@ -54,13 +54,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { EntityDataTable, EntityDataCard } from "@/features/dashboard";
 
 import { managePublishers } from "../models/publisher.model";
 import type { Publisher as PublisherType } from "../types/admin.types";
 import { usePublisherViewModel } from "../view-models/usePublisherViewModel";
 
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
-import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type PlatformFilter =
@@ -296,7 +296,30 @@ export function Publisher() {
                     }`}
                   >
                     <span>Status</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {statusFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Status"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setStatusFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("platform")}
@@ -307,7 +330,30 @@ export function Publisher() {
                     }`}
                   >
                     <span>Platform</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {platformFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPlatformFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Platform"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setPlatformFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("creationMethod")}
@@ -318,7 +364,30 @@ export function Publisher() {
                     }`}
                   >
                     <span>Creation Method</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {creationMethodFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCreationMethodFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Creation Method"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setCreationMethodFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("sortBy")}

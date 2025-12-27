@@ -1,7 +1,16 @@
 "use client";
 
-import { Upload, File, X, Edit, ExternalLink, Download } from "lucide-react";
+import {
+  Upload,
+  File,
+  X,
+  Edit,
+  ExternalLink,
+  Download,
+  Loader2,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
@@ -332,13 +341,21 @@ export function BrandGuidelinesModal({
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
+      toast.success("Brand guidelines saved successfully", {
+        description: `Brand guidelines for ${entityName} have been saved.`,
+      });
       setBrandGuidelines(dataToSave);
       setIsEditMode(false);
       onOpenChange(false);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "Failed to save brand guidelines";
+        err instanceof Error
+          ? err.message
+          : "Failed to save brand guidelines. Please try again.";
       setError(errorMessage);
+      toast.error("Failed to save brand guidelines", {
+        description: errorMessage,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -949,8 +966,16 @@ export function BrandGuidelinesModal({
                   : variables.colors.buttonDefaultTextColor,
                 height: "3rem",
               }}
+              aria-label="Save brand guidelines"
             >
-              {isSaving ? "Saving..." : "Save Brand Guidelines"}
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                "Save Brand Guidelines"
+              )}
             </Button>
           )}
           {!isEditMode && (!brandGuidelines || !brandGuidelines.type) && (

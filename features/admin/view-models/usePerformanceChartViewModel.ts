@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-import { getPerformanceChartData } from "../services/performance-chart.service";
 import type {
   ComparisonType,
   PerformanceChartData,
-} from "../types/admin.types";
+} from "@/features/dashboard/types/dashboard.types";
+
+import { getPerformanceChartData } from "../services/performance-chart.service";
 
 export function usePerformanceChartViewModel(comparisonType: ComparisonType) {
   const [data, setData] = useState<PerformanceChartData | null>(null);

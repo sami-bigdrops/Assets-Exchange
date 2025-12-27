@@ -80,13 +80,13 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { EntityDataTable, EntityDataCard } from "@/features/dashboard";
 
 import type { Offer as OfferType } from "../types/admin.types";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";
 
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 import { BulkEditModal } from "./BulkEditModal";
-import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { NewOfferManuallyModal } from "./NewOfferManuallyModal";
 import { EditDetailsModal } from "./OfferDetailsModal";
 
@@ -616,7 +616,30 @@ export function Offers() {
                     }`}
                   >
                     <span>Status</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {statusFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Status"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setStatusFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("visibility")}
@@ -627,7 +650,30 @@ export function Offers() {
                     }`}
                   >
                     <span>Visibility</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {visibilityFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setVisibilityFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Visibility"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setVisibilityFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("creationMethod")}
@@ -638,7 +684,30 @@ export function Offers() {
                     }`}
                   >
                     <span>Creation Method</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {creationMethodFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCreationMethodFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Creation Method"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setCreationMethodFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("sortBy")}

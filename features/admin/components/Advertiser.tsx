@@ -36,14 +36,15 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { EntityDataTable, EntityDataCard } from "@/features/dashboard";
 
 import { manageAdvertisers } from "../models/advertiser.model";
 import type { Advertiser as AdvertiserType } from "../types/admin.types";
 import { useAdvertiserViewModel } from "../view-models/useAdvertiserViewModel";
 
+
 import { AdvertiserDetailsModal } from "./AdvertiserDetailsModal";
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
-import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { NewAdvertiserManuallyModal } from "./NewAdvertiserManuallyModal";
 
 type StatusFilter = "Active" | "Inactive" | null;
@@ -494,7 +495,30 @@ export function Advertiser() {
                     }`}
                   >
                     <span>Status</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {statusFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Status"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setStatusFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("platform")}
@@ -505,7 +529,30 @@ export function Advertiser() {
                     }`}
                   >
                     <span>Platform</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {platformFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPlatformFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Platform"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setPlatformFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("creationMethod")}
@@ -516,7 +563,30 @@ export function Advertiser() {
                     }`}
                   >
                     <span>Creation Method</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      {creationMethodFilter !== null && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCreationMethodFilter(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Clear Creation Method"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setCreationMethodFilter(null);
+                            }
+                          }}
+                        >
+                          <X className="h-3 w-3 text-gray-500" />
+                        </div>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveCategory("sortBy")}

@@ -134,7 +134,7 @@ export function Response() {
         </div>
       </CardHeader>
       <CardContent>
-        <RequestSection requests={responses} />
+        <RequestSection requests={responses} viewButtonText="View Response" />
       </CardContent>
     </Card>
   );

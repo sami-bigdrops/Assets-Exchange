@@ -6,24 +6,27 @@
  * This page shows the SAME creative requests, but filtered for advertiser stage.
  * It displays requests that have been forwarded to advertisers.
  *
- * TABS BREAKDOWN:
+ * TABS BREAKDOWN (ADVERTISER ACTIONS):
  * - All: All requests currently with or completed by advertiser
- * - New: Awaiting advertiser review (status='pending', approvalStage='advertiser')
- * - Approved: Advertiser approved (status='approved', approvalStage='completed')
+ * - Pending Approvals: Advertiser actions required - Awaiting advertiser review
+ *   (status='pending', approvalStage='advertiser')
+ * - Approved: Fully approved (status='approved', approvalStage='completed') - Both admin and advertiser approved
  * - Rejected: Advertiser rejected (status='rejected', approvalStage='advertiser')
- * - Sent Back: [EXCLUDED] These appear in /requests page instead
+ * - Sent Back: Sent back by advertiser (status='sent-back', approvalStage='advertiser')
  *
- * KEY POINT:
+ * UNIFIED DATA MODEL:
  * - These are NOT separate "response" entities
  * - They are the SAME creative requests that admin approved
  * - They are now at the advertiser approval stage
  * - The advertiser is reviewing the SAME offer and creative details
  * - The advertiser's action updates the SAME record
+ * - All tabs show the SAME unified data source, just filtered by different
+ *   status/approvalStage combinations for advertiser actions
  *
  * DATA SOURCE:
  * Filtered from the same creative_requests table where:
  * - approvalStage IN ('advertiser', 'completed')
- * - Excluding: status='sent-back' (those go to /requests "Sent Back" tab)
+ * - Excluding: status='sent-back' (those go to /requests "Sent Back" tab for admin)
  */
 
 "use client";
@@ -70,7 +73,7 @@ import { useManageResponsesViewModel } from "../view-models/useManageResponsesVi
 
 import { RequestSection } from "./RequestSection";
 
-type TabValue = "all" | Exclude<RequestStatus, "pending">;
+type TabValue = "all" | "pending-approvals" | Exclude<RequestStatus, "pending">;
 type SortOption =
   | "date-desc"
   | "date-asc"
@@ -155,9 +158,39 @@ export function ManageResponsesPage() {
     let filtered = [...responses];
 
     if (activeTab !== "all") {
-      filtered = filtered.filter(
-        (response) => response.status.toLowerCase() === activeTab
-      );
+      if (activeTab === "pending-approvals") {
+        filtered = filtered.filter(
+          (response) =>
+            response.status.toLowerCase() === "pending" &&
+            response.approvalStage?.toLowerCase() === "advertiser"
+        );
+      } else if (activeTab === "rejected") {
+        // Rejected by advertiser
+        filtered = filtered.filter(
+          (response) =>
+            response.status.toLowerCase() === "rejected" &&
+            response.approvalStage?.toLowerCase() === "advertiser"
+        );
+      } else if (activeTab === "approved") {
+        // Fully approved (both admin and advertiser approved)
+        filtered = filtered.filter(
+          (response) =>
+            response.status.toLowerCase() === "approved" &&
+            response.approvalStage?.toLowerCase() === "completed"
+        );
+      } else if (activeTab === "sent-back") {
+        // Sent back by advertiser
+        filtered = filtered.filter(
+          (response) =>
+            response.status.toLowerCase() === "sent-back" &&
+            response.approvalStage?.toLowerCase() === "advertiser"
+        );
+      } else {
+        // Other statuses - filter by status (for advertiser actions)
+        filtered = filtered.filter(
+          (response) => response.status.toLowerCase() === activeTab
+        );
+      }
     }
 
     if (priorityFilter !== "all") {
@@ -189,12 +222,24 @@ export function ManageResponsesPage() {
         case "date-desc": {
           const aDate = parseDate(a.date);
           const bDate = parseDate(b.date);
-          return bDate.getTime() - aDate.getTime();
+          const aTime = aDate.getTime();
+          const bTime = bDate.getTime();
+          // Handle invalid dates by putting them at the end
+          if (isNaN(aTime) && isNaN(bTime)) return 0;
+          if (isNaN(aTime)) return 1;
+          if (isNaN(bTime)) return -1;
+          return bTime - aTime;
         }
         case "date-asc": {
           const aDate = parseDate(a.date);
           const bDate = parseDate(b.date);
-          return aDate.getTime() - bDate.getTime();
+          const aTime = aDate.getTime();
+          const bTime = bDate.getTime();
+          // Handle invalid dates by putting them at the end
+          if (isNaN(aTime) && isNaN(bTime)) return 0;
+          if (isNaN(aTime)) return 1;
+          if (isNaN(bTime)) return -1;
+          return aTime - bTime;
         }
         case "priority-high": {
           const aPriority = getPriorityValue(a.priority);
@@ -369,7 +414,30 @@ export function ManageResponsesPage() {
                       }`}
                     >
                       <span>Sort By</span>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2">
+                        {sortBy !== "date-desc" && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSortBy("date-desc");
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                            title="Clear Sort By"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSortBy("date-desc");
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 text-gray-500" />
+                          </div>
+                        )}
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
                     </button>
                     <button
                       onClick={() => setActiveCategory("priority")}
@@ -380,7 +448,30 @@ export function ManageResponsesPage() {
                       }`}
                     >
                       <span>Priority</span>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2">
+                        {priorityFilter !== "all" && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPriorityFilter("all");
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                            title="Clear Priority"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setPriorityFilter("all");
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 text-gray-500" />
+                          </div>
+                        )}
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
                     </button>
                   </div>
 
@@ -493,12 +584,12 @@ export function ManageResponsesPage() {
             </Popover>
 
             <TabsList
-              className="flex-1 grid grid-cols-5 h-auto p-1 gap-1"
+              className="flex-1 flex h-auto p-1 gap-1"
               style={{ backgroundColor: variables.colors.inputBackgroundColor }}
             >
               <TabsTrigger
                 value="all"
-                className="h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
+                className="flex-1 h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
                 style={{
                   backgroundColor:
                     activeTab === "all"
@@ -523,34 +614,34 @@ export function ManageResponsesPage() {
                 All
               </TabsTrigger>
               <TabsTrigger
-                value="new"
-                className="h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
+                value="pending-approvals"
+                className="flex-1 h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
                 style={{
                   backgroundColor:
-                    activeTab === "new"
+                    activeTab === "pending-approvals"
                       ? variables.colors.buttonDefaultBackgroundColor
                       : "#FFFFFF",
                   color:
-                    activeTab === "new"
+                    activeTab === "pending-approvals"
                       ? variables.colors.buttonDefaultTextColor
                       : variables.colors.inputTextColor,
                 }}
                 onMouseEnter={(e) => {
-                  if (activeTab !== "new") {
+                  if (activeTab !== "pending-approvals") {
                     e.currentTarget.style.backgroundColor = "#F3F4F6";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (activeTab !== "new") {
+                  if (activeTab !== "pending-approvals") {
                     e.currentTarget.style.backgroundColor = "#FFFFFF";
                   }
                 }}
               >
-                New
+                Pending Approvals
               </TabsTrigger>
               <TabsTrigger
                 value="approved"
-                className="h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
+                className="flex-1 h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
                 style={{
                   backgroundColor:
                     activeTab === "approved"
@@ -576,7 +667,7 @@ export function ManageResponsesPage() {
               </TabsTrigger>
               <TabsTrigger
                 value="rejected"
-                className="h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
+                className="flex-1 h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
                 style={{
                   backgroundColor:
                     activeTab === "rejected"
@@ -602,7 +693,7 @@ export function ManageResponsesPage() {
               </TabsTrigger>
               <TabsTrigger
                 value="sent-back"
-                className="h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
+                className="flex-1 h-10 px-4 rounded-md font-medium transition-all cursor-pointer"
                 style={{
                   backgroundColor:
                     activeTab === "sent-back"
@@ -671,6 +762,7 @@ export function ManageResponsesPage() {
               <RequestSection
                 requests={paginatedResponses}
                 startIndex={startIndex}
+                viewButtonText="View Response"
               />
               {totalPages > 1 && (
                 <div

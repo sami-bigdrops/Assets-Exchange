@@ -1,14 +1,13 @@
 export { AdminDashboard } from "./components/AdminDashboard";
-export { StatsCard } from "./components/StatsCard";
-export { PerformanceChart } from "./components/PerformanceChart";
+export { AdminPerformanceChart } from "./components/AdminPerformanceChart";
 export { Request } from "./components/Request";
 export { Response } from "./components/Response";
 export { ManageRequestsPage } from "./components/ManageRequestsPage";
 export { ManageResponsesPage } from "./components/ManageResponsesPage";
+export { ManageCreativesPage } from "./components/ManageCreativesPage";
 export { Advertiser } from "./components/Advertiser";
 export { Publisher } from "./components/Publisher";
 export { Offers } from "./components/Offers";
-export { EntityDataTable, EntityDataCard } from "./components/EntityDataTable";
 export { useAdminDashboardViewModel } from "./view-models/useAdminDashboardViewModel";
 export { useAdvertiserViewModel } from "./view-models/useAdvertiserViewModel";
 export { usePublisherViewModel } from "./view-models/usePublisherViewModel";

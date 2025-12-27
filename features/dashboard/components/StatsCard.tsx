@@ -1,11 +1,42 @@
-import { TrendingUp } from "lucide-react";
-import React from "react";
+import { TrendingUp, TrendingDown } from "lucide-react";
+import React, { useMemo } from "react";
 
 import { getVariables } from "@/components/_variables/variables";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-import type { AdminStats } from "../types/admin.types";
+import type { StatsCardProps } from "../types/dashboard.types";
+
+/**
+ * Format number in shorthand format if it exceeds 5 digits
+ * Examples:
+ * - 99999 -> "99,999" (no formatting, less than 5 digits)
+ * - 100000 -> "100K" (100 thousand)
+ * - 1000000 -> "10L" (10 lakhs = 1 million)
+ * - 10000000 -> "10M" (10 million = 1 crore)
+ */
+function formatNumberShorthand(num: number): string {
+  if (num < 100000) {
+    // Less than 5 digits, return with comma formatting
+    return num.toLocaleString();
+  }
+
+  if (num < 1000000) {
+    // 100,000 to 999,999 - format as K (thousands)
+    const thousands = num / 1000;
+    return `${thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)}K`;
+  }
+
+  if (num < 10000000) {
+    // 1,000,000 to 9,999,999 - format as L (lakhs)
+    const lakhs = num / 100000;
+    return `${lakhs % 1 === 0 ? lakhs.toFixed(0) : lakhs.toFixed(1)}L`;
+  }
+
+  // 10,000,000 and above - format as M (millions/crores)
+  const millions = num / 10000000;
+  return `${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}M`;
+}
 
 export function StatsCard({
   title,
@@ -13,9 +44,67 @@ export function StatsCard({
   icon: Icon,
   trend,
   historicalData,
-}: AdminStats) {
+}: StatsCardProps) {
   const variables = getVariables();
-  const TrendIcon = trend?.trendIconValue;
+
+  // Format the main value if it exceeds 5 digits
+  const formattedValue = useMemo(() => {
+    return formatNumberShorthand(value);
+  }, [value]);
+
+  // Calculate percentage change from yesterday
+  const calculatedTrend = useMemo(() => {
+    if (!historicalData || !trend) return trend;
+
+    // Find yesterday's value from historicalData
+    const yesterdayData = historicalData.find(
+      (item) => item.label === "Yesterday"
+    );
+
+    if (!yesterdayData) return trend;
+
+    // Parse yesterday's value (handle both string and number, including formatted values like "25k", "10.8k")
+    let yesterdayValue = 0;
+    if (typeof yesterdayData.value === "number") {
+      yesterdayValue = yesterdayData.value;
+    } else if (typeof yesterdayData.value === "string") {
+      const cleanedValue = yesterdayData.value.trim().toLowerCase();
+
+      // Handle "k" suffix (thousands)
+      if (cleanedValue.endsWith("k")) {
+        const numValue = parseFloat(cleanedValue.replace(/[^0-9.]/g, ""));
+        yesterdayValue = isNaN(numValue) ? 0 : numValue * 1000;
+      } else {
+        // Handle regular numbers
+        const numValue = parseFloat(cleanedValue.replace(/[^0-9.]/g, ""));
+        yesterdayValue = isNaN(numValue) ? 0 : numValue;
+      }
+    }
+
+    // Calculate percentage change
+    let percentageChange = 0;
+    let isPositive = true;
+
+    if (yesterdayValue === 0) {
+      // If yesterday was 0, show 100% increase if today > 0, otherwise 0%
+      percentageChange = value > 0 ? 100 : 0;
+      isPositive = value > 0;
+    } else {
+      percentageChange = ((value - yesterdayValue) / yesterdayValue) * 100;
+      isPositive = percentageChange >= 0;
+    }
+
+    // Round to nearest integer
+    const roundedPercentage = Math.round(Math.abs(percentageChange));
+
+    return {
+      ...trend,
+      textValue: `${roundedPercentage}%`,
+      trendIconValue: isPositive ? TrendingUp : TrendingDown,
+    };
+  }, [value, historicalData, trend]);
+
+  const TrendIcon = calculatedTrend?.trendIconValue;
   const isPositive = TrendIcon === TrendingUp;
 
   const getBackgroundColor = () => {
@@ -76,16 +165,16 @@ export function StatsCard({
             className="text-4xl xl:text-[2.5rem] font-medium font-inter"
             style={{ color: variables.colors.statsCardValueColor }}
           >
-            {value}
+            {formattedValue}
           </div>
 
-          {trend && (
+          {calculatedTrend && (
             <div className="flex flex-col items-center justify-center gap-1">
               <span
                 className="text-sm font-inter"
                 style={{ color: variables.colors.statsCardTrendTextColor }}
               >
-                {trend.trendTextValue}
+                {calculatedTrend.trendTextValue}
               </span>
               <div className="flex items-center justify-start gap-1">
                 {TrendIcon && (
@@ -106,7 +195,7 @@ export function StatsCard({
                       : variables.colors.statsCardTrendTextColorNegative,
                   }}
                 >
-                  {trend.textValue}
+                  {calculatedTrend.textValue}
                 </span>
               </div>
             </div>

@@ -23,17 +23,45 @@ export function useLoginViewModel() {
       });
 
       if (result.error) {
-        const errorMessage =
-          result.error.message ||
-          result.error.code ||
-          "Login failed. Please check your credentials.";
+        let errorMessage = "Login failed. Please check your credentials.";
+
+        if (result.error.code) {
+          switch (result.error.code) {
+            case "INVALID_EMAIL_OR_PASSWORD":
+            case "INVALID_CREDENTIALS":
+              errorMessage =
+                "Invalid email or password. Please check your credentials and try again.";
+              break;
+            case "USER_NOT_FOUND":
+              errorMessage = "No account found with this email address.";
+              break;
+            case "INVALID_PASSWORD":
+              errorMessage = "Incorrect password. Please try again.";
+              break;
+            case "EMAIL_NOT_VERIFIED":
+              errorMessage =
+                "Please verify your email address before signing in.";
+              break;
+            case "ACCOUNT_LOCKED":
+            case "TOO_MANY_ATTEMPTS":
+              errorMessage = "Too many login attempts. Please try again later.";
+              break;
+            default:
+              errorMessage = result.error.message || errorMessage;
+          }
+        } else if (result.error.message) {
+          errorMessage = result.error.message;
+        }
+
+        console.error("Login error:", result.error);
         setError(errorMessage);
         setIsLoading(false);
         return;
       }
 
       if (!result.data) {
-        setError("Login failed. No data received from server.");
+        console.error("Login failed: No data received");
+        setError("Login failed. Please try again.");
         setIsLoading(false);
         return;
       }
@@ -42,7 +70,7 @@ export function useLoginViewModel() {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("Login exception:", err);
       const errorMessage =
         err instanceof Error
           ? err.message
@@ -52,9 +80,14 @@ export function useLoginViewModel() {
     }
   };
 
+  const clearError = () => {
+    setError(null);
+  };
+
   return {
     handleLogin,
     isLoading,
     error,
+    clearError,
   };
 }

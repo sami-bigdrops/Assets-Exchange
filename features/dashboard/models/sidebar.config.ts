@@ -20,6 +20,12 @@ export const adminMenuConfig: SidebarMenuConfig = [
         href: "/dashboard",
       },
       {
+        id: "Creatives",
+        label: "Creatives",
+        icon: "FileText",
+        href: "/creatives",
+      },
+      {
         id: "manage-requests",
         label: "Manage Requests",
         icon: "ClipboardList",

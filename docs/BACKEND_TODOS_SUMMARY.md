@@ -214,6 +214,74 @@ TODOs:
 - Rate limiting
 - Security headers
 
+### 8. Notification System
+
+**Files:**
+
+- All components that show success/error messages
+- Frontend toast/notification components
+
+**Endpoints Required:**
+
+- `GET /api/notifications` - Get user notifications
+- `GET /api/notifications/unread-count` - Get unread count
+- `PATCH /api/notifications/:id/read` - Mark as read
+- `PATCH /api/notifications/read-all` - Mark all as read
+- `DELETE /api/notifications/:id` - Delete notification
+- `WebSocket /ws/notifications` - Real-time notifications
+
+**Key Features:**
+
+- In-app notifications for all user actions
+- Real-time notifications via WebSocket/SSE
+- Email notifications (optional)
+- Notification preferences
+- Notification history
+
+### 9. Error Tracking & Monitoring
+
+**Files:**
+
+- Error boundaries in frontend
+- All API error handling
+
+**Endpoints Required:**
+
+- `POST /api/admin/errors/log` - Log application errors
+- `GET /api/admin/errors` - Get error logs
+- `PATCH /api/admin/errors/:id/resolve` - Mark error as resolved
+- `GET /api/health` - Health check endpoint
+- `GET /api/metrics` - Metrics for monitoring
+
+**Key Features:**
+
+- Error logging and tracking
+- Error severity levels
+- Integration with Sentry/Datadog
+- Health check for monitoring
+- Metrics collection
+
+### 10. Real-time Updates
+
+**Files:**
+
+- `/features/admin/view-models/useOffersViewModel.ts`
+- `/features/admin/components/Offers.tsx`
+- `/features/admin/components/Advertiser.tsx`
+
+**Endpoints Required:**
+
+- `WebSocket /ws/updates` - Real-time entity updates
+- `SSE /api/updates/stream` - Alternative SSE endpoint
+
+**Key Features:**
+
+- Real-time offer updates
+- Real-time request/response status changes
+- Dashboard statistics updates
+- Bulk operation progress
+- API sync progress
+
 ---
 
 ## Priority Implementation Order

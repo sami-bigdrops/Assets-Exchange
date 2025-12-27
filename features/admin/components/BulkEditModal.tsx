@@ -61,10 +61,22 @@ import {
   Upload,
   File,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { getVariables } from "@/components/_variables";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -130,6 +142,7 @@ export function BulkEditModal({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [createdByFilter, setCreatedByFilter] =
     useState<CreatedByFilter>("All");
@@ -374,8 +387,17 @@ export function BulkEditModal({
     e.preventDefault();
 
     if (!validateForm()) {
+      toast.error("Validation failed", {
+        description: "Please fix the errors in the form before submitting.",
+      });
       return;
     }
+
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmDialog(false);
 
     try {
       setIsSubmitting(true);
@@ -445,22 +467,28 @@ export function BulkEditModal({
         const failedIds = response.results.failed
           .map((f) => f.offerId)
           .join(", ");
-        setError(
-          `Successfully updated ${response.updated} offer(s), but ${response.failed} failed: ${failedIds}`
-        );
+        const errorMessage = `Successfully updated ${response.updated} offer(s), but ${response.failed} failed: ${failedIds}`;
+        setError(errorMessage);
+        toast.warning("Partial success", {
+          description: errorMessage,
+        });
       } else {
         // Full success
+        toast.success("Bulk update successful", {
+          description: `Successfully updated ${response.updated} offer(s).`,
+        });
         onSuccess?.();
         onOpenChange(false);
       }
-
-      // Simulate API call for now (remove when backend is ready)
-      // await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      onSuccess?.();
-      onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update offers");
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Failed to update offers. Please try again.";
+      setError(errorMessage);
+      toast.error("Bulk update failed", {
+        description: errorMessage,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -618,7 +646,30 @@ export function BulkEditModal({
                             }`}
                           >
                             <span>Status</span>
-                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2">
+                              {statusFilter !== "All" && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setStatusFilter("All");
+                                  }}
+                                  className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                                  title="Clear Status"
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setStatusFilter("All");
+                                    }
+                                  }}
+                                >
+                                  <X className="h-3 w-3 text-gray-500" />
+                                </div>
+                              )}
+                              <ChevronRight className="h-4 w-4 text-gray-400" />
+                            </div>
                           </button>
                           <button
                             onClick={() => setActiveCategory("createdBy")}
@@ -629,7 +680,30 @@ export function BulkEditModal({
                             }`}
                           >
                             <span>Created by</span>
-                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2">
+                              {createdByFilter !== "All" && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCreatedByFilter("All");
+                                  }}
+                                  className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                                  title="Clear Created By"
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setCreatedByFilter("All");
+                                    }
+                                  }}
+                                >
+                                  <X className="h-3 w-3 text-gray-500" />
+                                </div>
+                              )}
+                              <ChevronRight className="h-4 w-4 text-gray-400" />
+                            </div>
                           </button>
                         </div>
 
@@ -1421,13 +1495,49 @@ export function BulkEditModal({
                     : variables.colors.buttonDefaultTextColor,
               }}
             >
-              {isSubmitting
-                ? "Applying..."
-                : `Apply to ${selectedOfferIds.size} Offer${selectedOfferIds.size !== 1 ? "s" : ""}`}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Applying...
+                </>
+              ) : (
+                `Apply to ${selectedOfferIds.size} Offer${selectedOfferIds.size !== 1 ? "s" : ""}`
+              )}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Bulk Update</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to update {selectedOfferIds.size} offer
+              {selectedOfferIds.size !== 1 ? "s" : ""}. This action cannot be
+              undone. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Applying...
+                </>
+              ) : (
+                "Confirm"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

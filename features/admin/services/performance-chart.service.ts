@@ -142,11 +142,12 @@
  * - 500: Database query error
  */
 
-import { getPerformanceChartDataByType } from "../models/performance-chart.model";
 import type {
   ComparisonType,
   PerformanceChartData,
-} from "../types/admin.types";
+} from "@/features/dashboard/types/dashboard.types";
+
+import { getPerformanceChartDataByType } from "../models/performance-chart.model";
 
 /**
  * TODO: BACKEND - Replace with API call

@@ -21,7 +21,7 @@
 import type {
   ComparisonType,
   PerformanceChartData,
-} from "../types/admin.types";
+} from "@/features/dashboard/types/dashboard.types";
 
 const generate24HourData = (): PerformanceChartData => {
   const data = [];

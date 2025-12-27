@@ -631,6 +631,8 @@ export function ManageCreativesPage() {
                 <RequestSection
                   requests={paginatedRequests}
                   startIndex={startIndex}
+                  viewButtonText="View Creative"
+                  showDownloadButton={true}
                 />
                 {totalPages > 1 && (
                   <div

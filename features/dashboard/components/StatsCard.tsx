@@ -5,7 +5,7 @@ import { getVariables } from "@/components/_variables/variables";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-import type { AdminStats } from "../types/admin.types";
+import type { StatsCardProps } from "../types/dashboard.types";
 
 /**
  * Format number in shorthand format if it exceeds 5 digits
@@ -44,7 +44,7 @@ export function StatsCard({
   icon: Icon,
   trend,
   historicalData,
-}: AdminStats) {
+}: StatsCardProps) {
   const variables = getVariables();
 
   // Format the main value if it exceeds 5 digits

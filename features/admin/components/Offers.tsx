@@ -80,13 +80,13 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { EntityDataTable, EntityDataCard } from "@/features/dashboard";
 
 import type { Offer as OfferType } from "../types/admin.types";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";
 
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 import { BulkEditModal } from "./BulkEditModal";
-import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { NewOfferManuallyModal } from "./NewOfferManuallyModal";
 import { EditDetailsModal } from "./OfferDetailsModal";
 

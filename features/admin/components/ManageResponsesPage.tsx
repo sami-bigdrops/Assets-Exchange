@@ -762,6 +762,7 @@ export function ManageResponsesPage() {
               <RequestSection
                 requests={paginatedResponses}
                 startIndex={startIndex}
+                viewButtonText="View Response"
               />
               {totalPages > 1 && (
                 <div

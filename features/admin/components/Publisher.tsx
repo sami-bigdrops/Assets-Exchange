@@ -54,13 +54,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { EntityDataTable, EntityDataCard } from "@/features/dashboard";
 
 import { managePublishers } from "../models/publisher.model";
 import type { Publisher as PublisherType } from "../types/admin.types";
 import { usePublisherViewModel } from "../view-models/usePublisherViewModel";
 
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
-import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type PlatformFilter =

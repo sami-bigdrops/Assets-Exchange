@@ -36,14 +36,15 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { EntityDataTable, EntityDataCard } from "@/features/dashboard";
 
 import { manageAdvertisers } from "../models/advertiser.model";
 import type { Advertiser as AdvertiserType } from "../types/admin.types";
 import { useAdvertiserViewModel } from "../view-models/useAdvertiserViewModel";
 
+
 import { AdvertiserDetailsModal } from "./AdvertiserDetailsModal";
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
-import { EntityDataTable, EntityDataCard } from "./EntityDataTable";
 import { NewAdvertiserManuallyModal } from "./NewAdvertiserManuallyModal";
 
 type StatusFilter = "Active" | "Inactive" | null;

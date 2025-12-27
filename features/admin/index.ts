@@ -5,6 +5,7 @@ export { Request } from "./components/Request";
 export { Response } from "./components/Response";
 export { ManageRequestsPage } from "./components/ManageRequestsPage";
 export { ManageResponsesPage } from "./components/ManageResponsesPage";
+export { ManageCreativesPage } from "./components/ManageCreativesPage";
 export { Advertiser } from "./components/Advertiser";
 export { Publisher } from "./components/Publisher";
 export { Offers } from "./components/Offers";

@@ -646,11 +646,6 @@ export function AdvertiserDetailsModal({
 
                 <div className="border-t pt-6">
                   <div className="space-y-6">
-                    <div>
-                      <h3 className="font-inter text-sm font-semibold text-foreground mb-4">
-                        Editable Fields
-                      </h3>
-                    </div>
                     <div className="space-y-1.5">
                       <Label
                         htmlFor="advPlatform"

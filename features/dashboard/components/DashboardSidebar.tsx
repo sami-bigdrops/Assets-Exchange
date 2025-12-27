@@ -9,6 +9,7 @@ import {
   ChartColumnIncreasing,
   Settings,
   Settings2,
+  FileText,
   MessageSquareReply,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const iconMap: Record<IconName, LucideIcon> = {
   ChartColumnIncreasing,
   Settings,
   Settings2,
+  FileText,
 };
 
 interface DashboardSidebarProps {

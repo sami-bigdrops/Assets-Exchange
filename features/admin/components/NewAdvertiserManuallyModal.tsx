@@ -29,18 +29,18 @@ interface NewAdvertiserManuallyModalProps {
 }
 
 /**
- * Generates incremental advertiser IDs in format M#### (e.g., M0001, M0002, M0003)
+ * Generates incremental advertiser IDs in format M#### (e.g., MA0001, MA0002, MA0003)
  *
  * Implementation:
  * 1. Fetches all existing advertisers
- * 2. Extracts numeric parts from IDs matching M#### pattern
+ * 2. Extracts numeric parts from IDs matching MA#### pattern
  * 3. Finds the highest number and increments by 1
- * 4. Formats as M#### with leading zeros (4 digits)
+ * 4. Formats as MA#### with leading zeros (4 digits)
  *
  * TODO: BACKEND - Move this logic to backend
  * - Backend should handle ID generation atomically to prevent race conditions
  * - Consider using database sequences or transactions for ID generation
- * - Handle ID exhaustion (what if all M#### are used? - up to M9999)
+ * - Handle ID exhaustion (what if all MA#### are used? - up to MA9999)
  */
 async function generateAdvertiserId(): Promise<string> {
   try {
@@ -51,7 +51,7 @@ async function generateAdvertiserId(): Promise<string> {
     // Extract numeric parts from existing advertiser IDs (format: M####)
     const existingNumbers = advertisers
       .map((adv) => {
-        const match = adv.id.match(/^M(\d+)$/);
+        const match = adv.id.match(/^MA(\d+)$/);
         return match ? parseInt(match[1], 10) : 0;
       })
       .filter((num) => num > 0);
@@ -60,12 +60,12 @@ async function generateAdvertiserId(): Promise<string> {
     const nextNumber =
       existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
 
-    // Format as M0001, M0002, etc. (4 digits with leading zeros)
-    return `M${nextNumber.toString().padStart(4, "0")}`;
+    // Format as MA0001, MA0002, etc. (4 digits with leading zeros)
+    return `MA${nextNumber.toString().padStart(4, "0")}`;
   } catch (error) {
-    // Fallback to M0001 if fetching fails
+    // Fallback to MA0001 if fetching fails
     console.error("Failed to generate advertiser ID:", error);
-    return "M0001";
+    return "MA0001";
   }
 }
 
@@ -150,7 +150,7 @@ export function NewAdvertiserManuallyModal({
    *    - Character restrictions (no special chars that could cause issues)
    *
    * 2. Advertiser ID:
-   *    - Required, format: M#### (M followed by exactly 4 digits)
+   *    - Required, format: MA#### (MA followed by exactly 4 digits)
    *    - Must be unique (check against existing advertisers)
    *    - Backend should validate uniqueness before creation
    *
@@ -185,8 +185,8 @@ export function NewAdvertiserManuallyModal({
 
     if (!formData.advertiserId.trim()) {
       errors.advertiserId = "Advertiser ID is required";
-    } else if (!/^M\d{4}$/.test(formData.advertiserId)) {
-      errors.advertiserId = "Advertiser ID must be in format M0001";
+    } else if (!/^MA\d{4}$/.test(formData.advertiserId)) {
+      errors.advertiserId = "Advertiser ID must be in format MA0001";
     }
 
     if (!formData.firstName.trim()) {
@@ -257,7 +257,7 @@ export function NewAdvertiserManuallyModal({
     }
   };
 
-  const handleGenerateAdvertiserId = async () => {
+  const _handleGenerateAdvertiserId = async () => {
     const newId = await generateAdvertiserId();
     updateFormField("advertiserId", newId);
   };
@@ -367,21 +367,6 @@ export function NewAdvertiserManuallyModal({
                       color: variables.colors.inputTextColor,
                     }}
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleGenerateAdvertiserId}
-                    disabled={isSubmitting}
-                    className="h-12 px-4 font-inter"
-                    style={{
-                      backgroundColor:
-                        variables.colors.buttonOutlineBackgroundColor,
-                      borderColor: variables.colors.buttonOutlineBorderColor,
-                      color: variables.colors.buttonOutlineTextColor,
-                    }}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
                 </div>
                 {validationErrors.advertiserId && (
                   <p className="text-sm text-destructive font-inter">

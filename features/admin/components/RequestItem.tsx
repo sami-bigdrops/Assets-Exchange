@@ -67,8 +67,16 @@ const getStatusLabel = (status: string, approvalStage: string) => {
     return "Fully Approved";
   }
 
+  if (normalizedStatus === "approved" && normalizedStage === "admin") {
+    return "Approved by Admin";
+  }
+
+  if (normalizedStatus === "pending" && normalizedStage === "admin") {
+    return "Pending";
+  }
+
   if (normalizedStatus === "pending" && normalizedStage === "advertiser") {
-    return "Pending Advertiser Approval";
+    return "Pending";
   }
 
   if (normalizedStatus === "rejected" && normalizedStage === "admin") {
@@ -110,7 +118,17 @@ const shouldShowActionButtons = (
   const normalizedStatus = status.toLowerCase();
   const normalizedStage = approvalStage.toLowerCase();
 
-  return normalizedStatus === "new" && normalizedStage === "admin";
+  // Show buttons for new requests awaiting admin review
+  if (normalizedStatus === "new" && normalizedStage === "admin") {
+    return true;
+  }
+
+  // Show buttons for pending requests with admin (Pending Approvals tab - 2+ days old)
+  if (normalizedStatus === "pending" && normalizedStage === "admin") {
+    return true;
+  }
+
+  return false;
 };
 
 const shouldShowRejectButtonOnly = (

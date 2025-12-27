@@ -1,7 +1,7 @@
 "use client";
 
-import { Upload, File, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { File, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -25,7 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
+import { getAllAdvertisers } from "../services/advertiser.service";
+import type { Advertiser } from "../types/admin.types";
 import {
   useNewOfferManuallyViewModel,
   type NewOfferFormData,
@@ -35,6 +37,46 @@ interface NewOfferManuallyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: (offerId: string) => void;
+}
+
+/**
+ * Generates incremental offer IDs in format MO#### (e.g., MO0001, MO0002, MO0003)
+ *
+ * Implementation:
+ * 1. Fetches all existing offers
+ * 2. Extracts numeric parts from IDs matching MO#### pattern
+ * 3. Finds the highest number and increments by 1
+ * 4. Formats as MO#### with leading zeros (4 digits)
+ *
+ * TODO: BACKEND - Move this logic to backend
+ * - Backend should handle ID generation atomically to prevent race conditions
+ * - Consider using database sequences or transactions for ID generation
+ * - Handle ID exhaustion (what if all MO#### are used? - up to MO9999)
+ */
+async function generateOfferId(): Promise<string> {
+  try {
+    const { getAllOffers } = await import("../services/offers.service");
+    const offers = await getAllOffers();
+
+    // Extract numeric parts from existing offer IDs (format: O####)
+    const existingNumbers = offers
+      .map((offer) => {
+        const match = offer.id.match(/^MO(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((num) => num > 0);
+
+    // Find the highest number and increment by 1
+    const nextNumber =
+      existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+
+    // Format as MO0001, MO0002, etc. (4 digits with leading zeros)
+    return `MO${nextNumber.toString().padStart(4, "0")}`;
+  } catch (error) {
+    // Fallback to MO0001 if fetching fails
+    console.error("Failed to generate offer ID:", error);
+    return "MO0001";
+  }
 }
 
 export function NewOfferManuallyModal({
@@ -65,24 +107,63 @@ export function NewOfferManuallyModal({
   const [validationErrors, setValidationErrors] = useState<
     Partial<Record<keyof NewOfferFormData, string>>
   >({});
+  const [advertisers, setAdvertisers] = useState<Advertiser[]>([]);
+  const [isLoadingAdvertisers, setIsLoadingAdvertisers] = useState(false);
+  const [advertiserSearchQuery, setAdvertiserSearchQuery] = useState("");
+  const [advertiserSelectOpen, setAdvertiserSelectOpen] = useState(false);
+
+  const filteredAdvertisers = useMemo(() => {
+    if (!advertiserSearchQuery.trim()) {
+      return advertisers;
+    }
+    const query = advertiserSearchQuery.toLowerCase();
+    return advertisers.filter(
+      (advertiser) =>
+        advertiser.id.toLowerCase().includes(query) ||
+        advertiser.advertiserName.toLowerCase().includes(query)
+    );
+  }, [advertisers, advertiserSearchQuery]);
+
+  useEffect(() => {
+    const fetchAdvertisers = async () => {
+      try {
+        setIsLoadingAdvertisers(true);
+        const data = await getAllAdvertisers();
+        setAdvertisers(data);
+      } catch (error) {
+        console.error("Failed to fetch advertisers:", error);
+        setAdvertisers([]);
+      } finally {
+        setIsLoadingAdvertisers(false);
+      }
+    };
+
+    if (open) {
+      fetchAdvertisers();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open) {
       reset();
-      setFormData({
-        offerId: "",
-        offerName: "",
-        advertiserId: "",
-        advertiserName: "",
-        status: "Active",
-        visibility: "Public",
-        brandGuidelinesType: "url",
-        brandGuidelinesUrl: "",
-        brandGuidelinesFile: null,
-        brandGuidelinesText: "",
-        brandGuidelinesNotes: "",
+      generateOfferId().then((newOfferId) => {
+        setFormData({
+          offerId: newOfferId,
+          offerName: "",
+          advertiserId: "",
+          advertiserName: "",
+          status: "Active",
+          visibility: "Public",
+          brandGuidelinesType: "url",
+          brandGuidelinesUrl: "",
+          brandGuidelinesFile: null,
+          brandGuidelinesText: "",
+          brandGuidelinesNotes: "",
+        });
       });
       setValidationErrors({});
+      setAdvertiserSearchQuery("");
+      setAdvertiserSelectOpen(false);
     }
   }, [open, reset]);
 
@@ -91,18 +172,16 @@ export function NewOfferManuallyModal({
 
     if (!formData.offerId.trim()) {
       errors.offerId = "Offer ID is required";
+    } else if (!/^MO\d{4}$/.test(formData.offerId)) {
+      errors.offerId = "Offer ID must be in format MO0001";
     }
 
     if (!formData.offerName.trim()) {
       errors.offerName = "Offer name is required";
     }
 
-    if (!formData.advertiserId.trim()) {
-      errors.advertiserId = "Advertiser ID is required";
-    }
-
-    if (!formData.advertiserName.trim()) {
-      errors.advertiserName = "Advertiser name is required";
+    if (!formData.advertiserId.trim() || !formData.advertiserName.trim()) {
+      errors.advertiserId = "Advertiser is required";
     }
 
     setValidationErrors(errors);
@@ -218,7 +297,7 @@ export function NewOfferManuallyModal({
 
           <DialogBody className="min-w-0">
             <div className="space-y-4 w-full">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="offerId" className="font-inter text-sm">
                     Offer ID <span className="text-destructive">*</span>
@@ -226,8 +305,13 @@ export function NewOfferManuallyModal({
                   <Input
                     id="offerId"
                     value={formData.offerId}
-                    onChange={(e) => updateFormField("offerId", e.target.value)}
-                    placeholder="Enter offer ID"
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase();
+                      if (value === "" || /^MO\d{0,4}$/.test(value)) {
+                        updateFormField("offerId", value);
+                      }
+                    }}
+                    placeholder="MO0001"
                     disabled={isSubmitting}
                     aria-invalid={!!validationErrors.offerId}
                     className="h-12 font-inter offer-modal-input"
@@ -272,60 +356,6 @@ export function NewOfferManuallyModal({
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="offerName" className="font-inter text-sm">
-                  Offer Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="offerName"
-                  value={formData.offerName}
-                  onChange={(e) => updateFormField("offerName", e.target.value)}
-                  placeholder="Enter offer name"
-                  disabled={isSubmitting}
-                  aria-invalid={!!validationErrors.offerName}
-                  className="h-12 font-inter offer-modal-input"
-                  style={{
-                    backgroundColor: variables.colors.inputBackgroundColor,
-                    borderColor: variables.colors.inputBorderColor,
-                    color: variables.colors.inputTextColor,
-                  }}
-                />
-                {validationErrors.offerName && (
-                  <p className="text-sm text-destructive font-inter">
-                    {validationErrors.offerName}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="advertiserId" className="font-inter text-sm">
-                    Advertiser ID <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="advertiserId"
-                    value={formData.advertiserId}
-                    onChange={(e) =>
-                      updateFormField("advertiserId", e.target.value)
-                    }
-                    placeholder="Enter advertiser ID"
-                    disabled={isSubmitting}
-                    aria-invalid={!!validationErrors.advertiserId}
-                    className="h-12 font-inter offer-modal-input"
-                    style={{
-                      backgroundColor: variables.colors.inputBackgroundColor,
-                      borderColor: variables.colors.inputBorderColor,
-                      color: variables.colors.inputTextColor,
-                    }}
-                  />
-                  {validationErrors.advertiserId && (
-                    <p className="text-sm text-destructive font-inter">
-                      {validationErrors.advertiserId}
-                    </p>
-                  )}
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="visibility" className="font-inter text-sm">
                     Visibility
@@ -359,18 +389,16 @@ export function NewOfferManuallyModal({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="advertiserName" className="font-inter text-sm">
-                  Advertiser Name <span className="text-destructive">*</span>
+                <Label htmlFor="offerName" className="font-inter text-sm">
+                  Offer Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="advertiserName"
-                  value={formData.advertiserName}
-                  onChange={(e) =>
-                    updateFormField("advertiserName", e.target.value)
-                  }
-                  placeholder="Enter advertiser name"
+                  id="offerName"
+                  value={formData.offerName}
+                  onChange={(e) => updateFormField("offerName", e.target.value)}
+                  placeholder="Enter offer name"
                   disabled={isSubmitting}
-                  aria-invalid={!!validationErrors.advertiserName}
+                  aria-invalid={!!validationErrors.offerName}
                   className="h-12 font-inter offer-modal-input"
                   style={{
                     backgroundColor: variables.colors.inputBackgroundColor,
@@ -378,9 +406,139 @@ export function NewOfferManuallyModal({
                     color: variables.colors.inputTextColor,
                   }}
                 />
-                {validationErrors.advertiserName && (
+                {validationErrors.offerName && (
                   <p className="text-sm text-destructive font-inter">
-                    {validationErrors.advertiserName}
+                    {validationErrors.offerName}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="advertiser" className="font-inter text-sm">
+                  Advertiser <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  open={advertiserSelectOpen}
+                  onOpenChange={(open) => {
+                    setAdvertiserSelectOpen(open);
+                    if (!open) {
+                      setAdvertiserSearchQuery("");
+                    }
+                  }}
+                  value={formData.advertiserId}
+                  onValueChange={(value) => {
+                    const selectedAdvertiser = advertisers.find(
+                      (adv) => adv.id === value
+                    );
+                    if (selectedAdvertiser) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        advertiserId: selectedAdvertiser.id,
+                        advertiserName: selectedAdvertiser.advertiserName,
+                      }));
+                      setAdvertiserSearchQuery("");
+                      setAdvertiserSelectOpen(false);
+                      setValidationErrors((prev) => ({
+                        ...prev,
+                        advertiserId: undefined,
+                        advertiserName: undefined,
+                      }));
+                    }
+                  }}
+                  disabled={isSubmitting || isLoadingAdvertisers}
+                >
+                  <SelectTrigger
+                    id="advertiser"
+                    className="w-full h-12! font-inter offer-modal-select"
+                    style={{
+                      backgroundColor: variables.colors.inputBackgroundColor,
+                      borderColor: variables.colors.inputBorderColor,
+                      color: variables.colors.inputTextColor,
+                      height: "3rem",
+                    }}
+                  >
+                    <SelectValue placeholder="Select advertiser...">
+                      {formData.advertiserId && formData.advertiserName
+                        ? `${formData.advertiserId} - ${formData.advertiserName}`
+                        : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent
+                    className="max-h-[400px]"
+                    style={{
+                      backgroundColor: variables.colors.inputBackgroundColor,
+                      borderColor: variables.colors.inputBorderColor,
+                    }}
+                  >
+                    <div
+                      className="p-2 border-b"
+                      style={{ borderColor: variables.colors.inputBorderColor }}
+                    >
+                      <Input
+                        placeholder="Search by ID or name..."
+                        value={advertiserSearchQuery}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setAdvertiserSearchQuery(e.target.value);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className="h-10 font-inter"
+                        style={{
+                          backgroundColor:
+                            variables.colors.inputBackgroundColor,
+                          borderColor: variables.colors.inputBorderColor,
+                          color: variables.colors.inputTextColor,
+                        }}
+                      />
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {isLoadingAdvertisers ? (
+                        <div
+                          className="py-6 text-center text-sm font-inter px-2"
+                          style={{ color: variables.colors.inputTextColor }}
+                        >
+                          Loading advertisers...
+                        </div>
+                      ) : filteredAdvertisers.length === 0 ? (
+                        <div
+                          className="py-6 text-center text-sm font-inter px-2"
+                          style={{ color: variables.colors.inputTextColor }}
+                        >
+                          No advertiser found.
+                        </div>
+                      ) : (
+                        filteredAdvertisers.map((advertiser) => (
+                          <SelectItem
+                            key={advertiser.id}
+                            value={advertiser.id}
+                            className="font-inter"
+                          >
+                            <span
+                              className="font-semibold"
+                              style={{ color: variables.colors.inputTextColor }}
+                            >
+                              {advertiser.id}
+                            </span>
+                            <span
+                              className="ml-2"
+                              style={{
+                                color: variables.colors.descriptionColor,
+                              }}
+                            >
+                              - {advertiser.advertiserName}
+                            </span>
+                          </SelectItem>
+                        ))
+                      )}
+                    </div>
+                  </SelectContent>
+                </Select>
+                {(validationErrors.advertiserId ||
+                  validationErrors.advertiserName) && (
+                  <p className="text-sm text-destructive font-inter">
+                    {validationErrors.advertiserId ||
+                      validationErrors.advertiserName}
                   </p>
                 )}
               </div>
@@ -778,7 +936,10 @@ export function NewOfferManuallyModal({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="brandGuidelinesNotes" className="font-inter text-sm">
+                  <Label
+                    htmlFor="brandGuidelinesNotes"
+                    className="font-inter text-sm"
+                  >
                     Brand Guidelines Notes
                   </Label>
                   <Textarea
@@ -801,11 +962,11 @@ export function NewOfferManuallyModal({
               </div>
             </div>
 
-              {error && (
-                <div className="rounded-md bg-destructive/10 p-3">
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
+            {error && (
+              <div className="rounded-md bg-destructive/10 p-3">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
           </DialogBody>
 
           <DialogFooter className="flex flex-col gap-3 sm:flex-row sm:justify-between">

@@ -144,13 +144,15 @@ export async function getRecentPublisherRequests(
  * - status='approved' AND approvalStage='completed' (advertiser approved)
  * - status='rejected' AND approvalStage='advertiser' (advertiser rejected)
  *
- * EXCLUDE:
- * - status='sent-back' AND approvalStage='advertiser' (these go to /requests page)
+ * INCLUDES:
+ * - status='pending' AND approvalStage='advertiser' (awaiting advertiser action)
+ * - status='approved' AND approvalStage='completed' (advertiser approved)
+ * - status='rejected' AND approvalStage='advertiser' (advertiser rejected)
+ * - status='sent-back' AND approvalStage='advertiser' (sent back by advertiser - shows in "Sent Back" tab)
  *
  * SQL Query Example:
  * SELECT * FROM creative_requests
  * WHERE approval_stage IN ('advertiser', 'completed')
- *   AND NOT (status = 'sent-back' AND approval_stage = 'advertiser')
  * ORDER BY submitted_at DESC
  *
  * Note: Much cleaner with unified model!
@@ -159,12 +161,10 @@ export async function getAllAdvertiserResponses(): Promise<Request[]> {
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   // Filter requests that are in advertiser stage or completed
-  // but exclude sent-back items (they appear in /requests page)
+  // Includes sent-back items (they appear in "Sent Back" tab of response page)
   return creativeRequests.filter(
     (req) =>
-      (req.approvalStage === "advertiser" ||
-        req.approvalStage === "completed") &&
-      !(req.status === "sent-back" && req.approvalStage === "advertiser")
+      req.approvalStage === "advertiser" || req.approvalStage === "completed"
   );
 }
 

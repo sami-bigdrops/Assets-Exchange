@@ -90,6 +90,82 @@ export const creativeRequests: Request[] = [
     approvalStage: "admin",
   },
 
+  // ============ PENDING WITH ADMIN (2+ Days Old - Shows in Requests "Pending Approvals" Tab) ============
+  {
+    id: "req-16",
+    date: "20th December 2024",
+    offerId: "5016",
+    offerName:
+      "FINANCE - INVESTMENT - [Retirement Plans] - [US/CA] - [Email] - [Business Hours]",
+    advertiserName: "Fidelity Investments",
+    affiliateId: "AFF-8916",
+    priority: "High Priority",
+    clientId: "CLI-1016",
+    clientName: "Financial Publishers Network",
+    creativeType: "Email",
+    creativeCount: 3,
+    fromLinesCount: 2,
+    subjectLinesCount: 3,
+    status: "pending",
+    approvalStage: "admin",
+  },
+  {
+    id: "req-17",
+    date: "19th December 2024",
+    offerId: "5017",
+    offerName:
+      "HEALTHCARE - TELEMEDICINE - [Virtual Consultations] - [US] - [Email/Mobile] - [All Days]",
+    advertiserName: "Teladoc Health",
+    affiliateId: "AFF-8917",
+    priority: "Medium Priority",
+    clientId: "CLI-1017",
+    clientName: "Health Media Partners",
+    creativeType: "Email",
+    creativeCount: 2,
+    fromLinesCount: 2,
+    subjectLinesCount: 2,
+    status: "pending",
+    approvalStage: "admin",
+  },
+
+  // ============ APPROVED BY ADMIN (Shows in Requests "Approved" Tab) ============
+  {
+    id: "req-18",
+    date: "18th December 2024",
+    offerId: "5018",
+    offerName:
+      "EDUCATION - ONLINE LEARNING - [Professional Courses] - [Global] - [Email] - [All Days]",
+    advertiserName: "Coursera Partners",
+    affiliateId: "AFF-8918",
+    priority: "Medium Priority",
+    clientId: "CLI-1018",
+    clientName: "Education Publishers Hub",
+    creativeType: "Email",
+    creativeCount: 4,
+    fromLinesCount: 3,
+    subjectLinesCount: 4,
+    status: "approved",
+    approvalStage: "admin",
+  },
+  {
+    id: "req-19",
+    date: "17th December 2024",
+    offerId: "5019",
+    offerName:
+      "FOOD - DELIVERY - [Restaurant Partners] - [US/CA/UK] - [Mobile/Email] - [All Days]",
+    advertiserName: "DoorDash for Business",
+    affiliateId: "AFF-8919",
+    priority: "High Priority",
+    clientId: "CLI-1019",
+    clientName: "Food Service Publishers",
+    creativeType: "Mobile",
+    creativeCount: 5,
+    fromLinesCount: 0,
+    subjectLinesCount: 0,
+    status: "approved",
+    approvalStage: "admin",
+  },
+
   // ============ REQUESTS FORWARDED TO ADVERTISER (Admin Approved) ============
   {
     id: "req-4",
@@ -240,6 +316,44 @@ export const creativeRequests: Request[] = [
     subjectLinesCount: 0,
     status: "rejected",
     approvalStage: "advertiser",
+  },
+
+  // ============ SENT BACK TO ADMIN (Shows in Requests "Sent Back" Tab) ============
+  {
+    id: "req-20",
+    date: "11th December 2024",
+    offerId: "5020",
+    offerName:
+      "FITNESS - WELLNESS - [Gym Memberships] - [US/CA] - [Email/Social] - [All Days]",
+    advertiserName: "Planet Fitness Affiliates",
+    affiliateId: "AFF-8920",
+    priority: "Medium Priority",
+    clientId: "CLI-1020",
+    clientName: "Fitness Publishers Network",
+    creativeType: "Email",
+    creativeCount: 3,
+    fromLinesCount: 2,
+    subjectLinesCount: 3,
+    status: "sent-back",
+    approvalStage: "admin",
+  },
+  {
+    id: "req-21",
+    date: "9th December 2024",
+    offerId: "5021",
+    offerName:
+      "INSURANCE - AUTO - [Car Insurance Quotes] - [US] - [Email/Display] - [All Days]",
+    advertiserName: "Geico Affiliates",
+    affiliateId: "AFF-8921",
+    priority: "High Priority",
+    clientId: "CLI-1021",
+    clientName: "Insurance Media Partners",
+    creativeType: "Email",
+    creativeCount: 2,
+    fromLinesCount: 2,
+    subjectLinesCount: 2,
+    status: "sent-back",
+    approvalStage: "admin",
   },
 
   // ============ SENT BACK BY ADVERTISER (Needs admin reconsideration) ============

@@ -6,22 +6,23 @@
  * This page shows creative requests from the ADMIN's perspective.
  * It displays the SAME creative requests in different states:
  *
- * TABS BREAKDOWN:
+ * TABS BREAKDOWN (ADMIN ACTIONS):
  * - All: Every creative request in the system
  * - New: Requests awaiting admin review (status='new', approvalStage='admin')
- * - Pending Approvals: Forwarded to advertiser (status='pending', approvalStage='advertiser')
- * - Approved: Both admin & advertiser approved (status='approved', approvalStage='completed')
- * - Rejected: Rejected by either party
- * - Sent Back: Advertiser returned for reconsideration (status='sent-back', approvalStage='advertiser')
+ * - Pending Approvals: Admin actions required - Requests with status='pending' and approvalStage='admin'
+ *   where 2+ days have passed since submission date (admin needs to review/approve)
+ * - Approved: Approved by admin (status='approved', approvalStage='admin') - Admin has approved these requests
+ * - Rejected: Rejected by admin (status='rejected', approvalStage='admin')
+ * - Sent Back: Advertiser returned for reconsideration (status='sent-back', approvalStage='admin')
+ *   - Admin previously approved
+ *   - Were forwarded to advertiser
+ *   - Advertiser sent back for reconsideration
+ *   - Now need admin to review again
  *
- * KEY POINT: The "Sent Back" tab shows requests that:
- * - Admin previously approved
- * - Were forwarded to advertiser
- * - Advertiser sent back for reconsideration
- * - Now need admin to review again
- *
+ * UNIFIED DATA MODEL:
  * This is NOT a separate "response" entity - it's the SAME creative request
- * that has cycled back to admin for another review.
+ * that transitions through states. All tabs show the SAME unified data source,
+ * just filtered by different status/approvalStage combinations for admin actions.
  */
 
 "use client";
@@ -153,7 +154,61 @@ export function ManageRequestsPage() {
     let filtered = [...requests];
 
     if (activeTab !== "all") {
-      filtered = filtered.filter((request) => request.status === activeTab);
+      if (activeTab === "pending") {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        // Pending Approvals: Admin actions required
+        // Show requests that need admin review (approvalStage='admin') and have been pending 2+ days
+        filtered = filtered.filter((request) => {
+          if (
+            request.status !== "pending" ||
+            request.approvalStage?.toLowerCase() !== "admin"
+          ) {
+            return false;
+          }
+
+          const submissionDate = parseDate(request.date);
+          submissionDate.setHours(0, 0, 0, 0);
+
+          const daysDiff = Math.floor(
+            (now.getTime() - submissionDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+
+          return daysDiff >= 2;
+        });
+      } else if (activeTab === "rejected") {
+        // Rejected by admin
+        filtered = filtered.filter(
+          (request) =>
+            request.status === "rejected" &&
+            request.approvalStage?.toLowerCase() === "admin"
+        );
+      } else if (activeTab === "sent-back") {
+        // Sent back to admin for reconsideration
+        filtered = filtered.filter(
+          (request) =>
+            request.status === "sent-back" &&
+            request.approvalStage?.toLowerCase() === "admin"
+        );
+      } else if (activeTab === "new") {
+        // New requests awaiting admin review
+        filtered = filtered.filter(
+          (request) =>
+            request.status === "new" &&
+            request.approvalStage?.toLowerCase() === "admin"
+        );
+      } else if (activeTab === "approved") {
+        // Approved by admin (admin has approved, forwarded to advertiser)
+        filtered = filtered.filter(
+          (request) =>
+            request.status === "approved" &&
+            request.approvalStage?.toLowerCase() === "admin"
+        );
+      } else {
+        // Other statuses - filter by status
+        filtered = filtered.filter((request) => request.status === activeTab);
+      }
     }
 
     if (priorityFilter !== "all") {
@@ -185,12 +240,24 @@ export function ManageRequestsPage() {
         case "date-desc": {
           const aDate = parseDate(a.date);
           const bDate = parseDate(b.date);
-          return bDate.getTime() - aDate.getTime();
+          const aTime = aDate.getTime();
+          const bTime = bDate.getTime();
+          // Handle invalid dates by putting them at the end
+          if (isNaN(aTime) && isNaN(bTime)) return 0;
+          if (isNaN(aTime)) return 1;
+          if (isNaN(bTime)) return -1;
+          return bTime - aTime;
         }
         case "date-asc": {
           const aDate = parseDate(a.date);
           const bDate = parseDate(b.date);
-          return aDate.getTime() - bDate.getTime();
+          const aTime = aDate.getTime();
+          const bTime = bDate.getTime();
+          // Handle invalid dates by putting them at the end
+          if (isNaN(aTime) && isNaN(bTime)) return 0;
+          if (isNaN(aTime)) return 1;
+          if (isNaN(bTime)) return -1;
+          return aTime - bTime;
         }
         case "priority-high": {
           const aPriority = getPriorityValue(a.priority);
@@ -360,7 +427,30 @@ export function ManageRequestsPage() {
                       }`}
                     >
                       <span>Sort By</span>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2">
+                        {sortBy !== "date-desc" && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSortBy("date-desc");
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                            title="Clear Sort By"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSortBy("date-desc");
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 text-gray-500" />
+                          </div>
+                        )}
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
                     </button>
                     <button
                       onClick={() => setActiveCategory("priority")}
@@ -371,7 +461,30 @@ export function ManageRequestsPage() {
                       }`}
                     >
                       <span>Priority</span>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2">
+                        {priorityFilter !== "all" && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPriorityFilter("all");
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                            title="Clear Priority"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setPriorityFilter("all");
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 text-gray-500" />
+                          </div>
+                        )}
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
                     </button>
                   </div>
 

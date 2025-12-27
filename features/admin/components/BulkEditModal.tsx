@@ -618,7 +618,30 @@ export function BulkEditModal({
                             }`}
                           >
                             <span>Status</span>
-                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2">
+                              {statusFilter !== "All" && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setStatusFilter("All");
+                                  }}
+                                  className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                                  title="Clear Status"
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setStatusFilter("All");
+                                    }
+                                  }}
+                                >
+                                  <X className="h-3 w-3 text-gray-500" />
+                                </div>
+                              )}
+                              <ChevronRight className="h-4 w-4 text-gray-400" />
+                            </div>
                           </button>
                           <button
                             onClick={() => setActiveCategory("createdBy")}
@@ -629,7 +652,30 @@ export function BulkEditModal({
                             }`}
                           >
                             <span>Created by</span>
-                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2">
+                              {createdByFilter !== "All" && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCreatedByFilter("All");
+                                  }}
+                                  className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                                  title="Clear Created By"
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setCreatedByFilter("All");
+                                    }
+                                  }}
+                                >
+                                  <X className="h-3 w-3 text-gray-500" />
+                                </div>
+                              )}
+                              <ChevronRight className="h-4 w-4 text-gray-400" />
+                            </div>
                           </button>
                         </div>
 

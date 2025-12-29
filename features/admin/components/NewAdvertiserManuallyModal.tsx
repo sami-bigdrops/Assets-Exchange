@@ -1,8 +1,10 @@
 "use client";
 
-import { Loader2, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
@@ -125,6 +127,7 @@ export function NewAdvertiserManuallyModal({
   const [validationErrors, setValidationErrors] = useState<
     Partial<Record<keyof NewAdvertiserFormData, string>>
   >({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const hasUnsavedChanges = useMemo(() => {
     if (!initialFormData) return false;
@@ -257,19 +260,25 @@ export function NewAdvertiserManuallyModal({
   };
 
   const handleOpenChange = useCallback(
-    (open: boolean) => {
+    async (open: boolean) => {
       if (isSubmitting) {
         return;
       }
 
       if (!open && hasUnsavedChanges) {
-        if (
-          window.confirm(
-            "You have unsaved changes. Are you sure you want to close?"
-          )
-        ) {
-          setInitialFormData(null);
-          onOpenChange(false);
+        const confirmed = await confirmDialog({
+          title: "Unsaved Changes",
+          description: "You have unsaved changes. Are you sure you want to close?",
+          confirmText: "Close",
+          cancelText: "Cancel",
+          variant: "default",
+          onConfirm: () => {
+            setInitialFormData(null);
+            onOpenChange(false);
+          },
+        });
+        if (!confirmed) {
+          return;
         }
       } else if (!open) {
         onOpenChange(false);
@@ -508,23 +517,41 @@ export function NewAdvertiserManuallyModal({
                   Password <span className="text-destructive">*</span>
                 </Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) =>
-                      updateFormField("password", e.target.value)
-                    }
-                    placeholder="Enter password (min 8 characters)"
-                    disabled={isSubmitting}
-                    aria-invalid={!!validationErrors.password}
-                    className="h-12 font-inter advertiser-modal-input flex-1"
-                    style={{
-                      backgroundColor: variables.colors.inputBackgroundColor,
-                      borderColor: variables.colors.inputBorderColor,
-                      color: variables.colors.inputTextColor,
-                    }}
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) =>
+                        updateFormField("password", e.target.value)
+                      }
+                      placeholder="Enter password (min 8 characters)"
+                      disabled={isSubmitting}
+                      aria-invalid={!!validationErrors.password}
+                      className="h-12 font-inter advertiser-modal-input pr-10"
+                      style={{
+                        backgroundColor: variables.colors.inputBackgroundColor,
+                        borderColor: variables.colors.inputBorderColor,
+                        color: variables.colors.inputTextColor,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      disabled={isSubmitting}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100 transition-colors"
+                      style={{
+                        color: variables.colors.descriptionColor,
+                      }}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"

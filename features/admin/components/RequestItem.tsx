@@ -22,6 +22,8 @@ import { ChevronDown, ChevronUp, Download, Loader2 } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+
 import { getVariables } from "@/components/_variables/variables";
 import {
   AlertDialog,
@@ -236,16 +238,22 @@ export function RequestItem({
 
   // Handle popover close with warning
   const handleRejectPopoverClose = useCallback(
-    (open: boolean) => {
+    async (open: boolean) => {
       if (!open && hasUnsavedRejectComments) {
-        if (
-          window.confirm(
-            "You have unsaved comments. Are you sure you want to close?"
-          )
-        ) {
-          setRejectPopoverOpen(false);
-          setRejectComments("");
-          setError(null);
+        const confirmed = await confirmDialog({
+          title: "Unsaved Comments",
+          description: "You have unsaved comments. Are you sure you want to close?",
+          confirmText: "Close",
+          cancelText: "Cancel",
+          variant: "default",
+          onConfirm: () => {
+            setRejectPopoverOpen(false);
+            setRejectComments("");
+            setError(null);
+          },
+        });
+        if (!confirmed) {
+          return;
         }
       } else {
         setRejectPopoverOpen(open);
@@ -259,16 +267,22 @@ export function RequestItem({
   );
 
   const handleSendBackPopoverClose = useCallback(
-    (open: boolean) => {
+    async (open: boolean) => {
       if (!open && hasUnsavedSendBackComments) {
-        if (
-          window.confirm(
-            "You have unsaved comments. Are you sure you want to close?"
-          )
-        ) {
-          setSendBackPopoverOpen(false);
-          setSendBackComments("");
-          setError(null);
+        const confirmed = await confirmDialog({
+          title: "Unsaved Comments",
+          description: "You have unsaved comments. Are you sure you want to close?",
+          confirmText: "Close",
+          cancelText: "Cancel",
+          variant: "default",
+          onConfirm: () => {
+            setSendBackPopoverOpen(false);
+            setSendBackComments("");
+            setError(null);
+          },
+        });
+        if (!confirmed) {
+          return;
         }
       } else {
         setSendBackPopoverOpen(open);

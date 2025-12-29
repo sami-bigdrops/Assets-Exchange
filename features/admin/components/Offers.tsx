@@ -80,7 +80,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { EntityDataTable, EntityDataCard } from "@/features/dashboard";
+import {
+  EntityDataTable,
+  EntityDataCard,
+} from "@/features/dashboard/components/EntityDataTable";
 
 import type { Offer as OfferType } from "../types/admin.types";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";

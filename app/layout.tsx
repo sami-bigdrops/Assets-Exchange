@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { getVariables } from "@/components/_variables/variables";
 import { OfflineDetector } from "@/components/offline-detector";
+import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { Toaster } from "@/components/ui/sonner";
 
 const variables = getVariables();
@@ -34,6 +35,7 @@ export default function RootLayout({
           {children}
         </div>
         <Toaster position="top-right" richColors />
+        <ConfirmDialogProvider />
       </body>
     </html>
   );

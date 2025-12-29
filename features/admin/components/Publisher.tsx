@@ -54,7 +54,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { EntityDataTable, EntityDataCard } from "@/features/dashboard";
+import {
+  EntityDataTable,
+  EntityDataCard,
+} from "@/features/dashboard/components/EntityDataTable";
 
 import { managePublishers } from "../models/publisher.model";
 import type { Publisher as PublisherType } from "../types/admin.types";

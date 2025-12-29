@@ -142,3 +142,46 @@ body {
     border-color: oklch(0.922 0 0) !important;
   }
 }
+
+/* Enhanced Alert Dialog Styling */
+[data-slot="alert-dialog-content"] {
+  animation-duration: 300ms !important;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-slot="alert-dialog-content"]:focus-visible {
+  outline: none !important;
+}
+
+/* Smooth button transitions */
+[data-slot="alert-dialog-action"],
+[data-slot="alert-dialog-cancel"] {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  will-change: transform, background-color, box-shadow;
+}
+
+[data-slot="alert-dialog-action"]:focus-visible,
+[data-slot="alert-dialog-cancel"]:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(44, 145, 204, 0.3) !important;
+}
+
+/* Icon animation on dialog open */
+[data-slot="alert-dialog-content"] [data-icon-container] {
+  animation: iconPulse 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes iconPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

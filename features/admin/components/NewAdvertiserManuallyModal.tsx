@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -128,11 +128,19 @@ export function NewAdvertiserManuallyModal({
     Partial<Record<keyof NewAdvertiserFormData, string>>
   >({});
   const [showPassword, setShowPassword] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(open);
 
   const hasUnsavedChanges = useMemo(() => {
     if (!initialFormData) return false;
     return JSON.stringify(formData) !== JSON.stringify(initialFormData);
   }, [formData, initialFormData]);
+
+  // Sync internal state with prop when dialog is opened from outside
+  useEffect(() => {
+    if (open && !internalOpen) {
+      setInternalOpen(true);
+    }
+  }, [open, internalOpen]);
 
   useEffect(() => {
     if (open) {
@@ -260,29 +268,41 @@ export function NewAdvertiserManuallyModal({
   };
 
   const handleOpenChange = useCallback(
-    async (open: boolean) => {
+    async (newOpen: boolean) => {
       if (isSubmitting) {
         return;
       }
 
-      if (!open && hasUnsavedChanges) {
+      // If trying to close and there are unsaved changes, show confirm dialog
+      if (!newOpen && hasUnsavedChanges) {
         const confirmed = await confirmDialog({
           title: "Unsaved Changes",
           description: "You have unsaved changes. Are you sure you want to close?",
           confirmText: "Close",
-          cancelText: "Cancel",
+          cancelText: "No, keep editing",
           variant: "default",
           onConfirm: () => {
             setInitialFormData(null);
-            onOpenChange(false);
+          },
+          onCancel: () => {
+            // Keep the dialog open - reset internal state to true
+            setInternalOpen(true);
           },
         });
+        // If user cancelled, dialog stays open (already handled in onCancel)
         if (!confirmed) {
           return;
         }
-      } else if (!open) {
+        // If confirmed, close the dialog immediately
+        setInitialFormData(null);
+        setInternalOpen(false);
         onOpenChange(false);
+        return;
       }
+      
+      // If no unsaved changes, allow normal close
+      setInternalOpen(newOpen);
+      onOpenChange(newOpen);
     },
     [isSubmitting, hasUnsavedChanges, onOpenChange]
   );
@@ -318,7 +338,7 @@ export function NewAdvertiserManuallyModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={internalOpen} onOpenChange={handleOpenChange}>
       <style
         dangerouslySetInnerHTML={{
           __html: `

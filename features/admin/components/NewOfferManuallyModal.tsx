@@ -122,6 +122,14 @@ export function NewOfferManuallyModal({
   const [isLoadingAdvertisers, setIsLoadingAdvertisers] = useState(false);
   const [advertiserSearchQuery, setAdvertiserSearchQuery] = useState("");
   const [advertiserSelectOpen, setAdvertiserSelectOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(open);
+
+  // Sync internal state with prop when dialog is opened from outside
+  useEffect(() => {
+    if (open && !internalOpen) {
+      setInternalOpen(true);
+    }
+  }, [open, internalOpen]);
 
   const filteredAdvertisers = useMemo(() => {
     if (!advertiserSearchQuery.trim()) {
@@ -234,29 +242,41 @@ export function NewOfferManuallyModal({
   };
 
   const handleOpenChange = useCallback(
-    async (open: boolean) => {
+    async (newOpen: boolean) => {
       if (isSubmitting) {
         return;
       }
 
-      if (!open && hasUnsavedChanges) {
+      // If trying to close and there are unsaved changes, show confirm dialog
+      if (!newOpen && hasUnsavedChanges) {
         const confirmed = await confirmDialog({
           title: "Unsaved Changes",
           description: "You have unsaved changes. Are you sure you want to close?",
           confirmText: "Close",
-          cancelText: "Cancel",
+          cancelText: "No, keep editing",
           variant: "default",
           onConfirm: () => {
             setInitialFormData(null);
-            onOpenChange(false);
+          },
+          onCancel: () => {
+            // Keep the dialog open - reset internal state to true
+            setInternalOpen(true);
           },
         });
+        // If user cancelled, dialog stays open (already handled in onCancel)
         if (!confirmed) {
           return;
         }
-      } else if (!open) {
+        // If confirmed, close the dialog immediately
+        setInitialFormData(null);
+        setInternalOpen(false);
         onOpenChange(false);
+        return;
       }
+      
+      // If no unsaved changes, allow normal close
+      setInternalOpen(newOpen);
+      onOpenChange(newOpen);
     },
     [isSubmitting, hasUnsavedChanges, onOpenChange]
   );
@@ -282,7 +302,7 @@ export function NewOfferManuallyModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={internalOpen} onOpenChange={handleOpenChange}>
       <style
         dangerouslySetInnerHTML={{
           __html: `

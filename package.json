@@ -17,7 +17,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed:admin": "tsx seed-scripts/SeedAdmin.ts",
+    "seed:admin": "tsx seed-scripts/SeedAdminServer.ts",
     "seed:advertiser": "tsx seed-scripts/SeedAdvertiser.ts",
     "prepare": "husky"
   },

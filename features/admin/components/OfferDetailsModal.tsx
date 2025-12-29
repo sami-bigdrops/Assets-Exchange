@@ -4,6 +4,8 @@ import { Loader2, Pencil, Check, X as XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
 import {
@@ -298,19 +300,25 @@ export function EditDetailsModal({
   };
 
   const handleOpenChange = useCallback(
-    (open: boolean) => {
+    async (open: boolean) => {
       if (isSubmitting) {
         return;
       }
 
       if (!open && hasUnsavedChanges) {
-        if (
-          window.confirm(
-            "You have unsaved changes. Are you sure you want to close?"
-          )
-        ) {
-          setInitialFormData(null);
-          onOpenChange(false);
+        const confirmed = await confirmDialog({
+          title: "Unsaved Changes",
+          description: "You have unsaved changes. Are you sure you want to close?",
+          confirmText: "Close",
+          cancelText: "Cancel",
+          variant: "default",
+          onConfirm: () => {
+            setInitialFormData(null);
+            onOpenChange(false);
+          },
+        });
+        if (!confirmed) {
+          return;
         }
       } else if (!open) {
         onOpenChange(false);

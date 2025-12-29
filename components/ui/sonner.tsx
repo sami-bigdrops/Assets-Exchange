@@ -7,15 +7,12 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="light"
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,
@@ -26,10 +23,22 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
+          "--normal-bg": "oklch(1 0 0)",
+          "--normal-text": "oklch(0.145 0 0)",
+          "--normal-border": "oklch(0.922 0 0)",
           "--border-radius": "var(--radius)",
+          "--success-bg": "oklch(1 0 0)",
+          "--success-text": "oklch(0.145 0 0)",
+          "--success-border": "oklch(0.922 0 0)",
+          "--error-bg": "oklch(1 0 0)",
+          "--error-text": "oklch(0.145 0 0)",
+          "--error-border": "oklch(0.922 0 0)",
+          "--warning-bg": "oklch(1 0 0)",
+          "--warning-text": "oklch(0.145 0 0)",
+          "--warning-border": "oklch(0.922 0 0)",
+          "--info-bg": "oklch(1 0 0)",
+          "--info-text": "oklch(0.145 0 0)",
+          "--info-border": "oklch(0.922 0 0)",
         } as React.CSSProperties
       }
       {...props}

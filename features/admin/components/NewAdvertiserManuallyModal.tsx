@@ -1,13 +1,13 @@
 "use client";
 
 import { Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -47,9 +47,9 @@ interface NewAdvertiserManuallyModalProps {
  */
 async function generateAdvertiserId(): Promise<string> {
   try {
-    const { getAllAdvertisers } =
-      await import("../services/advertiser.service");
-    const advertisers = await getAllAdvertisers();
+    const { fetchAdvertisers } =
+      await import("../services/advertisers.client");
+    const advertisers = await fetchAdvertisers();
 
     // Extract numeric parts from existing advertiser IDs (format: M####)
     const existingNumbers = advertisers

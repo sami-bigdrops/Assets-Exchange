@@ -1,18 +1,10 @@
 "use client";
 
+import { File, FileArchive, PencilLine, Search, X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { CreativeDetailsProps } from "@/features/publisher/types/form.types";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
+import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import {
     Dialog,
     DialogContent,
@@ -21,10 +13,20 @@ import {
     DialogBody,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { File, FileArchive, PencilLine, Search, X } from "lucide-react";
-import { getVariables } from "@/components/_variables/variables";
-import FromSubjectLinesModal from "../_modals/FromSubjectLinesModal";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { type CreativeDetailsProps } from "@/features/publisher/types/form.types";
+
 import FileUploadModal from "../_modals/FileUploadModal";
+import FromSubjectLinesModal from "../_modals/FromSubjectLinesModal";
 
 type UploadedFileMeta = {
     id: string;
@@ -109,7 +111,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     const [hasFromSubjectLines, setHasFromSubjectLines] = useState(false);
     const [hasUploadedFiles, setHasUploadedFiles] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFileMeta[]>([]);
-    const [uploading, setUploading] = useState(false);
+    const [_uploading, setUploading] = useState(false);
     const [selectedCreative, setSelectedCreative] = useState<UploadedFileMeta | null>(null);
     const [selectedCreatives, setSelectedCreatives] = useState<UploadedFileMeta[]>([]);
     const [uploadedZipFileName, setUploadedZipFileName] = useState<string>("");
@@ -119,18 +121,13 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         setHasFromSubjectLines(
             !!(formData.fromLines && formData.subjectLines)
         );
-    }, [uploadedFiles, formData.fromLines, formData.subjectLines]);
+    }, [uploadedFiles, formData.fromLines, formData.subjectLines, setHasUploadedFiles, setHasFromSubjectLines]);
 
     const handleSelectChange = (fieldName: string, value: string) => {
         onDataChange({ [fieldName]: value });
         if (fieldName === "offerId") {
             setOfferSearchTerm("");
         }
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        onDataChange({ [name]: value });
     };
 
     const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -272,16 +269,6 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         }
     };
 
-    const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (currentUploadType === "single") {
-            handleSingleFileUpload(file);
-        } else {
-            handleMultipleFileUpload(file);
-        }
-    };
 
     const handleFromSubjectLinesSave = (fromLines: string, subjectLines: string) => {
         onDataChange({ fromLines, subjectLines });
@@ -317,13 +304,6 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         setUploadedFiles((prev) => prev.filter((file) => file.id !== creativeId));
     };
 
-    const handleFileNameChange = (fileId: string, newFileName: string) => {
-        setUploadedFiles((prev) =>
-            prev.map((file) =>
-                file.id === fileId ? { ...file, name: newFileName } : file
-            )
-        );
-    };
 
     const filteredOfferOptions = offerOptions.filter((option) =>
         option.label.toLowerCase().includes(offerSearchTerm.toLowerCase())

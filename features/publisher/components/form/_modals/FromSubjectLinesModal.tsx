@@ -1,9 +1,10 @@
 "use client";
 
+import { PencilLine, Info } from "lucide-react";
 import React from "react";
+
+import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
     Dialog,
     DialogContent,
@@ -12,8 +13,8 @@ import {
     DialogBody,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { PencilLine, Info } from "lucide-react";
-import { getVariables } from "@/components/_variables/variables";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useFromSubjectLinesModal } from "@/features/publisher/view-models/fromSubjectLinesModal.viewModel";
 
 interface FromSubjectLinesModalProps {

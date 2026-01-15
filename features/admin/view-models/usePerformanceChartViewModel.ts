@@ -7,7 +7,7 @@ import type {
   PerformanceChartData,
 } from "@/features/dashboard/types/dashboard.types";
 
-import { getPerformanceChartData } from "../services/performance-chart.service";
+import { getPerformanceChartData } from "../services/performance.client";
 
 export function usePerformanceChartViewModel(comparisonType: ComparisonType) {
   const [data, setData] = useState<PerformanceChartData | null>(null);

@@ -1,5 +1,7 @@
 "use client";
 
+import { getVariables } from "@/components/_variables/variables";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,15 +10,13 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { getVariables } from "@/components/_variables/variables";
+import { Separator } from "@/components/ui/separator";
 import { usePublisherForm } from "@/features/publisher/hooks/usePublisherForm";
 import {
   renderStep,
   getStepLabel,
   getButtonText,
 } from "@/features/publisher/view-models/publisherForm.viewModel";
-import { Separator } from "@/components/ui/separator";
 
 export default function PublisherForm() {
   const variables = getVariables();

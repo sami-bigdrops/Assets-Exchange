@@ -1,11 +1,25 @@
 import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getRateLimitKey } from "@/lib/getRateLimitKey";
+import { ratelimit } from "@/lib/ratelimit";
 import { user } from "@/lib/schema";
+
+async function enforceRateLimit() {
+  const key = await getRateLimitKey();
+  const { success } = await ratelimit.limit(key);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+}
 
 export async function POST() {
   try {
+    const rl = await enforceRateLimit();
+    if (rl) return rl;
+
     const adminEmail = "admin@assets-exchange.com";
     const adminPassword = "Admin@123";
     const adminName = "Admin User";

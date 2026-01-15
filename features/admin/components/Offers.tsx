@@ -53,6 +53,7 @@ import {
   Download,
 } from "lucide-react";
 import { useMemo, useCallback, useState, useEffect } from "react";
+import { toast } from "sonner";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
@@ -85,8 +86,9 @@ import {
   EntityDataCard,
 } from "@/features/dashboard/components/EntityDataTable";
 
-import type { Offer as OfferType } from "../types/admin.types";
+import type { Offer as OfferType } from "../types/offer.types";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";
+import { useGlobalSync } from "@/features/admin/context/GlobalSyncContext";
 
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 import { BulkEditModal } from "./BulkEditModal";
@@ -120,7 +122,6 @@ export function Offers() {
     Record<string, "Public" | "Internal" | "Hidden">
   >({});
   const [isNewOfferModalOpen, setIsNewOfferModalOpen] = useState(false);
-  const [isPullingViaAPI, setIsPullingViaAPI] = useState(false);
   const [isEditDetailsModalOpen, setIsEditDetailsModalOpen] = useState(false);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] =
@@ -128,9 +129,27 @@ export function Offers() {
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [selectedOfferName, setSelectedOfferName] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
+  const { offers: offersSync, startSync, cancelSync } = useGlobalSync();
 
-  const { offers, isLoading, error } = useOffersViewModel();
+  const isSyncActive = offersSync.active;
+  const syncStatus = isSyncActive ? offersSync.status : "idle";
+  const syncProgress = offersSync.progress;
+  const syncTotal = offersSync.total;
+
+
+  const { offers, isLoading, error, refresh } = useOffersViewModel();
+
+  useEffect(() => {
+    refresh(debouncedSearchQuery);
+  }, [debouncedSearchQuery, refresh]);
+
+  useEffect(() => {
+    if (isSyncActive && syncStatus === "completed") {
+      refresh(debouncedSearchQuery);
+    }
+  }, [isSyncActive, syncStatus, refresh, debouncedSearchQuery]);
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -141,7 +160,7 @@ export function Offers() {
   }, [searchQuery]);
 
   const columns = [
-    { header: "ID", width: "100px" },
+    { header: "ID", width: "200px" },
     { header: "Offer Name", width: "1.8fr" },
     { header: "Advertiser Name", width: "1fr" },
     { header: "Created Manually / via API", width: "1fr" },
@@ -164,9 +183,10 @@ export function Offers() {
         .filter((offer) => {
           const query = debouncedSearchQuery.toLowerCase();
           const matchesSearch =
-            offer.id.toLowerCase().includes(query) ||
-            offer.offerName.toLowerCase().includes(query) ||
-            offer.advName.toLowerCase().includes(query);
+            (offer.id || "").toLowerCase().includes(query) ||
+            (offer.offerId || "").toLowerCase().includes(query) ||
+            (offer.offerName || "").toLowerCase().includes(query) ||
+            (offer.advName || "").toLowerCase().includes(query);
 
           const matchesStatus = !statusFilter || offer.status === statusFilter;
           const matchesVisibility =
@@ -176,7 +196,7 @@ export function Offers() {
             (creationMethodFilter === "Manually" &&
               offer.createdMethod === "Manually") ||
             (creationMethodFilter === "API" &&
-              offer.createdMethod.startsWith("API"));
+              offer.createdMethod === "API");
 
           return (
             matchesSearch &&
@@ -188,13 +208,13 @@ export function Offers() {
         .sort((a, b) => {
           if (!sortByFilter) return 0;
 
-          const aId = parseInt(a.id.replace(/\D/g, ""));
-          const bId = parseInt(b.id.replace(/\D/g, ""));
+          const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
 
           if (sortByFilter === "New to Old") {
-            return bId - aId;
+            return bDate - aDate;
           } else {
-            return aId - bId;
+            return aDate - bDate;
           }
         }),
     [
@@ -263,105 +283,13 @@ export function Offers() {
     return pages;
   }, [currentPage, totalPages]);
 
-  /**
-   * TODO: BACKEND - Implement Edit Details Handler
-   *
-   * Endpoint: GET /api/admin/offers/:id
-   *
-   * Requirements:
-   * 1. Fetch full offer details by ID including:
-   *    - All offer fields (offerName, advName, status, visibility, etc.)
-   *    - Brand guidelines (URL, file, or text content)
-   *    - Associated advertiser information
-   *    - Creation metadata (createdAt, createdBy, updatedAt, etc.)
-   *
-   * 2. Open a modal/form with pre-filled data for editing
-   *    - Use similar structure to NewOfferManuallyModal
-   *    - Pre-populate all form fields with fetched data
-   *    - Handle brand guidelines based on type (url/file/text)
-   *
-   * 3. On save, call: PUT /api/admin/offers/:id
-   *    - Request body: {
-   *        offerName: string,
-   *        advertiserId: string,
-   *        advertiserName: string,
-   *        status: "Active" | "Inactive",
-   *        visibility: "Public" | "Internal" | "Hidden",
-   *        brandGuidelines?: {
-   *          type: "url" | "file" | "text",
-   *          url?: string,
-   *          file?: File,
-   *          text?: string
-   *        }
-   *      }
-   *    - Validate all required fields
-   *    - Return updated offer object
-   *
-   * 4. Error Handling:
-   *    - 404: Offer not found - show error message
-   *    - 400: Validation errors - show field-specific errors in form
-   *    - 401: Unauthorized - redirect to login
-   *    - 403: Forbidden - show permission denied message
-   *    - 500: Server error - show generic error with retry option
-   *
-   * 5. Success:
-   *    - Close edit modal
-   *    - Refresh offers list (call useOffersViewModel refresh)
-   *    - Show success notification
-   *    - Update local state if needed
-   */
+
   const handleEditDetails = useCallback((id: string) => {
     setSelectedOfferId(id);
     setIsEditDetailsModalOpen(true);
   }, []);
 
-  /**
-   * TODO: BACKEND - Implement Brand Guidelines Handler
-   *
-   * Endpoint: GET /api/admin/offers/:id/brand-guidelines
-   *
-   * Requirements:
-   * 1. Fetch brand guidelines for the offer:
-   *    - If type is "url": return { type: "url", url: string }
-   *    - If type is "file": return {
-   *        type: "file",
-   *        fileName: string,
-   *        fileUrl: string,
-   *        fileSize?: number,
-   *        mimeType?: string
-   *      }
-   *    - If type is "text": return { type: "text", content: string }
-   *
-   * 2. Display brand guidelines in a modal/viewer:
-   *    - For URL: Show link with "Open in new tab" button and iframe preview if possible
-   *    - For file: Show download button, file info (name, size), and preview if possible
-   *      - PDF: Use PDF viewer component
-   *      - DOCX: Show download option with file info
-   *    - For text: Display formatted rich text content in read-only editor
-   *
-   * 3. Allow editing brand guidelines:
-   *    - PUT /api/admin/offers/:id/brand-guidelines
-   *    - Request body: {
-   *        type: "url" | "file" | "text",
-   *        url?: string,
-   *        file?: File,
-   *        content?: string
-   *      }
-   *    - For file uploads: Use multipart/form-data
-   *    - Validate file size (max 10MB) and type (DOCX, PDF)
-   *    - If replacing existing file, delete old file from storage
-   *
-   * 4. Error Handling:
-   *    - 404: Offer or brand guidelines not found
-   *    - 400: Invalid file type/size or validation errors
-   *    - 413: File too large - show specific error message
-   *    - 500: Server error or file storage error
-   *
-   * 5. Success:
-   *    - Close modal
-   *    - Show success notification
-   *    - Optionally refresh offer data
-   */
+
   const handleBrandGuidelines = useCallback(
     (id: string) => {
       const offer = offers?.find((o) => o.id === id);
@@ -414,12 +342,13 @@ export function Offers() {
         [id]: visibility,
       }));
 
-      // TODO: Call API: PATCH /api/admin/offers/:id/visibility
+      // TODO: BACKEND - Implement PATCH /api/admin/offers/:id/visibility endpoint
       // TODO: Handle error and revert optimistic update if failed
       // TODO: Show success/error notification
     },
     []
   );
+
 
   const clearAllFilters = useCallback(() => {
     setStatusFilter(null);
@@ -439,36 +368,39 @@ export function Offers() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Button
-            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
-            style={{
-              color: variables.colors.buttonOutlineTextColor,
-              borderColor: variables.colors.buttonOutlineBorderColor,
-              backgroundColor: variables.colors.cardBackground,
-            }}
-            onClick={() => setIsNewOfferModalOpen(true)}
-          >
-            <Plus className="h-5 w-5" />
-            Create New Manually
-          </Button>
+      <div className="space-y-6">
 
-          <Button
-            variant="outline"
-            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
-            style={{
-              color: variables.colors.buttonOutlineTextColor,
-              borderColor: variables.colors.buttonOutlineBorderColor,
-              backgroundColor: variables.colors.cardBackground,
-            }}
-            onClick={() => setIsBulkEditModalOpen(true)}
-          >
-            <Edit className="h-5 w-5" />
-            Bulk Edit
-          </Button>
 
-          {/* 
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
+              style={{
+                color: variables.colors.buttonOutlineTextColor,
+                borderColor: variables.colors.buttonOutlineBorderColor,
+                backgroundColor: variables.colors.cardBackground,
+              }}
+              onClick={() => setIsNewOfferModalOpen(true)}
+            >
+              <Plus className="h-5 w-5" />
+              Create New Manually
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
+              style={{
+                color: variables.colors.buttonOutlineTextColor,
+                borderColor: variables.colors.buttonOutlineBorderColor,
+                backgroundColor: variables.colors.cardBackground,
+              }}
+              onClick={() => setIsBulkEditModalOpen(true)}
+            >
+              <Edit className="h-5 w-5" />
+              Bulk Edit
+            </Button>
+
+            {/* 
             TODO: BACKEND - Implement Pull Via API Functionality
             
             Endpoint: POST /api/admin/offers/pull-from-api
@@ -540,573 +472,605 @@ export function Offers() {
                - Options: API wins, Manual wins, or prompt user
                - Log all conflicts for review
           */}
-          <Button
-            variant="outline"
-            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
-            style={{
-              color: variables.colors.buttonOutlineTextColor,
-              borderColor: variables.colors.buttonOutlineBorderColor,
-              backgroundColor: variables.colors.cardBackground,
-            }}
-            onClick={async () => {
-              setIsPullingViaAPI(true);
-              try {
-                // TODO: Implement API pull functionality
-                // TODO: Call POST /api/admin/offers/pull-from-api
-                // TODO: Handle response and refresh offers list
-                // TODO: Show success/error notification with statistics
-
-                // Simulate API call for now
-                await new Promise((resolve) => setTimeout(resolve, 2000));
-              } catch (error) {
-                console.error("Failed to pull offers via API:", error);
-              } finally {
-                setIsPullingViaAPI(false);
-              }
-            }}
-            disabled={isPullingViaAPI}
-          >
-            {isPullingViaAPI ? (
-              <>
-                <Spinner className="h-5 w-5" />
-                Pulling...
-              </>
-            ) : (
-              <>
-                <Download className="h-5 w-5" />
-                Pull Via API
-              </>
-            )}
-          </Button>
-
-          <Popover
-            open={isFilterOpen}
-            onOpenChange={(open) => {
-              setIsFilterOpen(open);
-              if (!open) {
-                setActiveCategory(null);
-              }
-            }}
-          >
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
-                style={{
-                  color: variables.colors.buttonOutlineTextColor,
-                  borderColor: variables.colors.buttonOutlineBorderColor,
-                  backgroundColor: variables.colors.cardBackground,
-                }}
-              >
-                <ListFilter className="h-5 w-5" />
-                Filter
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className={`p-0 transition-all ${activeCategory ? "w-[500px]" : "w-[250px]"}`}
-              align="start"
-            >
-              <div className="flex">
-                <div
-                  className={`${activeCategory ? "w-1/2 border-r border-gray-200" : "w-full"} p-3`}
-                >
-                  <button
-                    onClick={() => setActiveCategory("status")}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "status"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>Status</span>
-                    <div className="flex items-center gap-2">
-                      {statusFilter !== null && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setStatusFilter(null);
-                          }}
-                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
-                          title="Clear Status"
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setStatusFilter(null);
-                            }
-                          }}
-                        >
-                          <X className="h-3 w-3 text-gray-500" />
-                        </div>
-                      )}
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveCategory("visibility")}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "visibility"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>Visibility</span>
-                    <div className="flex items-center gap-2">
-                      {visibilityFilter !== null && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setVisibilityFilter(null);
-                          }}
-                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
-                          title="Clear Visibility"
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setVisibilityFilter(null);
-                            }
-                          }}
-                        >
-                          <X className="h-3 w-3 text-gray-500" />
-                        </div>
-                      )}
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveCategory("creationMethod")}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "creationMethod"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>Creation Method</span>
-                    <div className="flex items-center gap-2">
-                      {creationMethodFilter !== null && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCreationMethodFilter(null);
-                          }}
-                          className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
-                          title="Clear Creation Method"
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setCreationMethodFilter(null);
-                            }
-                          }}
-                        >
-                          <X className="h-3 w-3 text-gray-500" />
-                        </div>
-                      )}
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveCategory("sortBy")}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "sortBy"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>Sort By</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </button>
-                </div>
-
-                {activeCategory && (
-                  <div className="w-1/2 p-3">
-                    {activeCategory === "status" && (
-                      <div className="space-y-1">
-                        {["Active", "Inactive"].map((status) => (
-                          <button
-                            key={status}
-                            onClick={() => {
-                              setStatusFilter(status as StatusFilter);
-                              setIsFilterOpen(false);
-                              setActiveCategory(null);
-                            }}
-                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                              statusFilter === status
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {activeCategory === "visibility" && (
-                      <div className="space-y-1">
-                        {["Public", "Internal", "Hidden"].map((visibility) => (
-                          <button
-                            key={visibility}
-                            onClick={() => {
-                              setVisibilityFilter(
-                                visibility as VisibilityFilter
-                              );
-                              setIsFilterOpen(false);
-                              setActiveCategory(null);
-                            }}
-                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                              visibilityFilter === visibility
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {visibility}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {activeCategory === "creationMethod" && (
-                      <div className="space-y-1">
-                        {["Manually", "API"].map((method) => (
-                          <button
-                            key={method}
-                            onClick={() => {
-                              setCreationMethodFilter(
-                                method as CreationMethodFilter
-                              );
-                              setIsFilterOpen(false);
-                              setActiveCategory(null);
-                            }}
-                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                              creationMethodFilter === method
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {method}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {activeCategory === "sortBy" && (
-                      <div className="space-y-1">
-                        {["New to Old", "Old to New"].map((sort) => (
-                          <button
-                            key={sort}
-                            onClick={() => {
-                              setSortByFilter(sort as SortByFilter);
-                              setIsFilterOpen(false);
-                              setActiveCategory(null);
-                            }}
-                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                              sortByFilter === sort
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {sort}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+            <div className="flex items-center gap-2">
+              {isSyncActive ? (
+                <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm border border-indigo-100 rounded-lg pl-3 pr-2 h-12 shadow-sm animate-in fade-in slide-in-from-right-4 duration-300 ring-1 ring-indigo-50/50">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-indigo-500 rounded-full blur-[2px] opacity-20 animate-pulse"></div>
+                    <Spinner className="h-4 w-4 text-indigo-600 relative z-10" />
                   </div>
-                )}
-              </div>
-              {hasActiveFilters && (
-                <div className="border-t border-gray-200 p-3">
+
+                  <div className="flex flex-col min-w-[200px] gap-1.5">
+                    <div className="flex justify-between items-end text-xs gap-4">
+                      <span className="font-semibold text-indigo-950 whitespace-nowrap">
+                        {syncStatus === "pending" ? (
+                          <span className="animate-pulse">Initializing...</span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            Syncing
+                            <span className="text-indigo-600 font-bold">
+                              {Math.round((syncProgress / (syncTotal || 1)) * 100)}%
+                            </span>
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-slate-500 text-[10px] font-mono tabular-nums tracking-tight whitespace-nowrap">
+                        {syncProgress.toLocaleString()} / {syncTotal > 0 ? syncTotal.toLocaleString() : "--"}
+                      </span>
+                    </div>
+
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-50">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(99,102,241,0.4)]"
+                        style={{ width: `${Math.min(100, Math.max(0, (syncProgress / (syncTotal || 1)) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="h-6 w-[1px] bg-slate-200 mx-1"></div>
+
                   <Button
-                    variant="outline"
-                    onClick={clearAllFilters}
-                    className="w-full h-9 font-inter text-sm gap-2"
-                    style={{
-                      borderColor: variables.colors.inputBorderColor,
-                      color: variables.colors.inputTextColor,
-                      backgroundColor: variables.colors.cardBackground,
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors duration-200"
+                    onClick={async () => {
+                      if (isSyncActive) {
+                        try {
+                          await cancelSync("everflow_sync");
+                          toast.info("Cancelling sync...");
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }
                     }}
+                    title="Cancel Sync"
                   >
-                    <X className="h-4 w-4" />
-                    Clear All Filters
+                    <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
+                  style={{
+                    color: variables.colors.buttonOutlineTextColor,
+                    borderColor: variables.colors.buttonOutlineBorderColor,
+                    backgroundColor: variables.colors.cardBackground,
+                  }}
+                  onClick={async () => {
+                    try {
+                      await startSync("everflow_sync");
+                    } catch (err) {
+                      toast.error("Failed to start sync");
+                      console.error(err);
+                    }
+                  }}
+                >
+                  <Download className="h-5 w-5 mr-2" />
+                  Sync Everflow
+                </Button>
               )}
-            </PopoverContent>
-          </Popover>
-        </div>
+            </div>
 
-        <div className="relative w-full sm:w-100">
-          <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4"
-            style={{ color: variables.colors.inputPlaceholderColor }}
-          />
-          <Input
-            type="text"
-            placeholder="Search by Offer Name / ID / Advertiser Name"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-10 font-inter"
-            style={{
-              backgroundColor: variables.colors.inputBackgroundColor,
-              borderColor: variables.colors.inputBorderColor,
-              color: variables.colors.inputTextColor,
-            }}
-          />
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="w-full">
-          <div className="rounded-t-2xl px-5 py-4 border-b">
-            <div
-              className="grid items-center"
-              style={{
-                gridTemplateColumns: "100px 1.8fr 1fr 1fr 1fr 1fr",
-                gap: "1.5rem",
+            <Popover
+              open={isFilterOpen}
+              onOpenChange={(open) => {
+                setIsFilterOpen(open);
+                if (!open) {
+                  setActiveCategory(null);
+                }
               }}
             >
-              {columns.map((_, index) => (
-                <Skeleton key={index} className="h-4 w-20" />
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
+                  style={{
+                    color: variables.colors.buttonOutlineTextColor,
+                    borderColor: variables.colors.buttonOutlineBorderColor,
+                    backgroundColor: variables.colors.cardBackground,
+                  }}
+                >
+                  <ListFilter className="h-5 w-5" />
+                  Filter
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className={`p-0 transition-all ${activeCategory ? "w-[500px]" : "w-[250px]"}`}
+                align="start"
+              >
+                <div className="flex">
+                  <div
+                    className={`${activeCategory ? "w-1/2 border-r border-gray-200" : "w-full"} p-3`}
+                  >
+                    <button
+                      onClick={() => setActiveCategory("status")}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "status"
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                    >
+                      <span>Status</span>
+                      <div className="flex items-center gap-2">
+                        {statusFilter !== null && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStatusFilter(null);
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                            title="Clear Status"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setStatusFilter(null);
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 text-gray-500" />
+                          </div>
+                        )}
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setActiveCategory("visibility")}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "visibility"
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                    >
+                      <span>Visibility</span>
+                      <div className="flex items-center gap-2">
+                        {visibilityFilter !== null && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setVisibilityFilter(null);
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                            title="Clear Visibility"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setVisibilityFilter(null);
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 text-gray-500" />
+                          </div>
+                        )}
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setActiveCategory("creationMethod")}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "creationMethod"
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                    >
+                      <span>Creation Method</span>
+                      <div className="flex items-center gap-2">
+                        {creationMethodFilter !== null && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCreationMethodFilter(null);
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                            title="Clear Creation Method"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setCreationMethodFilter(null);
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 text-gray-500" />
+                          </div>
+                        )}
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setActiveCategory("sortBy")}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "sortBy"
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                    >
+                      <span>Sort By</span>
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </button>
+                  </div>
+
+                  {activeCategory && (
+                    <div className="w-1/2 p-3">
+                      {activeCategory === "status" && (
+                        <div className="space-y-1">
+                          {["Active", "Inactive"].map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => {
+                                setStatusFilter(status as StatusFilter);
+                                setIsFilterOpen(false);
+                                setActiveCategory(null);
+                                refresh(debouncedSearchQuery, status as "Active" | "Inactive");
+                              }}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${statusFilter === status
+                                ? "bg-gray-100 text-gray-900 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                                }`}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {activeCategory === "visibility" && (
+                        <div className="space-y-1">
+                          {["Public", "Internal", "Hidden"].map((visibility) => (
+                            <button
+                              key={visibility}
+                              onClick={() => {
+                                setVisibilityFilter(
+                                  visibility as VisibilityFilter
+                                );
+                                setIsFilterOpen(false);
+                                setActiveCategory(null);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${visibilityFilter === visibility
+                                ? "bg-gray-100 text-gray-900 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                                }`}
+                            >
+                              {visibility}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {activeCategory === "creationMethod" && (
+                        <div className="space-y-1">
+                          {["Manually", "API"].map((method) => (
+                            <button
+                              key={method}
+                              onClick={() => {
+                                setCreationMethodFilter(
+                                  method as CreationMethodFilter
+                                );
+                                setIsFilterOpen(false);
+                                setActiveCategory(null);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${creationMethodFilter === method
+                                ? "bg-gray-100 text-gray-900 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                                }`}
+                            >
+                              {method}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {activeCategory === "sortBy" && (
+                        <div className="space-y-1">
+                          {["New to Old", "Old to New"].map((sort) => (
+                            <button
+                              key={sort}
+                              onClick={() => {
+                                setSortByFilter(sort as SortByFilter);
+                                setIsFilterOpen(false);
+                                setActiveCategory(null);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${sortByFilter === sort
+                                ? "bg-gray-100 text-gray-900 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                                }`}
+                            >
+                              {sort}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {hasActiveFilters && (
+                  <div className="border-t border-gray-200 p-3">
+                    <Button
+                      variant="outline"
+                      onClick={clearAllFilters}
+                      className="w-full h-9 font-inter text-sm gap-2"
+                      style={{
+                        borderColor: variables.colors.inputBorderColor,
+                        color: variables.colors.inputTextColor,
+                        backgroundColor: variables.colors.cardBackground,
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                      Clear All Filters
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="relative w-full sm:w-100">
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4"
+              style={{ color: variables.colors.inputPlaceholderColor }}
+            />
+            <Input
+              type="text"
+              placeholder="Search by Offer Name / ID / Advertiser Name"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-10 font-inter"
+              style={{
+                backgroundColor: variables.colors.inputBackgroundColor,
+                borderColor: variables.colors.inputBorderColor,
+                color: variables.colors.inputTextColor,
+              }}
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="w-full">
+            <div className="rounded-t-2xl px-5 py-4 border-b">
+              <div
+                className="grid items-center"
+                style={{
+                  gridTemplateColumns: "200px 1.8fr 1fr 1fr 1fr 1fr",
+                  gap: "1.5rem",
+                }}
+              >
+                {columns.map((_, index) => (
+                  <Skeleton key={index} className="h-4 w-20" />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3 mt-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-24 w-full rounded-2xl" />
               ))}
             </div>
           </div>
-          <div className="space-y-3 mt-3">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full rounded-2xl" />
-            ))}
+        ) : error ? (
+          <div className="flex items-center justify-center p-8 border rounded-lg">
+            <div className="text-destructive">Error: {error}</div>
           </div>
-        </div>
-      ) : error ? (
-        <div className="flex items-center justify-center p-8 border rounded-lg">
-          <div className="text-destructive">Error: {error}</div>
-        </div>
-      ) : !offers || offers.length === 0 ? (
-        <div className="flex items-center justify-center p-8 border rounded-lg">
-          <div className="text-muted-foreground">No offers available</div>
-        </div>
-      ) : (
-        <EntityDataTable
-          data={paginatedOffers}
-          columns={columns}
-          renderRow={(offer: OfferType, index: number) => (
-            <EntityDataCard
-              id={offer.id}
-              name={offer.offerName}
-              advName={offer.advName}
-              createdMethod={offer.createdMethod}
-              status={offer.status}
-              visibility={offer.visibility}
-              variant={index % 2 === 0 ? "purple" : "blue"}
-              gridTemplateColumns={columns
-                .map((col) => col.width || "1fr")
-                .join(" ")}
-              onEditDetails={() => handleEditDetails(offer.id)}
-              onBrandGuidelines={() => handleBrandGuidelines(offer.id)}
-              onVisibilityChange={(visibility) =>
-                handleVisibilityChange(offer.id, visibility)
-              }
-            />
-          )}
-        />
-      )}
+        ) : !offers || offers.length === 0 ? (
+          <div className="flex items-center justify-center p-8 border rounded-lg">
+            <div className="text-muted-foreground">No offers available</div>
+          </div>
+        ) : (
+          <EntityDataTable
+            data={paginatedOffers}
+            columns={columns}
+            renderRow={(offer: OfferType, index: number) => (
+              <EntityDataCard
+                id={offer.offerId}
+                name={offer.offerName}
+                advName={offer.advName}
+                createdMethod={offer.createdMethod}
+                status={offer.status}
+                visibility={offer.visibility}
+                variant={index % 2 === 0 ? "purple" : "blue"}
+                gridTemplateColumns={columns
+                  .map((col) => col.width || "1fr")
+                  .join(" ")}
+                onEditDetails={() => handleEditDetails(offer.id)}
+                onBrandGuidelines={() => handleBrandGuidelines(offer.id)}
+                onVisibilityChange={(visibility) =>
+                  handleVisibilityChange(offer.id, visibility)
+                }
+              />
+            )}
+          />
+        )}
 
-      {!isLoading &&
-        !error &&
-        offers &&
-        offers.length > 0 &&
-        totalPages > 1 && (
-          <div
-            className="flex items-center gap-4 mt-6 pt-6 border-t"
-            style={{ borderColor: variables.colors.inputBorderColor }}
-          >
+        {!isLoading &&
+          !error &&
+          offers &&
+          offers.length > 0 &&
+          totalPages > 1 && (
             <div
-              className="text-sm font-inter whitespace-nowrap"
-              style={{ color: variables.colors.descriptionColor }}
+              className="flex items-center gap-4 mt-6 pt-6 border-t"
+              style={{ borderColor: variables.colors.inputBorderColor }}
             >
-              Showing{" "}
-              <span
-                className="font-medium"
-                style={{ color: variables.colors.inputTextColor }}
-              >
-                {startIndex + 1}
-              </span>{" "}
-              to{" "}
-              <span
-                className="font-medium"
-                style={{ color: variables.colors.inputTextColor }}
-              >
-                {Math.min(endIndex, filteredOffers.length)}
-              </span>{" "}
-              of{" "}
-              <span
-                className="font-medium"
-                style={{ color: variables.colors.inputTextColor }}
-              >
-                {filteredOffers.length}
-              </span>{" "}
-              offers
-            </div>
-            <Pagination>
-              <PaginationContent className="gap-1">
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage > 1) {
-                        setCurrentPage((prev) => prev - 1);
-                      }
-                    }}
-                    className={`transition-all duration-200 ${
-                      currentPage === 1
-                        ? "pointer-events-none opacity-40 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-gray-100"
-                    }`}
-                    style={{
-                      color:
-                        currentPage === 1
-                          ? variables.colors.descriptionColor
-                          : variables.colors.inputTextColor,
-                    }}
-                  />
-                </PaginationItem>
-                {getPageNumbers().map((page, index) => (
-                  <PaginationItem key={index}>
-                    {page === "ellipsis" ? (
-                      <PaginationEllipsis className="text-gray-400" />
-                    ) : (
-                      <PaginationLink
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCurrentPage(page);
-                        }}
-                        isActive={currentPage === page}
-                        className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${
-                          currentPage === page
-                            ? "cursor-default"
-                            : "cursor-pointer hover:bg-gray-100"
-                        }`}
-                        style={{
-                          backgroundColor:
-                            currentPage === page
-                              ? variables.colors.buttonDefaultBackgroundColor
-                              : "transparent",
-                          color:
-                            currentPage === page
-                              ? variables.colors.buttonDefaultTextColor
-                              : variables.colors.inputTextColor,
-                          borderColor:
-                            currentPage === page
-                              ? variables.colors.buttonDefaultBackgroundColor
-                              : variables.colors.inputBorderColor,
-                        }}
-                      >
-                        {page}
-                      </PaginationLink>
-                    )}
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage < totalPages) {
-                        setCurrentPage((prev) => prev + 1);
-                      }
-                    }}
-                    className={`transition-all duration-200 ${
-                      currentPage === totalPages
-                        ? "pointer-events-none opacity-40 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-gray-100"
-                    }`}
-                    style={{
-                      color:
-                        currentPage === totalPages
-                          ? variables.colors.descriptionColor
-                          : variables.colors.inputTextColor,
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-            <div className="flex items-center gap-2">
-              <span
+              <div
                 className="text-sm font-inter whitespace-nowrap"
                 style={{ color: variables.colors.descriptionColor }}
               >
-                Show:
-              </span>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={(value) => {
-                  setItemsPerPage(Number(value));
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger
-                  className="h-8 w-20 text-xs font-inter border rounded-md"
-                  style={{
-                    backgroundColor: variables.colors.inputBackgroundColor,
-                    borderColor: variables.colors.inputBorderColor,
-                    color: variables.colors.inputTextColor,
+                Showing{" "}
+                <span
+                  className="font-medium"
+                  style={{ color: variables.colors.inputTextColor }}
+                >
+                  {startIndex + 1}
+                </span>{" "}
+                to{" "}
+                <span
+                  className="font-medium"
+                  style={{ color: variables.colors.inputTextColor }}
+                >
+                  {Math.min(endIndex, filteredOffers.length)}
+                </span>{" "}
+                of{" "}
+                <span
+                  className="font-medium"
+                  style={{ color: variables.colors.inputTextColor }}
+                >
+                  {filteredOffers.length}
+                </span>{" "}
+                offers
+              </div>
+              <Pagination>
+                <PaginationContent className="gap-1">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) {
+                          setCurrentPage((prev) => prev - 1);
+                        }
+                      }}
+                      className={`transition-all duration-200 ${currentPage === 1
+                        ? "pointer-events-none opacity-40 cursor-not-allowed"
+                        : "cursor-pointer hover:bg-gray-100"
+                        }`}
+                      style={{
+                        color:
+                          currentPage === 1
+                            ? variables.colors.descriptionColor
+                            : variables.colors.inputTextColor,
+                      }}
+                    />
+                  </PaginationItem>
+                  {getPageNumbers().map((page, index) => (
+                    <PaginationItem key={index}>
+                      {page === "ellipsis" ? (
+                        <PaginationEllipsis className="text-gray-400" />
+                      ) : (
+                        <PaginationLink
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setCurrentPage(page);
+                          }}
+                          isActive={currentPage === page}
+                          className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${currentPage === page
+                            ? "cursor-default"
+                            : "cursor-pointer hover:bg-gray-100"
+                            }`}
+                          style={{
+                            backgroundColor:
+                              currentPage === page
+                                ? variables.colors.buttonDefaultBackgroundColor
+                                : "transparent",
+                            color:
+                              currentPage === page
+                                ? variables.colors.buttonDefaultTextColor
+                                : variables.colors.inputTextColor,
+                            borderColor:
+                              currentPage === page
+                                ? variables.colors.buttonDefaultBackgroundColor
+                                : variables.colors.inputBorderColor,
+                          }}
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) {
+                          setCurrentPage((prev) => prev + 1);
+                        }
+                      }}
+                      className={`transition-all duration-200 ${currentPage === totalPages
+                        ? "pointer-events-none opacity-40 cursor-not-allowed"
+                        : "cursor-pointer hover:bg-gray-100"
+                        }`}
+                      style={{
+                        color:
+                          currentPage === totalPages
+                            ? variables.colors.descriptionColor
+                            : variables.colors.inputTextColor,
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-sm font-inter whitespace-nowrap"
+                  style={{ color: variables.colors.descriptionColor }}
+                >
+                  Show:
+                </span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(_value) => {
                   }}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
+                  <SelectTrigger
+                    className="h-8 w-20 text-xs font-inter border rounded-md"
+                    style={{
+                      backgroundColor: variables.colors.inputBackgroundColor,
+                      borderColor: variables.colors.inputBorderColor,
+                      color: variables.colors.inputTextColor,
+                    }}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-      <NewOfferManuallyModal
-        open={isNewOfferModalOpen}
-        onOpenChange={setIsNewOfferModalOpen}
-        onSuccess={() => {
-          setIsNewOfferModalOpen(false);
-        }}
-      />
-
-      {selectedOfferId && selectedOfferName && (
-        <BrandGuidelinesModal
-          open={brandGuidelinesModalOpen}
-          onOpenChange={setBrandGuidelinesModalOpen}
-          entityId={selectedOfferId}
-          entityName={selectedOfferName}
-          entityType="offer"
-        />
-      )}
-
-      {selectedOfferId && (
-        <EditDetailsModal
-          open={isEditDetailsModalOpen}
-          onOpenChange={setIsEditDetailsModalOpen}
-          offerId={selectedOfferId}
+        <NewOfferManuallyModal
+          open={isNewOfferModalOpen}
+          onOpenChange={setIsNewOfferModalOpen}
           onSuccess={() => {
-            setIsEditDetailsModalOpen(false);
-            setSelectedOfferId(null);
+            setIsNewOfferModalOpen(false);
+            refresh();
           }}
         />
-      )}
 
-      <BulkEditModal
-        open={isBulkEditModalOpen}
-        onOpenChange={setIsBulkEditModalOpen}
-        onSuccess={() => {
-          setIsBulkEditModalOpen(false);
-        }}
-      />
-    </div>
+        {selectedOfferId && selectedOfferName && (
+          <BrandGuidelinesModal
+            open={brandGuidelinesModalOpen}
+            onOpenChange={setBrandGuidelinesModalOpen}
+            entityId={selectedOfferId}
+            entityName={selectedOfferName}
+            entityType="offer"
+          />
+        )}
+
+        {selectedOfferId && (
+          <EditDetailsModal
+            open={isEditDetailsModalOpen}
+            onOpenChange={setIsEditDetailsModalOpen}
+            offerId={selectedOfferId}
+            onSuccess={() => {
+              setIsEditDetailsModalOpen(false);
+              setSelectedOfferId(null);
+              refresh(); // Refresh the list after edit
+            }}
+          />
+        )}
+
+        <BulkEditModal
+          open={isBulkEditModalOpen}
+          onOpenChange={setIsBulkEditModalOpen}
+          onSuccess={() => {
+            setIsBulkEditModalOpen(false);
+          }}
+        />
+      </div>
+    </div >
   );
 }

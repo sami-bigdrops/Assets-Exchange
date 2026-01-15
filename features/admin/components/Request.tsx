@@ -18,22 +18,22 @@ import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { getRecentPublisherRequests } from "../services/request.service";
-import type { Request as RequestType } from "../types/admin.types";
+import { fetchRequests } from "../services/requests.client";
+import type { CreativeRequest } from "../types/request.types";
 
 import { RequestSection } from "./RequestSection";
 
 export function Request() {
   const variables = getVariables();
   const [isHovered, setIsHovered] = useState(false);
-  const [requests, setRequests] = useState<RequestType[]>([]);
+  const [requests, setRequests] = useState<CreativeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRequests = async () => {
+    const load = async () => {
       try {
-        const data = await getRecentPublisherRequests(3);
-        setRequests(data);
+        const res = await fetchRequests({ page: 1, limit: 3, sort: "submittedAt:desc" });
+        setRequests(res.data || []);
       } catch (error) {
         console.error("Failed to fetch recent requests:", error);
       } finally {
@@ -41,7 +41,7 @@ export function Request() {
       }
     };
 
-    fetchRequests();
+    load();
   }, []);
 
   if (isLoading) {

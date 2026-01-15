@@ -46,7 +46,7 @@ export default async function DashboardLayout({
   const menuConfig = getSidebarMenuConfig(user.role);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-screen overflow-y-auto overflow-x-hidden">
       <DashboardSidebar
         menuConfig={menuConfig}
         userName={user.name}
@@ -54,7 +54,7 @@ export default async function DashboardLayout({
       />
       <SidebarInset>
         <header
-          className="flex  h-16 xl:h-19  shrink-0 items-center justify-between gap-2 border-b px-4"
+          className="sticky top-0 z-10 flex h-16 xl:h-19 shrink-0 items-center justify-between gap-2 border-b px-4"
           style={{
             backgroundColor: variables.colors.headerBackgroundColor,
           }}
@@ -74,7 +74,7 @@ export default async function DashboardLayout({
             <LastUpdated />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+        <main className="flex-1 p-4">
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </SidebarInset>

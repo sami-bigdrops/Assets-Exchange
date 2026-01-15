@@ -1,46 +1,42 @@
-/**
- * useManageCreativesViewModel - Fetches approved and rejected creatives for /creatives page
- *
- * This view model fetches all creative requests and filters them to show only
- * approved and rejected creatives (final states).
- *
- * Data source: creative_requests table filtered by status='approved' or status='rejected'
- */
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
-import { getAllRequests } from "../services/request.service";
-import type { Request } from "../types/admin.types";
+import { fetchRequests } from "../services/requests.client";
+import type { CreativeRequest } from "../types/request.types";
 
 export function useManageCreativesViewModel() {
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [requests, setRequests] = useState<CreativeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const allRequests = await getAllRequests();
-        setRequests(allRequests);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load creatives"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+  const load = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await fetchRequests({
+        page: 1,
+        limit: 100,
+        status: "approved,rejected"
+      });
+      setRequests(res.data || []);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load creatives"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return {
     requests,
     isLoading,
     error,
+    refresh: load
   };
 }

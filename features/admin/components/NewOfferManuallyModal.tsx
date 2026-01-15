@@ -4,10 +4,10 @@ import { File, Loader2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-import { getAllAdvertisers } from "../services/advertiser.service";
-import type { Advertiser } from "../types/admin.types";
+import { fetchAdvertisers } from "../services/advertisers.client";
+import type { Advertiser } from "../types/advertiser.types";
 import {
   useNewOfferManuallyViewModel,
   type NewOfferFormData,
@@ -58,8 +58,8 @@ interface NewOfferManuallyModalProps {
  */
 async function generateOfferId(): Promise<string> {
   try {
-    const { getAllOffers } = await import("../services/offers.service");
-    const offers = await getAllOffers();
+    const { fetchOffers } = await import("../services/offers.client");
+    const offers = await fetchOffers();
 
     // Extract numeric parts from existing offer IDs (format: O####)
     const existingNumbers = offers
@@ -144,10 +144,10 @@ export function NewOfferManuallyModal({
   }, [advertisers, advertiserSearchQuery]);
 
   useEffect(() => {
-    const fetchAdvertisers = async () => {
+    const loadAdvertisers = async () => {
       try {
         setIsLoadingAdvertisers(true);
-        const data = await getAllAdvertisers();
+        const data = await fetchAdvertisers();
         setAdvertisers(data);
       } catch (error) {
         console.error("Failed to fetch advertisers:", error);
@@ -158,7 +158,7 @@ export function NewOfferManuallyModal({
     };
 
     if (open) {
-      fetchAdvertisers();
+      loadAdvertisers();
     }
   }, [open]);
 
@@ -273,7 +273,7 @@ export function NewOfferManuallyModal({
         onOpenChange(false);
         return;
       }
-      
+
       // If no unsaved changes, allow normal close
       setInternalOpen(newOpen);
       onOpenChange(newOpen);
@@ -504,6 +504,7 @@ export function NewOfferManuallyModal({
                         ...prev,
                         advertiserId: selectedAdvertiser.id,
                         advertiserName: selectedAdvertiser.advertiserName,
+                        advertiserDisplayId: selectedAdvertiser.advertiserId,
                       }));
                       setAdvertiserSearchQuery("");
                       setAdvertiserSelectOpen(false);
@@ -528,7 +529,7 @@ export function NewOfferManuallyModal({
                   >
                     <SelectValue placeholder="Select advertiser...">
                       {formData.advertiserId && formData.advertiserName
-                        ? `${formData.advertiserId} - ${formData.advertiserName}`
+                        ? `${formData.advertiserDisplayId || formData.advertiserId} - ${formData.advertiserName}`
                         : null}
                     </SelectValue>
                   </SelectTrigger>
@@ -587,7 +588,7 @@ export function NewOfferManuallyModal({
                               className="font-semibold"
                               style={{ color: variables.colors.inputTextColor }}
                             >
-                              {advertiser.id}
+                              {advertiser.advertiserId}
                             </span>
                             <span
                               className="ml-2"
@@ -605,11 +606,11 @@ export function NewOfferManuallyModal({
                 </Select>
                 {(validationErrors.advertiserId ||
                   validationErrors.advertiserName) && (
-                  <p className="text-sm text-destructive font-inter">
-                    {validationErrors.advertiserId ||
-                      validationErrors.advertiserName}
-                  </p>
-                )}
+                    <p className="text-sm text-destructive font-inter">
+                      {validationErrors.advertiserId ||
+                        validationErrors.advertiserName}
+                    </p>
+                  )}
               </div>
 
               <div className="space-y-4 pt-2 border-t">
@@ -634,19 +635,19 @@ export function NewOfferManuallyModal({
                       style={
                         formData.brandGuidelinesType === "url"
                           ? {
-                              backgroundColor:
-                                variables.colors.buttonDefaultBackgroundColor,
-                              color: variables.colors.buttonDefaultTextColor,
-                              height: "2.25rem",
-                            }
+                            backgroundColor:
+                              variables.colors.buttonDefaultBackgroundColor,
+                            color: variables.colors.buttonDefaultTextColor,
+                            height: "2.25rem",
+                          }
                           : {
-                              backgroundColor:
-                                variables.colors.buttonOutlineBackgroundColor,
-                              borderColor:
-                                variables.colors.buttonOutlineBorderColor,
-                              color: variables.colors.buttonOutlineTextColor,
-                              height: "2.25rem",
-                            }
+                            backgroundColor:
+                              variables.colors.buttonOutlineBackgroundColor,
+                            borderColor:
+                              variables.colors.buttonOutlineBorderColor,
+                            color: variables.colors.buttonOutlineTextColor,
+                            height: "2.25rem",
+                          }
                       }
                     >
                       URL
@@ -667,19 +668,19 @@ export function NewOfferManuallyModal({
                       style={
                         formData.brandGuidelinesType === "upload"
                           ? {
-                              backgroundColor:
-                                variables.colors.buttonDefaultBackgroundColor,
-                              color: variables.colors.buttonDefaultTextColor,
-                              height: "2.25rem",
-                            }
+                            backgroundColor:
+                              variables.colors.buttonDefaultBackgroundColor,
+                            color: variables.colors.buttonDefaultTextColor,
+                            height: "2.25rem",
+                          }
                           : {
-                              backgroundColor:
-                                variables.colors.buttonOutlineBackgroundColor,
-                              borderColor:
-                                variables.colors.buttonOutlineBorderColor,
-                              color: variables.colors.buttonOutlineTextColor,
-                              height: "2.25rem",
-                            }
+                            backgroundColor:
+                              variables.colors.buttonOutlineBackgroundColor,
+                            borderColor:
+                              variables.colors.buttonOutlineBorderColor,
+                            color: variables.colors.buttonOutlineTextColor,
+                            height: "2.25rem",
+                          }
                       }
                     >
                       Upload
@@ -700,19 +701,19 @@ export function NewOfferManuallyModal({
                       style={
                         formData.brandGuidelinesType === "text"
                           ? {
-                              backgroundColor:
-                                variables.colors.buttonDefaultBackgroundColor,
-                              color: variables.colors.buttonDefaultTextColor,
-                              height: "2.25rem",
-                            }
+                            backgroundColor:
+                              variables.colors.buttonDefaultBackgroundColor,
+                            color: variables.colors.buttonDefaultTextColor,
+                            height: "2.25rem",
+                          }
                           : {
-                              backgroundColor:
-                                variables.colors.buttonOutlineBackgroundColor,
-                              borderColor:
-                                variables.colors.buttonOutlineBorderColor,
-                              color: variables.colors.buttonOutlineTextColor,
-                              height: "2.25rem",
-                            }
+                            backgroundColor:
+                              variables.colors.buttonOutlineBackgroundColor,
+                            borderColor:
+                              variables.colors.buttonOutlineBorderColor,
+                            color: variables.colors.buttonOutlineTextColor,
+                            height: "2.25rem",
+                          }
                       }
                     >
                       Direct Input

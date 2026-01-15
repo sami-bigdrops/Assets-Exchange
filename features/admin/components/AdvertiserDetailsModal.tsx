@@ -4,8 +4,8 @@ import { Eye, EyeOff, Loader2, Pencil, Check, X as XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getVariables } from "@/components/_variables";
-import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -27,10 +27,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 import {
-  getAdvertiserById,
+  getAdvertiser,
   updateAdvertiser,
-} from "../services/advertiser.service";
-import type { Advertiser } from "../types/admin.types";
+} from "../services/advertisers.client";
+import type { Advertiser } from "../types/advertiser.types";
 
 interface AdvertiserDetailsModalProps {
   open: boolean;
@@ -130,15 +130,18 @@ export function AdvertiserDetailsModal({
         try {
           setIsLoading(true);
           setError(null);
-          const fetchedAdvertiser = await getAdvertiserById(advertiserId);
+          const fetchedAdvertiser = await getAdvertiser(advertiserId);
           if (fetchedAdvertiser) {
             setAdvertiser(fetchedAdvertiser);
+            const status = fetchedAdvertiser.status === "active" || fetchedAdvertiser.status === "inactive"
+              ? (fetchedAdvertiser.status.charAt(0).toUpperCase() + fetchedAdvertiser.status.slice(1)) as "Active" | "Inactive"
+              : (fetchedAdvertiser.status as "Active" | "Inactive") || "Active";
             const initialData = {
               advertiserId: fetchedAdvertiser.id,
               advertiserName: fetchedAdvertiser.advertiserName,
-              status: fetchedAdvertiser.status,
+              status,
               advPlatform: fetchedAdvertiser.advPlatform,
-              email: (fetchedAdvertiser as any).email || "",
+              email: (fetchedAdvertiser as Record<string, unknown>).email as string || "",
               password: "",
             };
             setFormData(initialData);
@@ -292,17 +295,17 @@ export function AdvertiserDetailsModal({
       // TODO: Validate business rules (e.g., can't edit ID/Name/Status if API-created)
       // TODO: Handle optimistic updates and rollback on error
 
-      const updatePayload: Partial<Advertiser> = {
-        advPlatform: formData.advPlatform,
-      };
+      const updatePayload: Partial<{ name: string; contactEmail: string; status: "active" | "inactive" }> = {};
 
       if (!isApiSource(advertiser.createdMethod)) {
-        updatePayload.id = formData.advertiserId;
-        updatePayload.advertiserName = formData.advertiserName;
-        updatePayload.status = formData.status;
-        (updatePayload as any).email = formData.email;
+        updatePayload.name = formData.advertiserName;
+        const statusLower = formData.status.toLowerCase() as "active" | "inactive";
+        updatePayload.status = statusLower;
+        if (formData.email) {
+          updatePayload.contactEmail = formData.email;
+        }
         if (isEditingPassword && formData.password.trim()) {
-          (updatePayload as any).password = formData.password;
+          (updatePayload as Record<string, unknown>).password = formData.password;
         }
       }
 

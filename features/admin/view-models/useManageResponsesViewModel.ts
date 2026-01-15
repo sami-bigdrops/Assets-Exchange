@@ -1,51 +1,43 @@
-/**
- * useManageResponsesViewModel - Fetches creative requests for /response page
- *
- * UNIFIED MODEL:
- * Fetches creative requests that are in advertiser stage or completed.
- * These are the SAME creative requests, just filtered differently.
- *
- * IMPORTANT: These are NOT separate "response" entities!
- * They are creative requests that admin approved and forwarded to advertiser.
- *
- * Data source: Same creative_requests table, filtered for approvalStage IN ('advertiser', 'completed')
- */
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
-import { getAllAdvertiserResponses } from "../services/request.service";
-import type { Request } from "../types/admin.types";
+import { fetchRequests } from "../services/requests.client";
+import type { CreativeRequest } from "../types/request.types";
 
 export function useManageResponsesViewModel() {
-  const [responses, setResponses] = useState<Request[]>([]);
+  const [responses, setResponses] = useState<CreativeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchResponses = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getAllAdvertiserResponses();
-        setResponses(data);
-        setError(null);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch responses"
-        );
-        setResponses([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchResponses();
+  const load = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await fetchRequests({
+        page: 1,
+        limit: 1000,
+        approvalStage: "advertiser"
+      });
+      setResponses(res.data || []);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch responses"
+      );
+      setResponses([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return {
     responses,
     isLoading,
     error,
+    refresh: load
   };
 }

@@ -3,11 +3,19 @@
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 
-import type { Router } from "./router";
+const link = new RPCLink({
+  url:
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/rpc`
+      : "http://localhost:3000/api/rpc",
+  headers: async () => {
+    return {
+      "Content-Type": "application/json",
+    };
+  },
+});
 
-// @ts-expect-error - oRPC type inference issue with flat router structure
-export const rpc = createORPCClient<Router>(
-  new RPCLink({
-    url: "/api/rpc",
-  })
-);
+
+export const client = createORPCClient<any>(link);
+
+export const rpc = client;

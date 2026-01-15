@@ -75,6 +75,25 @@ export function BrandGuidelinesModal({
 
   const [editType, setEditType] = useState<"url" | "upload" | "text">("url");
   const [editFile, setEditFile] = useState<File | null>(null);
+  const [cleanFiles, setCleanFiles] = useState<any[]>([]);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open && editType === "upload") {
+      const fetchCleanFiles = async () => {
+        try {
+          const response = await fetch("/api/admin/files/clean");
+          if (response.ok) {
+            const result = await response.json();
+            setCleanFiles(result.data || []);
+          }
+        } catch (error) {
+          console.error("Failed to fetch clean files:", error);
+        }
+      };
+      fetchCleanFiles();
+    }
+  }, [open, editType]);
 
   useEffect(() => {
     if (brandGuidelines && brandGuidelines.type) {
@@ -94,70 +113,82 @@ export function BrandGuidelinesModal({
       setIsLoading(true);
       setError(null);
 
-      /**
-       * TODO: BACKEND - Fetch Brand Guidelines
-       *
-       * Endpoint: GET /api/admin/{entityType}s/:id/brand-guidelines
-       *
-       * Path Parameters:
-       * - entityType: "offers" | "advertisers" | "publishers"
-       * - id: string (entity ID)
-       *
-       * Response:
-       * {
-       *   type: "url" | "file" | "text",
-       *   url?: string,                       // If type is "url"
-       *   fileUrl?: string,                    // If type is "file"
-       *   fileName?: string,                  // If type is "file"
-       *   fileSize?: number,                  // If type is "file" (bytes)
-       *   mimeType?: string,                  // If type is "file"
-       *   text?: string,                      // If type is "text"
-       *   notes?: string,                     // Brand guidelines notes
-       *   createdAt?: string,                 // ISO timestamp
-       *   updatedAt?: string                  // ISO timestamp
-       * }
-       *
-       * Error Handling:
-       * - 404: Brand guidelines not found - return null (show "no guidelines" state)
-       * - 401: Unauthorized - redirect to login
-       * - 403: Forbidden - show permission denied
-       * - 500: Server error - show error with retry option
-       *
-       * Implementation:
-       * ```typescript
-       * const response = await fetch(`/api/admin/${entityType}s/${entityId}/brand-guidelines`, {
-       *   headers: {
-       *     'Authorization': `Bearer ${getAuthToken()}`,
-       *     'Content-Type': 'application/json'
-       *   }
-       * });
-       *
-       * if (response.status === 404) {
-       *   return null; // No brand guidelines exist
-       * }
-       *
-       * if (!response.ok) {
-       *   throw new Error('Failed to fetch brand guidelines');
-       * }
-       *
-       * return await response.json();
-       * ```
-       */
-      // TODO: BACKEND - Replace with actual API call
-      // Simulate API call
-      setTimeout(() => {
-        // Mock data - replace with actual API call
-        const mockData: BrandGuidelinesData | null = null; // Set to null to show "no guidelines" state
-        setBrandGuidelines(mockData);
-        setEditData({
-          type: null,
-          url: "",
-          text: "",
-          notes: "",
-        });
-        setEditType("url");
-        setIsLoading(false);
-      }, 500);
+      const fetchBrandGuidelines = async () => {
+        try {
+          const response = await fetch(
+            `/api/admin/${entityType}s/${entityId}/brand-guidelines`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (response.status === 404) {
+            setBrandGuidelines(null);
+            setEditData({
+              type: null,
+              url: "",
+              text: "",
+              notes: "",
+            });
+            setEditType("url");
+            setIsLoading(false);
+            return;
+          }
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+              errorData.error || "Failed to fetch brand guidelines"
+            );
+          }
+
+          const result = await response.json();
+          const data = result.data || result;
+
+          if (data) {
+            setBrandGuidelines(data);
+            setEditData({
+              type: data.type,
+              url: data.url || "",
+              text: data.text || "",
+              notes: data.notes || "",
+            });
+          } else {
+            setBrandGuidelines(null);
+            setEditData({
+              type: null,
+              url: "",
+              text: "",
+              notes: "",
+            });
+          }
+          setEditType("url");
+        } catch (err) {
+          const errorMessage =
+            err instanceof Error
+              ? err.message
+              : "Failed to fetch brand guidelines. Please try again.";
+          setError(errorMessage);
+          toast.error("Failed to load brand guidelines", {
+            description: errorMessage,
+          });
+          setBrandGuidelines(null);
+          setEditData({
+            type: null,
+            url: "",
+            text: "",
+            notes: "",
+          });
+          setEditType("url");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchBrandGuidelines();
     }
   }, [open, entityId, entityType]);
 
@@ -165,6 +196,8 @@ export function BrandGuidelinesModal({
     (open: boolean) => {
       if (!isSaving && !open) {
         onOpenChange(false);
+        setCleanFiles([]);
+        setSelectedFileId(null);
       }
     },
     [isSaving, onOpenChange]
@@ -215,137 +248,123 @@ export function BrandGuidelinesModal({
         notes: editData.notes,
       };
 
-      /**
-       * TODO: BACKEND - Save/Update Brand Guidelines
-       *
-       * Endpoint: PUT /api/admin/{entityType}s/:id/brand-guidelines
-       *
-       * Path Parameters:
-       * - entityType: "offers" | "advertisers" | "publishers"
-       * - id: string (entity ID)
-       *
-       * Request Body (JSON for URL/text, FormData for file):
-       *
-       * For URL type:
-       * {
-       *   type: "url",
-       *   url: string,                        // Required, must be valid HTTPS URL
-       *   notes?: string                      // Optional
-       * }
-       *
-       * For Text type:
-       * {
-       *   type: "text",
-       *   text: string,                       // Required, HTML or plain text
-       *   notes?: string                      // Optional
-       * }
-       *
-       * For File type (multipart/form-data):
-       * - type: "file"
-       * - file: File (multipart file upload)
-       * - notes?: string
-       *
-       * File Upload Requirements:
-       * - Validate file size (max 10MB)
-       * - Validate file type (only .doc, .docx, .pdf)
-       * - Store file in secure storage (S3, Azure Blob, etc.)
-       * - If replacing existing file, delete old file from storage
-       * - Return file URL or file ID for reference
-       *
-       * Response:
-       * {
-       *   type: "url" | "file" | "text",
-       *   url?: string,
-       *   fileUrl?: string,                   // If type is "file"
-       *   fileName?: string,                  // If type is "file"
-       *   fileSize?: number,                  // If type is "file"
-       *   mimeType?: string,                  // If type is "file"
-       *   text?: string,                      // If type is "text"
-       *   notes?: string,
-       *   updatedAt: string                   // ISO timestamp
-       * }
-       *
-       * Error Handling:
-       * - 400: Validation errors
-       *   - Invalid URL format
-       *   - Invalid file type/size
-       *   - Missing required fields
-       *   - Return field-specific errors
-       *
-       * - 401: Unauthorized - redirect to login
-       * - 403: Forbidden - show permission denied
-       * - 404: Entity not found
-       * - 413: File too large - show specific error
-       * - 500: Server error or file storage error
-       *
-       * Implementation Example:
-       * ```typescript
-       * let response;
-       *
-       * if (editType === 'file' && editFile) {
-       *   // Use FormData for file upload
-       *   const formData = new FormData();
-       *   formData.append('type', 'file');
-       *   formData.append('file', editFile);
-       *   if (editData.notes) {
-       *     formData.append('notes', editData.notes);
-       *   }
-       *
-       *   response = await fetch(`/api/admin/${entityType}s/${entityId}/brand-guidelines`, {
-       *     method: 'PUT',
-       *     headers: {
-       *       'Authorization': `Bearer ${getAuthToken()}`
-       *     },
-       *     body: formData
-       *   });
-       * } else {
-       *   // Use JSON for URL/text
-       *   const body = {
-       *     type: editType === 'upload' ? 'file' : editType,
-       *     ...(editType === 'url' && { url: editData.url }),
-       *     ...(editType === 'text' && { text: editData.text }),
-       *     ...(editData.notes && { notes: editData.notes })
-       *   };
-       *
-       *   response = await fetch(`/api/admin/${entityType}s/${entityId}/brand-guidelines`, {
-       *     method: 'PUT',
-       *     headers: {
-       *       'Authorization': `Bearer ${getAuthToken()}`,
-       *       'Content-Type': 'application/json'
-       *     },
-       *     body: JSON.stringify(body)
-       *   });
-       * }
-       *
-       * if (!response.ok) {
-       *   const error = await response.json();
-       *   throw new Error(error.message || 'Failed to save brand guidelines');
-       * }
-       *
-       * return await response.json();
-       * ```
-       *
-       * Audit Trail:
-       * - Log all brand guidelines updates
-       * - Track which type was changed (url/file/text)
-       * - Store previous values for rollback if needed
-       * - Track who updated and when
-       */
-      // TODO: BACKEND - Replace with actual API call
-      // For file uploads, use FormData with multipart/form-data
-
       if (onSave) {
         await onSave(dataToSave);
+        toast.success("Brand guidelines saved successfully", {
+          description: `Brand guidelines for ${entityName} have been saved.`,
+        });
+        setBrandGuidelines(dataToSave);
+        setIsEditMode(false);
+        onOpenChange(false);
+        return;
       }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      let response: Response;
+
+      if (editType === "upload" && selectedFileId) {
+        response = await fetch(
+          `/api/admin/${entityType}s/${entityId}/brand-guidelines`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ fileId: selectedFileId }),
+          }
+        );
+      } else if (editType === "upload" && editFile) {
+        const formData = new FormData();
+        formData.append("type", "file");
+        formData.append("file", editFile);
+        if (editData.notes) {
+          formData.append("notes", editData.notes);
+        }
+
+        response = await fetch(
+          `/api/admin/${entityType}s/${entityId}/brand-guidelines`,
+          {
+            method: "PUT",
+            body: formData,
+          }
+        );
+      } else {
+        const body: {
+          type: "url" | "file" | "text";
+          url?: string;
+          text?: string;
+          notes?: string;
+        } = {
+          type: editType === "upload" ? "file" : editType,
+        };
+
+        if (editType === "url" && editData.url) {
+          body.url = editData.url;
+        } else if (editType === "text" && editData.text) {
+          body.text = editData.text;
+        }
+
+        if (editData.notes) {
+          body.notes = editData.notes;
+        }
+
+        response = await fetch(
+          `/api/admin/${entityType}s/${entityId}/brand-guidelines`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          }
+        );
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || "Failed to save brand guidelines"
+        );
+      }
 
       toast.success("Brand guidelines saved successfully", {
         description: `Brand guidelines for ${entityName} have been saved.`,
       });
-      setBrandGuidelines(dataToSave);
+
+      if (response.status === 204) {
+        setBrandGuidelines(dataToSave);
+      } else {
+        const result = await response.json().catch(() => null);
+        if (result?.data) {
+          setBrandGuidelines(result.data);
+        } else {
+          setBrandGuidelines(dataToSave);
+        }
+      }
+
       setIsEditMode(false);
+
+      const fetchUpdated = async () => {
+        try {
+          const fetchResponse = await fetch(
+            `/api/admin/${entityType}s/${entityId}/brand-guidelines`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          if (fetchResponse.ok) {
+            const fetchResult = await fetchResponse.json();
+            if (fetchResult.data) {
+              setBrandGuidelines(fetchResult.data);
+            }
+          }
+        } catch (_err) {
+        }
+      };
+
+      await fetchUpdated();
       onOpenChange(false);
     } catch (err) {
       const errorMessage =
@@ -376,24 +395,39 @@ export function BrandGuidelinesModal({
     if (brandGuidelines.type === "url" && brandGuidelines.url) {
       return (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-3 border rounded-lg"
+            style={{
+              backgroundColor: variables.colors.cardBackground,
+              borderColor: variables.colors.inputBorderColor,
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-inter mb-1" style={{ color: variables.colors.inputPlaceholderColor }}>
+                Brand Guidelines URL
+              </p>
+              <a
+                href={brandGuidelines.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:underline font-inter flex items-center gap-1 break-all"
+              >
+                {brandGuidelines.url}
+                <ExternalLink className="h-4 w-4 shrink-0" />
+              </a>
+            </div>
             <a
               href={brandGuidelines.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:underline font-inter flex items-center gap-1"
+              className="ml-4 inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-inter transition-colors shrink-0"
+              style={{
+                backgroundColor: variables.colors.buttonDefaultBackgroundColor,
+                color: variables.colors.buttonDefaultTextColor,
+              }}
             >
-              {brandGuidelines.url}
               <ExternalLink className="h-4 w-4" />
+              Open in New Tab
             </a>
-          </div>
-          <div className="w-full h-[600px] border rounded-lg overflow-hidden">
-            <iframe
-              src={brandGuidelines.url}
-              className="w-full h-full"
-              title="Brand Guidelines"
-              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-            />
           </div>
         </div>
       );
@@ -499,18 +533,18 @@ export function BrandGuidelinesModal({
               style={
                 editType === "url"
                   ? {
-                      backgroundColor:
-                        variables.colors.buttonDefaultBackgroundColor,
-                      color: variables.colors.buttonDefaultTextColor,
-                      height: "2.25rem",
-                    }
+                    backgroundColor:
+                      variables.colors.buttonDefaultBackgroundColor,
+                    color: variables.colors.buttonDefaultTextColor,
+                    height: "2.25rem",
+                  }
                   : {
-                      backgroundColor:
-                        variables.colors.buttonOutlineBackgroundColor,
-                      borderColor: variables.colors.buttonOutlineBorderColor,
-                      color: variables.colors.buttonOutlineTextColor,
-                      height: "2.25rem",
-                    }
+                    backgroundColor:
+                      variables.colors.buttonOutlineBackgroundColor,
+                    borderColor: variables.colors.buttonOutlineBorderColor,
+                    color: variables.colors.buttonOutlineTextColor,
+                    height: "2.25rem",
+                  }
               }
             >
               URL
@@ -525,18 +559,18 @@ export function BrandGuidelinesModal({
               style={
                 editType === "upload"
                   ? {
-                      backgroundColor:
-                        variables.colors.buttonDefaultBackgroundColor,
-                      color: variables.colors.buttonDefaultTextColor,
-                      height: "2.25rem",
-                    }
+                    backgroundColor:
+                      variables.colors.buttonDefaultBackgroundColor,
+                    color: variables.colors.buttonDefaultTextColor,
+                    height: "2.25rem",
+                  }
                   : {
-                      backgroundColor:
-                        variables.colors.buttonOutlineBackgroundColor,
-                      borderColor: variables.colors.buttonOutlineBorderColor,
-                      color: variables.colors.buttonOutlineTextColor,
-                      height: "2.25rem",
-                    }
+                    backgroundColor:
+                      variables.colors.buttonOutlineBackgroundColor,
+                    borderColor: variables.colors.buttonOutlineBorderColor,
+                    color: variables.colors.buttonOutlineTextColor,
+                    height: "2.25rem",
+                  }
               }
             >
               Upload
@@ -551,18 +585,18 @@ export function BrandGuidelinesModal({
               style={
                 editType === "text"
                   ? {
-                      backgroundColor:
-                        variables.colors.buttonDefaultBackgroundColor,
-                      color: variables.colors.buttonDefaultTextColor,
-                      height: "2.25rem",
-                    }
+                    backgroundColor:
+                      variables.colors.buttonDefaultBackgroundColor,
+                    color: variables.colors.buttonDefaultTextColor,
+                    height: "2.25rem",
+                  }
                   : {
-                      backgroundColor:
-                        variables.colors.buttonOutlineBackgroundColor,
-                      borderColor: variables.colors.buttonOutlineBorderColor,
-                      color: variables.colors.buttonOutlineTextColor,
-                      height: "2.25rem",
-                    }
+                    backgroundColor:
+                      variables.colors.buttonOutlineBackgroundColor,
+                    borderColor: variables.colors.buttonOutlineBorderColor,
+                    color: variables.colors.buttonOutlineTextColor,
+                    height: "2.25rem",
+                  }
               }
             >
               Direct Input
@@ -788,13 +822,6 @@ export function BrandGuidelinesModal({
                     size={24}
                   />
                   <p
-                    className="mb-2 text-sm font-inter"
-                    style={{ color: variables.colors.inputTextColor }}
-                  >
-                    <span className="font-semibold">Click to upload</span> or
-                    drag and drop
-                  </p>
-                  <p
                     className="text-xs font-inter"
                     style={{ color: variables.colors.inputPlaceholderColor }}
                   >
@@ -802,6 +829,40 @@ export function BrandGuidelinesModal({
                   </p>
                 </div>
               </div>
+
+              {cleanFiles.length > 0 && (
+                <div className="space-y-2 mt-4!">
+                  <p className="text-sm font-inter font-medium" style={{ color: variables.colors.inputTextColor }}>
+                    Select from available clean files:
+                  </p>
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {cleanFiles.map((file: any) => (
+                      <div
+                        key={file.id}
+                        onClick={() => {
+                          setSelectedFileId(file.id);
+                          setEditFile(null);
+                        }}
+                        className="flex items-center justify-between p-2 rounded-md border cursor-pointer transition-colors"
+                        style={{
+                          borderColor: selectedFileId === file.id ? variables.colors.buttonDefaultBackgroundColor : variables.colors.inputBorderColor,
+                          backgroundColor: selectedFileId === file.id ? `${variables.colors.buttonDefaultBackgroundColor}10` : "transparent",
+                        }}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <File size={16} style={{ color: variables.colors.inputTextColor }} />
+                          <span className="text-sm truncate font-inter" style={{ color: variables.colors.inputTextColor }}>
+                            {file.originalName}
+                          </span>
+                        </div>
+                        <span className="text-xs font-inter shrink-0" style={{ color: variables.colors.inputPlaceholderColor }}>
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

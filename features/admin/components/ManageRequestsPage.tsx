@@ -64,7 +64,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import type { RequestStatus } from "../types/admin.types";
+import type { RequestStatus } from "../types/request.types";
 import { useManageRequestsViewModel } from "../view-models/useManageRequestsViewModel";
 
 import { RequestSection } from "./RequestSection";
@@ -158,8 +158,7 @@ export function ManageRequestsPage() {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
 
-        // Pending Approvals: Admin actions required
-        // Show requests that need admin review (approvalStage='admin') and have been pending 2+ days
+
         filtered = filtered.filter((request) => {
           if (
             request.status !== "pending" ||
@@ -168,7 +167,7 @@ export function ManageRequestsPage() {
             return false;
           }
 
-          const submissionDate = parseDate(request.date);
+          const submissionDate = parseDate(request.date || "");
           submissionDate.setHours(0, 0, 0, 0);
 
           const daysDiff = Math.floor(
@@ -178,21 +177,19 @@ export function ManageRequestsPage() {
           return daysDiff >= 2;
         });
       } else if (activeTab === "rejected") {
-        // Rejected by admin
         filtered = filtered.filter(
           (request) =>
             request.status === "rejected" &&
             request.approvalStage?.toLowerCase() === "admin"
         );
       } else if (activeTab === "sent-back") {
-        // Sent back to admin for reconsideration
+
         filtered = filtered.filter(
           (request) =>
             request.status === "sent-back" &&
             request.approvalStage?.toLowerCase() === "admin"
         );
       } else if (activeTab === "new") {
-        // New requests awaiting admin review
         filtered = filtered.filter(
           (request) =>
             request.status === "new" &&
@@ -221,16 +218,16 @@ export function ManageRequestsPage() {
       const query = debouncedSearchQuery.trim();
       filtered = filtered.filter((request) => {
         return (
-          searchInText(request.date, query) ||
-          searchInText(request.advertiserName, query) ||
-          searchInText(request.affiliateId, query) ||
-          searchInText(request.priority, query) ||
-          searchInText(request.offerId, query) ||
-          searchInText(request.offerName, query) ||
-          searchInText(request.clientId, query) ||
-          searchInText(request.clientName, query) ||
-          searchInText(request.creativeType, query) ||
-          searchInText(request.status, query)
+          searchInText(request.date || "", query) ||
+          searchInText(request.advertiserName || "", query) ||
+          searchInText(request.affiliateId || "", query) ||
+          searchInText(request.priority || "", query) ||
+          searchInText(request.offerId || "", query) ||
+          searchInText(request.offerName || "", query) ||
+          searchInText(request.clientId || "", query) ||
+          searchInText(request.clientName || "", query) ||
+          searchInText(request.creativeType || "", query) ||
+          searchInText(request.status || "", query)
         );
       });
     }
@@ -238,8 +235,8 @@ export function ManageRequestsPage() {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "date-desc": {
-          const aDate = parseDate(a.date);
-          const bDate = parseDate(b.date);
+          const aDate = parseDate(a.date || "");
+          const bDate = parseDate(b.date || "");
           const aTime = aDate.getTime();
           const bTime = bDate.getTime();
           // Handle invalid dates by putting them at the end
@@ -249,8 +246,8 @@ export function ManageRequestsPage() {
           return bTime - aTime;
         }
         case "date-asc": {
-          const aDate = parseDate(a.date);
-          const bDate = parseDate(b.date);
+          const aDate = parseDate(a.date || "");
+          const bDate = parseDate(b.date || "");
           const aTime = aDate.getTime();
           const bTime = bDate.getTime();
           // Handle invalid dates by putting them at the end
@@ -260,20 +257,20 @@ export function ManageRequestsPage() {
           return aTime - bTime;
         }
         case "priority-high": {
-          const aPriority = getPriorityValue(a.priority);
-          const bPriority = getPriorityValue(b.priority);
+          const aPriority = getPriorityValue(a.priority || "");
+          const bPriority = getPriorityValue(b.priority || "");
           if (bPriority !== aPriority) {
             return bPriority - aPriority;
           }
-          return parseDate(b.date).getTime() - parseDate(a.date).getTime();
+          return parseDate(b.date || "").getTime() - parseDate(a.date || "").getTime();
         }
         case "priority-low": {
-          const aPriority = getPriorityValue(a.priority);
-          const bPriority = getPriorityValue(b.priority);
+          const aPriority = getPriorityValue(a.priority || "");
+          const bPriority = getPriorityValue(b.priority || "");
           if (aPriority !== bPriority) {
             return aPriority - bPriority;
           }
-          return parseDate(b.date).getTime() - parseDate(a.date).getTime();
+          return parseDate(b.date || "").getTime() - parseDate(a.date || "").getTime();
         }
         case "advertiser-asc": {
           return (a.advertiserName || "").localeCompare(
@@ -420,11 +417,10 @@ export function ManageRequestsPage() {
                   >
                     <button
                       onClick={() => setActiveCategory("sortBy")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                        activeCategory === "sortBy"
-                          ? "bg-gray-100 text-gray-900 font-medium"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "sortBy"
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
                     >
                       <span>Sort By</span>
                       <div className="flex items-center gap-2">
@@ -454,11 +450,10 @@ export function ManageRequestsPage() {
                     </button>
                     <button
                       onClick={() => setActiveCategory("priority")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                        activeCategory === "priority"
-                          ? "bg-gray-100 text-gray-900 font-medium"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "priority"
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
                     >
                       <span>Priority</span>
                       <div className="flex items-center gap-2">
@@ -531,11 +526,10 @@ export function ManageRequestsPage() {
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors flex items-center gap-2 ${
-                                sortBy === option.value
-                                  ? "bg-gray-100 text-gray-900 font-medium"
-                                  : "text-gray-600 hover:bg-gray-50"
-                              }`}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors flex items-center gap-2 ${sortBy === option.value
+                                ? "bg-gray-100 text-gray-900 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                                }`}
                             >
                               <option.icon className="h-4 w-4" />
                               <span>{option.label}</span>
@@ -554,11 +548,10 @@ export function ManageRequestsPage() {
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                                priorityFilter === priority
-                                  ? "bg-gray-100 text-gray-900 font-medium"
-                                  : "text-gray-600 hover:bg-gray-50"
-                              }`}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${priorityFilter === priority
+                                ? "bg-gray-100 text-gray-900 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                                }`}
                             >
                               {priority === "all"
                                 ? "All Priorities"
@@ -844,11 +837,10 @@ export function ManageRequestsPage() {
                               setCurrentPage((prev) => prev - 1);
                             }
                           }}
-                          className={`transition-all duration-200 ${
-                            currentPage === 1
-                              ? "pointer-events-none opacity-40 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-gray-100"
-                          }`}
+                          className={`transition-all duration-200 ${currentPage === 1
+                            ? "pointer-events-none opacity-40 cursor-not-allowed"
+                            : "cursor-pointer hover:bg-gray-100"
+                            }`}
                           style={{
                             color:
                               currentPage === 1
@@ -868,16 +860,15 @@ export function ManageRequestsPage() {
                                 setCurrentPage(page);
                               }}
                               isActive={currentPage === page}
-                              className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${
-                                currentPage === page
-                                  ? "cursor-default"
-                                  : "cursor-pointer hover:bg-gray-100"
-                              }`}
+                              className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${currentPage === page
+                                ? "cursor-default"
+                                : "cursor-pointer hover:bg-gray-100"
+                                }`}
                               style={{
                                 backgroundColor:
                                   currentPage === page
                                     ? variables.colors
-                                        .buttonDefaultBackgroundColor
+                                      .buttonDefaultBackgroundColor
                                     : "transparent",
                                 color:
                                   currentPage === page
@@ -886,7 +877,7 @@ export function ManageRequestsPage() {
                                 borderColor:
                                   currentPage === page
                                     ? variables.colors
-                                        .buttonDefaultBackgroundColor
+                                      .buttonDefaultBackgroundColor
                                     : variables.colors.inputBorderColor,
                               }}
                             >
@@ -903,11 +894,10 @@ export function ManageRequestsPage() {
                               setCurrentPage((prev) => prev + 1);
                             }
                           }}
-                          className={`transition-all duration-200 ${
-                            currentPage === totalPages
-                              ? "pointer-events-none opacity-40 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-gray-100"
-                          }`}
+                          className={`transition-all duration-200 ${currentPage === totalPages
+                            ? "pointer-events-none opacity-40 cursor-not-allowed"
+                            : "cursor-pointer hover:bg-gray-100"
+                            }`}
                           style={{
                             color:
                               currentPage === totalPages

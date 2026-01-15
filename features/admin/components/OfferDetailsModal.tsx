@@ -4,10 +4,10 @@ import { Loader2, Pencil, Check, X as XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -28,9 +28,11 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { getAllAdvertisers } from "../services/advertiser.service";
-import { getOfferById, updateOffer } from "../services/offers.service";
-import type { Advertiser, Offer } from "../types/admin.types";
+import { fetchAdvertisers } from "../services/advertisers.client";
+import { getOffer, updateOffer } from "../services/offers.client";
+import type { Advertiser } from "../types/advertiser.types";
+import type { Offer } from "../types/offer.types";
+
 
 interface EditDetailsModalProps {
   open: boolean;
@@ -46,6 +48,7 @@ interface EditOfferFormData {
   visibility: "Public" | "Internal" | "Hidden";
   advertiserId: string;
   advertiserName: string;
+  advertiserDisplayId?: string;
 }
 
 export function EditDetailsModal({
@@ -66,7 +69,6 @@ export function EditDetailsModal({
   const [error, setError] = useState<string | null>(null);
   const [offer, setOffer] = useState<Offer | null>(null);
   const [isEditingOfferId, setIsEditingOfferId] = useState(false);
-  const [isEditingOfferName, setIsEditingOfferName] = useState(false);
 
   const [formData, setFormData] = useState<EditOfferFormData>({
     offerId: "",
@@ -114,10 +116,10 @@ export function EditDetailsModal({
   }, [advertisers, advertiserSearchQuery]);
 
   useEffect(() => {
-    const fetchAdvertisers = async () => {
+    const loadAdvertisers = async () => {
       try {
         setIsLoadingAdvertisers(true);
-        const data = await getAllAdvertisers();
+        const data = await fetchAdvertisers();
         setAdvertisers(data);
       } catch (error) {
         console.error("Failed to fetch advertisers:", error);
@@ -128,7 +130,7 @@ export function EditDetailsModal({
     };
 
     if (open) {
-      fetchAdvertisers();
+      loadAdvertisers();
     }
   }, [open]);
 
@@ -138,22 +140,23 @@ export function EditDetailsModal({
         try {
           setIsLoading(true);
           setError(null);
-          const fetchedOffer = await getOfferById(offerId);
+          const fetchedOffer = await getOffer(offerId);
           if (fetchedOffer) {
             setOffer(fetchedOffer);
 
-            const advertiserList = await getAllAdvertisers();
+            const advertiserList = await fetchAdvertisers();
             const matchedAdvertiser = advertiserList.find(
               (adv) => adv.advertiserName === fetchedOffer.advName
             );
 
-            const initialData = {
+            const initialData: EditOfferFormData = {
               offerId: fetchedOffer.id,
               offerName: fetchedOffer.offerName,
-              status: fetchedOffer.status,
+              status: fetchedOffer.status.toLowerCase() === "active" ? "Active" : "Inactive",
               visibility: fetchedOffer.visibility,
               advertiserId: matchedAdvertiser?.id || "",
-              advertiserName: fetchedOffer.advName,
+              advertiserName: fetchedOffer.advName || "",
+              advertiserDisplayId: matchedAdvertiser?.advertiserId,
             };
             setFormData(initialData);
             setInitialFormData(initialData);
@@ -272,15 +275,14 @@ export function EditDetailsModal({
       setIsSubmitting(true);
       setError(null);
 
-      const updatePayload: Partial<Offer> = {
+      const updatePayload: any = {
         visibility: formData.visibility,
       };
 
       if (!isApiSource(offer.createdMethod)) {
-        updatePayload.id = formData.offerId;
-        updatePayload.offerName = formData.offerName;
-        updatePayload.status = formData.status;
-        updatePayload.advName = formData.advertiserName;
+        updatePayload.name = formData.offerName;
+        updatePayload.status = formData.status.toLowerCase();
+        updatePayload.advertiserId = formData.advertiserId;
       }
 
       const updatedOffer = await updateOffer(offer.id, updatePayload);
@@ -339,7 +341,7 @@ export function EditDetailsModal({
         onOpenChange(false);
         return;
       }
-      
+
       // If no unsaved changes, allow normal close
       setInternalOpen(newOpen);
       onOpenChange(newOpen);
@@ -484,7 +486,7 @@ export function EditDetailsModal({
                       </Label>
                       <div className="min-h-10 flex items-center">
                         {!isApiSource(offer.createdMethod) &&
-                        isEditingOfferId ? (
+                          isEditingOfferId ? (
                           <div className="flex items-center gap-2 w-full">
                             <Input
                               value={formData.offerId}
@@ -596,9 +598,9 @@ export function EditDetailsModal({
                               backgroundColor:
                                 offer.status === "Active"
                                   ? variables.colors
-                                      .approvedAssetsBackgroundColor
+                                    .approvedAssetsBackgroundColor
                                   : variables.colors
-                                      .rejectedAssetsBackgroundColor,
+                                    .rejectedAssetsBackgroundColor,
                               borderColor:
                                 offer.status === "Active"
                                   ? "#86EFAC"
@@ -632,73 +634,25 @@ export function EditDetailsModal({
                       Offer Name
                     </Label>
                     <div className="min-h-10 flex items-center">
-                      {!isApiSource(offer.createdMethod) &&
-                      isEditingOfferName ? (
-                        <div className="flex items-center gap-2 w-full">
-                          <Input
-                            value={formData.offerName}
-                            onChange={(e) =>
-                              updateFormField("offerName", e.target.value)
-                            }
-                            disabled={isSubmitting}
-                            className="h-10 font-inter edit-offer-modal-input flex-1 text-sm"
-                            style={{
-                              backgroundColor:
-                                variables.colors.inputBackgroundColor,
-                              borderColor: variables.colors.inputBorderColor,
-                              color: variables.colors.inputTextColor,
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (offer) {
-                                updateFormField("offerName", offer.offerName);
-                              }
-                              setIsEditingOfferName(false);
-                            }}
-                            disabled={isSubmitting}
-                            className="p-1.5 rounded-md transition-colors shrink-0 border"
-                            style={{
-                              backgroundColor: "#FEE2E2",
-                              borderColor: "#EF4444",
-                              color: "#EF4444",
-                            }}
-                          >
-                            <XIcon size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingOfferName(false)}
-                            disabled={isSubmitting}
-                            className="p-1.5 rounded-md transition-colors shrink-0 border"
-                            style={{
-                              backgroundColor: "#D1FAE5",
-                              borderColor: "#10B981",
-                              color: "#10B981",
-                            }}
-                          >
-                            <Check size={16} />
-                          </button>
-                        </div>
+                      {!isApiSource(offer.createdMethod) ? (
+                        <Input
+                          value={formData.offerName}
+                          onChange={(e) =>
+                            updateFormField("offerName", e.target.value)
+                          }
+                          disabled={isSubmitting}
+                          className="h-10 font-inter edit-offer-modal-input w-full text-sm"
+                          style={{
+                            backgroundColor: variables.colors.inputBackgroundColor,
+                            borderColor: variables.colors.inputBorderColor,
+                            color: variables.colors.inputTextColor,
+                          }}
+                        />
                       ) : (
                         <div className="font-inter text-sm flex items-center gap-2 w-full min-h-10 px-3 py-2 rounded-md bg-muted/30">
                           <span className="flex-1 font-medium">
                             {offer.offerName}
                           </span>
-                          {!isApiSource(offer.createdMethod) && (
-                            <button
-                              type="button"
-                              onClick={() => setIsEditingOfferName(true)}
-                              disabled={isSubmitting}
-                              className="p-1 rounded-md hover:bg-gray-100 transition-colors shrink-0 opacity-60 hover:opacity-100"
-                              style={{
-                                color: variables.colors.inputTextColor,
-                              }}
-                            >
-                              <Pencil size={14} />
-                            </button>
-                          )}
                         </div>
                       )}
                     </div>
@@ -739,8 +693,8 @@ export function EditDetailsModal({
                               setFormData((prev) => ({
                                 ...prev,
                                 advertiserId: selectedAdvertiser.id,
-                                advertiserName:
-                                  selectedAdvertiser.advertiserName,
+                                advertiserName: selectedAdvertiser.advertiserName,
+                                advertiserDisplayId: selectedAdvertiser.advertiserId,
                               }));
                               setAdvertiserSearchQuery("");
                               setAdvertiserSelectOpen(false);
@@ -770,7 +724,7 @@ export function EditDetailsModal({
                           >
                             <SelectValue placeholder="Select advertiser...">
                               {formData.advertiserId && formData.advertiserName
-                                ? `${formData.advertiserId} - ${formData.advertiserName}`
+                                ? `${formData.advertiserDisplayId || formData.advertiserId} - ${formData.advertiserName}`
                                 : null}
                             </SelectValue>
                           </SelectTrigger>
@@ -839,7 +793,7 @@ export function EditDetailsModal({
                                         color: variables.colors.inputTextColor,
                                       }}
                                     >
-                                      {advertiser.id}
+                                      {advertiser.advertiserId}
                                     </span>
                                     <span
                                       className="ml-2"
@@ -858,11 +812,11 @@ export function EditDetailsModal({
                         </Select>
                         {(validationErrors.advertiserId ||
                           validationErrors.advertiserName) && (
-                          <p className="text-sm text-destructive font-inter">
-                            {validationErrors.advertiserId ||
-                              validationErrors.advertiserName}
-                          </p>
-                        )}
+                            <p className="text-sm text-destructive font-inter">
+                              {validationErrors.advertiserId ||
+                                validationErrors.advertiserName}
+                            </p>
+                          )}
                       </div>
                       <div className="space-y-1.5">
                         <Label

@@ -12,6 +12,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface EntityDataTableColumn {
   header: string;
@@ -53,13 +58,12 @@ export function EntityDataTable<T>({
           {columns.map((column, index) => (
             <div
               key={index}
-              className={`font-inter font-semibold text-xs xl:text-sm tracking-wide ${
-                column.align === "left"
-                  ? "text-left"
-                  : column.align === "right"
-                    ? "text-right"
-                    : "text-center"
-              }`}
+              className={`font-inter font-semibold text-xs xl:text-sm tracking-wide ${column.align === "left"
+                ? "text-left"
+                : column.align === "right"
+                  ? "text-right"
+                  : "text-center"
+                }`}
               style={{ color: variables.colors.cardHeaderTextColor }}
             >
               {column.header}
@@ -154,12 +158,13 @@ interface EntityDataCardProps {
   platform?: string;
   advName?: string;
   createdMethod: string;
-  status: "Active" | "Inactive";
+  status: "Active" | "Inactive" | "active" | "inactive";
   variant?: "purple" | "blue";
   visibility?: "Public" | "Internal" | "Hidden";
   nameAlign?: "left" | "center" | "right";
   gridTemplateColumns?: string;
   actionButtonsLayout?: "row" | "col";
+  displayId?: string;
   onEditDetails?: () => void;
   onBrandGuidelines?: () => void;
   onVisibilityChange?: (visibility: "Public" | "Internal" | "Hidden") => void;
@@ -178,6 +183,7 @@ export const EntityDataCard = memo(
     nameAlign = "left",
     gridTemplateColumns = "100px 2.5fr 1fr 1fr 140px 340px",
     actionButtonsLayout = "col",
+    displayId,
     onEditDetails,
     onBrandGuidelines,
     onVisibilityChange,
@@ -214,21 +220,32 @@ export const EntityDataCard = memo(
             gap: "1.5rem",
           }}
         >
-          <div
-            className="font-inter text-center text-xs xl:text-sm font-medium leading-relaxed"
-            style={{ color: variables.colors.requestCardTextColor }}
-          >
-            {id}
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className="text-center text-xs xl:text-sm font-medium leading-relaxed font-mono truncate cursor-help"
+                style={{ color: variables.colors.requestCardTextColor }}
+              >
+                {id}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="font-mono text-xs space-y-1">
+                <p>{id}</p>
+                {displayId && displayId !== id && (
+                  <p className="text-muted-foreground text-[10px]">Internal ID: {displayId}</p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
 
           <div
-            className={`font-inter text-xs xl:text-sm leading-relaxed ${
-              nameAlign === "center"
-                ? "text-center"
-                : nameAlign === "right"
-                  ? "text-right"
-                  : "text-left"
-            }`}
+            className={`font-inter text-xs xl:text-sm leading-relaxed ${nameAlign === "center"
+              ? "text-center"
+              : nameAlign === "right"
+                ? "text-right"
+                : "text-left"
+              }`}
             style={{ color: variables.colors.requestCardTextColor }}
           >
             {name}
@@ -253,12 +270,12 @@ export const EntityDataCard = memo(
               className="h-7 w-28 p-0 text-xs xl:text-sm font-medium rounded-[20px] border flex items-center justify-center transition-all duration-200 hover:scale-105"
               style={{
                 backgroundColor:
-                  status === "Active"
+                  status.toLowerCase() === "active"
                     ? variables.colors.approvedAssetsBackgroundColor
                     : variables.colors.rejectedAssetsBackgroundColor,
-                borderColor: status === "Active" ? "#86EFAC" : "#FFC2A3",
+                borderColor: status.toLowerCase() === "active" ? "#86EFAC" : "#FFC2A3",
                 color:
-                  status === "Active"
+                  status.toLowerCase() === "active"
                     ? variables.colors.approvedAssetsIconColor
                     : variables.colors.rejectedAssetsIconColor,
               }}
@@ -301,6 +318,7 @@ export const EntityDataCard = memo(
             >
               Brand Guidelines
             </Button>
+
           </div>
         </div>
       </div>

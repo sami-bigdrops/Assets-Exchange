@@ -7,9 +7,11 @@ export default async function AdministratorLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  await requireRole("administrator");
+  await requireRole("admin");
 
   return (
-    <div className="h-screen overflow-y-auto overflow-x-hidden">{children}</div>
+    <div className="flex-1 min-h-0 flex flex-col">
+      {children}
+    </div>
   );
 }

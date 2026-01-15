@@ -69,7 +69,7 @@ export default function Home() {
       setIsLoading(true);
       setError("");
 
-      // TODO: Replace with actual API call
+      // TODO: BACKEND - Implement GET /api/track/:trackingId endpoint
       // Simulating API call for now
       await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -101,6 +101,7 @@ export default function Home() {
           width={1000}
           height={1000}
           className="w-full h-full object-contain mx-auto"
+          style={{ width: "auto", height: "auto" }}
         />
       </div>
       <Card

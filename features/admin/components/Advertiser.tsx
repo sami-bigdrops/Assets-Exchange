@@ -41,9 +41,9 @@ import {
   EntityDataCard,
 } from "@/features/dashboard/components/EntityDataTable";
 
-import { manageAdvertisers } from "../models/advertiser.model";
-import type { Advertiser as AdvertiserType } from "../types/admin.types";
+import type { Advertiser as AdvertiserType } from "../types/advertiser.types";
 import { useAdvertiserViewModel } from "../view-models/useAdvertiserViewModel";
+import { useGlobalSync } from "@/features/admin/context/GlobalSyncContext";
 
 import { AdvertiserDetailsModal } from "./AdvertiserDetailsModal";
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
@@ -71,7 +71,7 @@ export function Advertiser() {
   const [sortByFilter, setSortByFilter] = useState<SortByFilter>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<FilterCategory>(null);
-  const [isPullingViaAPI, setIsPullingViaAPI] = useState(false);
+
   const [brandGuidelinesModalOpen, setBrandGuidelinesModalOpen] =
     useState(false);
   const [selectedAdvertiserId, setSelectedAdvertiserId] = useState<
@@ -87,7 +87,14 @@ export function Advertiser() {
   const [selectedAdvertiserIdForEdit, setSelectedAdvertiserIdForEdit] =
     useState<string | null>(null);
 
-  const { advertisers, isLoading, error } = useAdvertiserViewModel();
+  const { advertisers: advertisersSync, startSync, cancelSync } = useGlobalSync();
+
+  const isSyncActive = advertisersSync.active;
+  const syncStatus = isSyncActive ? advertisersSync.status : "idle";
+  const syncProgress = advertisersSync.progress;
+  const syncTotal = advertisersSync.total;
+
+  const { advertisers, isLoading, error, refresh } = useAdvertiserViewModel();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -97,9 +104,16 @@ export function Advertiser() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  useEffect(() => {
+    if (isSyncActive && syncStatus === "completed") {
+      refresh(debouncedSearchQuery);
+    }
+  }, [isSyncActive, syncStatus, refresh, debouncedSearchQuery]);
+
+
   const columns = useMemo(
     () => [
-      { header: "ID", width: "100px" },
+      { header: "ID", width: "200px" },
       { header: "Advertiser Name", width: "1.8fr", align: "center" as const },
       { header: "Advertiser Platform", width: "1fr" },
       { header: "Created Manually / via API", width: "1.2fr" },
@@ -111,13 +125,13 @@ export function Advertiser() {
 
   const filteredAdvertisers = useMemo(
     () =>
-      manageAdvertisers
+      (advertisers || [])
         .filter((advertiser) => {
           const query = debouncedSearchQuery.toLowerCase();
           const matchesSearch =
-            advertiser.id.toLowerCase().includes(query) ||
-            advertiser.advertiserName.toLowerCase().includes(query) ||
-            advertiser.advPlatform.toLowerCase().includes(query);
+            (advertiser.id || "").toLowerCase().includes(query) ||
+            (advertiser.advertiserName || "").toLowerCase().includes(query) ||
+            (advertiser.advPlatform || "").toLowerCase().includes(query);
 
           const matchesStatus =
             !statusFilter || advertiser.status === statusFilter;
@@ -137,16 +151,17 @@ export function Advertiser() {
         .sort((a, b) => {
           if (!sortByFilter) return 0;
 
-          const aId = parseInt(a.id.replace(/\D/g, ""));
-          const bId = parseInt(b.id.replace(/\D/g, ""));
+          const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
 
           if (sortByFilter === "New to Old") {
-            return bId - aId;
+            return bDate - aDate;
           } else {
-            return aId - bId;
+            return aDate - bDate;
           }
         }),
     [
+      advertisers,
       debouncedSearchQuery,
       statusFilter,
       platformFilter,
@@ -212,26 +227,10 @@ export function Advertiser() {
   }, [currentPage, totalPages]);
 
   /**
-   * TODO: BACKEND - Edit Advertiser Details Handler
-   *
-   * This function opens the edit modal for an advertiser.
-   *
-   * Current Implementation:
-   * - Opens AdvertiserDetailsModal with the selected advertiser ID
-   * - Modal fetches advertiser details via getAdvertiserById
-   *
-   * Backend Requirements:
-   * - Ensure GET /api/admin/advertisers/:id endpoint exists
-   * - Return full advertiser details including:
-   *   - All advertiser fields (id, advertiserName, advPlatform, status, createdMethod)
-   *   - Creation metadata (createdAt, createdBy, updatedAt, updatedBy)
-   *   - Any additional fields needed for editing
-   *
-   * Error Handling:
-   * - 404: Advertiser not found - show error in modal
-   * - 401: Unauthorized - redirect to login
-   * - 403: Forbidden - show permission denied
-   * - 500: Server error - show error with retry option
+   * Edit Advertiser Details Handler
+   * 
+   * GET /api/admin/advertisers/:id is implemented
+   * PUT /api/admin/advertisers/:id is implemented
    */
   const handleEditDetails = useCallback((id: string) => {
     setSelectedAdvertiserIdForEdit(id);
@@ -239,53 +238,11 @@ export function Advertiser() {
   }, []);
 
   /**
-   * TODO: BACKEND - Brand Guidelines Handler
-   *
-   * This function opens the brand guidelines modal for an advertiser.
-   *
-   * Endpoint: GET /api/admin/advertisers/:id/brand-guidelines
-   *
-   * Requirements:
-   * 1. Fetch brand guidelines for the advertiser:
-   *    - If type is "url": return { type: "url", url: string }
-   *    - If type is "file": return {
-   *        type: "file",
-   *        fileName: string,
-   *        fileUrl: string,
-   *        fileSize?: number,
-   *        mimeType?: string
-   *      }
-   *    - If type is "text": return { type: "text", content: string }
-   *
-   * 2. Display brand guidelines in a modal/viewer:
-   *    - For URL: Show link with "Open in new tab" button and iframe preview if possible
-   *    - For file: Show download button, file info (name, size), and preview if possible
-   *      - PDF: Use PDF viewer component
-   *      - DOCX: Show download option with file info
-   *    - For text: Display formatted rich text content in read-only editor
-   *
-   * 3. Allow editing brand guidelines:
-   *    - PUT /api/admin/advertisers/:id/brand-guidelines
-   *    - Request body: {
-   *        type: "url" | "file" | "text",
-   *        url?: string,
-   *        file?: File,
-   *        content?: string
-   *      }
-   *    - For file uploads: Use multipart/form-data
-   *    - Validate file size (max 10MB) and type (DOCX, PDF)
-   *    - If replacing existing file, delete old file from storage
-   *
-   * 4. Error Handling:
-   *    - 404: Advertiser or brand guidelines not found
-   *    - 400: Invalid file type/size or validation errors
-   *    - 413: File too large - show specific error message
-   *    - 500: Server error or file storage error
-   *
-   * 5. Success:
-   *    - Close modal
-   *    - Show success notification
-   *    - Optionally refresh advertiser data
+   * Brand Guidelines Handler
+   * 
+   * GET /api/admin/advertisers/:id/brand-guidelines is implemented
+   * PUT /api/admin/advertisers/:id/brand-guidelines is implemented (URL/text types)
+   * File uploads pending Phase 8.1
    */
   const handleBrandGuidelines = useCallback(
     (id: string) => {
@@ -370,33 +327,10 @@ export function Advertiser() {
    *    - Log all conflicts for review
    */
   const handlePullViaAPI = async () => {
-    setIsPullingViaAPI(true);
     try {
-      // TODO: BACKEND - Replace with actual API call
-      // const response = await fetch('/api/admin/advertisers/pull-from-api', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Bearer ${getAuthToken()}`,
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify({})
-      // });
-      //
-      // if (!response.ok) {
-      //   const error = await response.json();
-      //   throw new Error(error.message || 'Failed to pull advertisers from API');
-      // }
-      //
-      // const result = await response.json();
-      // Show success notification with statistics
-      // Refresh advertisers list
-
-      // Simulate API call for now
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await startSync("everflow_sync_advertisers");
     } catch (error) {
       console.error("Failed to pull advertisers via API:", error);
-    } finally {
-      setIsPullingViaAPI(false);
     }
   };
 
@@ -433,29 +367,76 @@ export function Advertiser() {
             Create New Manually
           </Button>
 
-          <Button
-            variant="outline"
-            className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
-            style={{
-              color: variables.colors.buttonOutlineTextColor,
-              borderColor: variables.colors.buttonOutlineBorderColor,
-              backgroundColor: variables.colors.cardBackground,
-            }}
-            onClick={handlePullViaAPI}
-            disabled={isPullingViaAPI}
-          >
-            {isPullingViaAPI ? (
-              <>
-                <Spinner className="h-5 w-5" />
-                Pulling...
-              </>
-            ) : (
-              <>
-                <Download className="h-5 w-5" />
-                Pull Via API
-              </>
-            )}
-          </Button>
+          {isSyncActive ? (
+            <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm border border-indigo-100 rounded-lg pl-3 pr-2 h-12 shadow-sm animate-in fade-in slide-in-from-right-4 duration-300 ring-1 ring-indigo-50/50">
+              <div className="relative">
+                <div className="absolute inset-0 bg-indigo-500 rounded-full blur-[2px] opacity-20 animate-pulse"></div>
+                <Spinner className="h-4 w-4 text-indigo-600 relative z-10" />
+              </div>
+
+              <div className="flex flex-col min-w-[200px] gap-1.5">
+                <div className="flex justify-between items-end text-xs gap-4">
+                  <span className="font-semibold text-indigo-950 whitespace-nowrap">
+                    {syncStatus === "pending" ? (
+                      <span className="animate-pulse">Initializing...</span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        Syncing
+                        <span className="text-indigo-600 font-bold">
+                          {Math.round((syncProgress / (syncTotal || 1)) * 100)}%
+                        </span>
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-slate-500 text-[10px] font-mono tabular-nums tracking-tight whitespace-nowrap">
+                    {syncProgress.toLocaleString()} / {syncTotal > 0 ? syncTotal.toLocaleString() : "--"}
+                  </span>
+                </div>
+
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-50">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(99,102,241,0.4)]"
+                    style={{ width: `${Math.min(100, Math.max(0, (syncProgress / (syncTotal || 1)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="h-6 w-[1px] bg-slate-200 mx-1"></div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors duration-200"
+                onClick={async () => {
+                  if (isSyncActive) {
+                    try {
+                      await cancelSync("everflow_sync_advertisers");
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }
+                }}
+                title="Cancel Sync"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
+              style={{
+                color: variables.colors.buttonOutlineTextColor,
+                borderColor: variables.colors.buttonOutlineBorderColor,
+                backgroundColor: variables.colors.cardBackground,
+              }}
+              onClick={handlePullViaAPI}
+              disabled={isSyncActive}
+            >
+              <Download className="h-5 w-5" />
+              Pull Via API
+            </Button>
+          )}
 
           <Popover
             open={isFilterOpen}
@@ -490,11 +471,10 @@ export function Advertiser() {
                 >
                   <button
                     onClick={() => setActiveCategory("status")}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "status"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "status"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-700 hover:bg-gray-50"
+                      }`}
                   >
                     <span>Status</span>
                     <div className="flex items-center gap-2">
@@ -524,11 +504,10 @@ export function Advertiser() {
                   </button>
                   <button
                     onClick={() => setActiveCategory("platform")}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "platform"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "platform"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-700 hover:bg-gray-50"
+                      }`}
                   >
                     <span>Platform</span>
                     <div className="flex items-center gap-2">
@@ -558,11 +537,10 @@ export function Advertiser() {
                   </button>
                   <button
                     onClick={() => setActiveCategory("creationMethod")}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "creationMethod"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "creationMethod"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-700 hover:bg-gray-50"
+                      }`}
                   >
                     <span>Creation Method</span>
                     <div className="flex items-center gap-2">
@@ -592,11 +570,10 @@ export function Advertiser() {
                   </button>
                   <button
                     onClick={() => setActiveCategory("sortBy")}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                      activeCategory === "sortBy"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "sortBy"
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-700 hover:bg-gray-50"
+                      }`}
                   >
                     <span>Sort By</span>
                     <ChevronRight className="h-4 w-4 text-gray-400" />
@@ -615,11 +592,10 @@ export function Advertiser() {
                               setIsFilterOpen(false);
                               setActiveCategory(null);
                             }}
-                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                              statusFilter === status
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                            }`}
+                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${statusFilter === status
+                              ? "bg-gray-100 text-gray-900 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                              }`}
                           >
                             {status}
                           </button>
@@ -635,11 +611,10 @@ export function Advertiser() {
                             setIsFilterOpen(false);
                             setActiveCategory(null);
                           }}
-                          className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                            platformFilter === "Everflow"
-                              ? "bg-gray-100 text-gray-900 font-medium"
-                              : "text-gray-600 hover:bg-gray-50"
-                          }`}
+                          className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${platformFilter === "Everflow"
+                            ? "bg-gray-100 text-gray-900 font-medium"
+                            : "text-gray-600 hover:bg-gray-50"
+                            }`}
                         >
                           Everflow
                         </button>
@@ -658,11 +633,10 @@ export function Advertiser() {
                               setIsFilterOpen(false);
                               setActiveCategory(null);
                             }}
-                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                              creationMethodFilter === method
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                            }`}
+                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${creationMethodFilter === method
+                              ? "bg-gray-100 text-gray-900 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                              }`}
                           >
                             {method}
                           </button>
@@ -680,11 +654,10 @@ export function Advertiser() {
                               setIsFilterOpen(false);
                               setActiveCategory(null);
                             }}
-                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                              sortByFilter === sort
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                            }`}
+                            className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${sortByFilter === sort
+                              ? "bg-gray-100 text-gray-900 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                              }`}
                           >
                             {sort}
                           </button>
@@ -741,7 +714,7 @@ export function Advertiser() {
             <div
               className="grid items-center"
               style={{
-                gridTemplateColumns: "100px 1.8fr 1fr 1.2fr 1fr 1.8fr",
+                gridTemplateColumns: "200px 1.8fr 1fr 1.2fr 1fr 1.8fr",
                 gap: "1.5rem",
               }}
             >
@@ -770,7 +743,8 @@ export function Advertiser() {
           columns={columns}
           renderRow={(advertiser: AdvertiserType, index: number) => (
             <EntityDataCard
-              id={advertiser.id}
+              id={advertiser.advertiserId}
+              displayId={advertiser.advertiserId !== advertiser.id ? advertiser.id : undefined}
               name={advertiser.advertiserName}
               platform={advertiser.advPlatform}
               createdMethod={advertiser.createdMethod}
@@ -834,11 +808,10 @@ export function Advertiser() {
                         setCurrentPage((prev) => prev - 1);
                       }
                     }}
-                    className={`transition-all duration-200 ${
-                      currentPage === 1
-                        ? "pointer-events-none opacity-40 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-gray-100"
-                    }`}
+                    className={`transition-all duration-200 ${currentPage === 1
+                      ? "pointer-events-none opacity-40 cursor-not-allowed"
+                      : "cursor-pointer hover:bg-gray-100"
+                      }`}
                     style={{
                       color:
                         currentPage === 1
@@ -858,11 +831,10 @@ export function Advertiser() {
                           setCurrentPage(page);
                         }}
                         isActive={currentPage === page}
-                        className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${
-                          currentPage === page
-                            ? "cursor-default"
-                            : "cursor-pointer hover:bg-gray-100"
-                        }`}
+                        className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${currentPage === page
+                          ? "cursor-default"
+                          : "cursor-pointer hover:bg-gray-100"
+                          }`}
                         style={{
                           backgroundColor:
                             currentPage === page
@@ -891,11 +863,10 @@ export function Advertiser() {
                         setCurrentPage((prev) => prev + 1);
                       }
                     }}
-                    className={`transition-all duration-200 ${
-                      currentPage === totalPages
-                        ? "pointer-events-none opacity-40 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-gray-100"
-                    }`}
+                    className={`transition-all duration-200 ${currentPage === totalPages
+                      ? "pointer-events-none opacity-40 cursor-not-allowed"
+                      : "cursor-pointer hover:bg-gray-100"
+                      }`}
                     style={{
                       color:
                         currentPage === totalPages
@@ -988,31 +959,7 @@ export function Advertiser() {
           onSuccess={() => {
             setIsEditDetailsModalOpen(false);
             setSelectedAdvertiserIdForEdit(null);
-            /**
-             * TODO: BACKEND - Refresh Advertisers List After Update
-             *
-             * After successfully updating an advertiser, refresh the list:
-             * 1. Call getAllAdvertisers() to fetch updated list
-             * 2. Update the advertisers state
-             * 3. Maintain current filters and pagination if possible
-             * 4. Show success notification
-             * 5. Optionally update only the specific advertiser in the list (optimistic update)
-             *
-             * Implementation:
-             * ```typescript
-             * try {
-             *   const updatedAdvertisers = await getAllAdvertisers();
-             *   setAdvertisers(updatedAdvertisers);
-             *   // OR: Optimistically update only the changed advertiser
-             *   // setAdvertisers(prev => prev.map(adv =>
-             *   //   adv.id === updatedAdvertiser.id ? updatedAdvertiser : adv
-             *   // ));
-             *   // Show success toast
-             * } catch (error) {
-             *   // Handle error
-             * }
-             * ```
-             */
+
           }}
         />
       )}

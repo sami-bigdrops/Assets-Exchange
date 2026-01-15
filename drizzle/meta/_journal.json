@@ -8,6 +8,34 @@
       "when": 1765193260526,
       "tag": "0000_nebulous_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1767028143794,
+      "tag": "0001_wild_human_robot",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767110814818,
+      "tag": "0002_glorious_banshee",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767178533670,
+      "tag": "0003_clumsy_cargill",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1768305943203,
+      "tag": "0004_overrated_exiles",
+      "breakpoints": true
     }
   ]
 }

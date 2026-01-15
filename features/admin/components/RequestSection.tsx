@@ -2,12 +2,12 @@
 
 import * as Accordion from "@radix-ui/react-accordion";
 
-import type { Request } from "../types/admin.types";
+import type { CreativeRequest } from "../types/request.types";
 
 import { RequestItem } from "./RequestItem";
 
 interface RequestSectionProps {
-  requests: Request[];
+  requests: CreativeRequest[];
   startIndex?: number;
   viewButtonText?: string;
   showDownloadButton?: boolean;

@@ -1,8 +1,8 @@
 "use client"
 
-import { PersonalDetailProps } from "@/features/publisher/types/form.types";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { type PersonalDetailProps } from "@/features/publisher/types/form.types";
 
 const PersonalDetails: React.FC<PersonalDetailProps> = ({ formData, onDataChange}) => {
     return (

@@ -1,8 +1,9 @@
-import { ReactNode } from "react";
-import PersonalDetails from "../components/form/_steps/PersonalDetails";
+import { type ReactNode } from "react";
+
 import ContactDetails from "../components/form/_steps/ContactDetails";
 import CreativeDetails from "../components/form/_steps/CreativeDetails";
-import { PublisherFormData } from "../hooks/usePublisherForm";
+import PersonalDetails from "../components/form/_steps/PersonalDetails";
+import { type PublisherFormData } from "../hooks/usePublisherForm";
 
 interface RenderStepProps {
     step: number;

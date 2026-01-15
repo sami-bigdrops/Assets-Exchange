@@ -26,22 +26,27 @@ import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { getRecentAdvertiserResponses } from "../services/request.service";
-import type { Request as RequestType } from "../types/admin.types";
+import { fetchRequests } from "../services/requests.client";
+import type { CreativeRequest } from "../types/request.types";
 
 import { RequestSection } from "./RequestSection";
 
 export function Response() {
   const variables = getVariables();
   const [isHovered, setIsHovered] = useState(false);
-  const [responses, setResponses] = useState<RequestType[]>([]);
+  const [responses, setResponses] = useState<CreativeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchResponses = async () => {
+    const load = async () => {
       try {
-        const data = await getRecentAdvertiserResponses(3);
-        setResponses(data);
+        const res = await fetchRequests({
+          page: 1,
+          limit: 3,
+          approvalStage: "advertiser",
+          sort: "submittedAt:desc"
+        });
+        setResponses(res.data || []);
       } catch (error) {
         console.error("Failed to fetch recent responses:", error);
       } finally {
@@ -49,7 +54,7 @@ export function Response() {
       }
     };
 
-    fetchResponses();
+    load();
   }, []);
 
   if (isLoading) {

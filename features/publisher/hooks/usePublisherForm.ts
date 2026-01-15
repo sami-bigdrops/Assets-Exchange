@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { PersonalDetailProps } from "@/features/publisher/types/form.types";
 
 export interface PublisherFormData {
     affiliateId: string;
@@ -59,7 +58,6 @@ export const usePublisherForm = () => {
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            console.log("Form data:", formData);
             await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
             console.error("Submission error:", error);

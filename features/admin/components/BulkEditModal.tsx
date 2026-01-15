@@ -104,7 +104,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-import { bulkUpdateOffers } from "../services/offers.service";
+import { bulkUpdateOffers } from "../services/offers.client";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";
 
 type StatusFilter = "All" | "Active" | "Inactive";
@@ -187,6 +187,7 @@ export function BulkEditModal({
     const query = searchQuery.toLowerCase();
     const matchesSearch =
       offer.id.toLowerCase().includes(query) ||
+      offer.offerId.toLowerCase().includes(query) ||
       offer.offerName.toLowerCase().includes(query);
 
     const matchesStatus =
@@ -639,11 +640,10 @@ export function BulkEditModal({
                         >
                           <button
                             onClick={() => setActiveCategory("status")}
-                            className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                              activeCategory === "status"
+                            className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "status"
                                 ? "bg-gray-100 text-gray-900 font-medium"
                                 : "text-gray-700 hover:bg-gray-50"
-                            }`}
+                              }`}
                           >
                             <span>Status</span>
                             <div className="flex items-center gap-2">
@@ -673,11 +673,10 @@ export function BulkEditModal({
                           </button>
                           <button
                             onClick={() => setActiveCategory("createdBy")}
-                            className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                              activeCategory === "createdBy"
+                            className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "createdBy"
                                 ? "bg-gray-100 text-gray-900 font-medium"
                                 : "text-gray-700 hover:bg-gray-50"
-                            }`}
+                              }`}
                           >
                             <span>Created by</span>
                             <div className="flex items-center gap-2">
@@ -719,11 +718,10 @@ export function BulkEditModal({
                                       setIsFilterOpen(false);
                                       setActiveCategory(null);
                                     }}
-                                    className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                                      statusFilter === status
+                                    className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${statusFilter === status
                                         ? "bg-gray-100 text-gray-900 font-medium"
                                         : "text-gray-600 hover:bg-gray-50"
-                                    }`}
+                                      }`}
                                   >
                                     {status}
                                   </button>
@@ -743,11 +741,10 @@ export function BulkEditModal({
                                       setIsFilterOpen(false);
                                       setActiveCategory(null);
                                     }}
-                                    className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                                      createdByFilter === method
+                                    className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${createdByFilter === method
                                         ? "bg-gray-100 text-gray-900 font-medium"
                                         : "text-gray-600 hover:bg-gray-50"
-                                    }`}
+                                      }`}
                                   >
                                     {method}
                                   </button>
@@ -832,7 +829,7 @@ export function BulkEditModal({
                                 {offer.offerName}
                               </div>
                               <div className="text-xs text-muted-foreground font-inter mt-0.5">
-                                ID: {offer.id}
+                                ID: {offer.offerId}
                               </div>
                             </div>
                             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
@@ -890,7 +887,7 @@ export function BulkEditModal({
                                 {offer.offerName}
                               </div>
                               <div className="text-xs text-muted-foreground font-inter mt-0.5">
-                                ID: {offer.id}
+                                ID: {offer.offerId}
                               </div>
                             </div>
                             <button
@@ -989,23 +986,23 @@ export function BulkEditModal({
                             style={
                               formData.brandGuidelinesType === "url"
                                 ? {
-                                    backgroundColor:
-                                      variables.colors
-                                        .buttonDefaultBackgroundColor,
-                                    color:
-                                      variables.colors.buttonDefaultTextColor,
-                                    height: "2.25rem",
-                                  }
+                                  backgroundColor:
+                                    variables.colors
+                                      .buttonDefaultBackgroundColor,
+                                  color:
+                                    variables.colors.buttonDefaultTextColor,
+                                  height: "2.25rem",
+                                }
                                 : {
-                                    backgroundColor:
-                                      variables.colors
-                                        .buttonOutlineBackgroundColor,
-                                    borderColor:
-                                      variables.colors.buttonOutlineBorderColor,
-                                    color:
-                                      variables.colors.buttonOutlineTextColor,
-                                    height: "2.25rem",
-                                  }
+                                  backgroundColor:
+                                    variables.colors
+                                      .buttonOutlineBackgroundColor,
+                                  borderColor:
+                                    variables.colors.buttonOutlineBorderColor,
+                                  color:
+                                    variables.colors.buttonOutlineTextColor,
+                                  height: "2.25rem",
+                                }
                             }
                           >
                             URL
@@ -1026,23 +1023,23 @@ export function BulkEditModal({
                             style={
                               formData.brandGuidelinesType === "upload"
                                 ? {
-                                    backgroundColor:
-                                      variables.colors
-                                        .buttonDefaultBackgroundColor,
-                                    color:
-                                      variables.colors.buttonDefaultTextColor,
-                                    height: "2.25rem",
-                                  }
+                                  backgroundColor:
+                                    variables.colors
+                                      .buttonDefaultBackgroundColor,
+                                  color:
+                                    variables.colors.buttonDefaultTextColor,
+                                  height: "2.25rem",
+                                }
                                 : {
-                                    backgroundColor:
-                                      variables.colors
-                                        .buttonOutlineBackgroundColor,
-                                    borderColor:
-                                      variables.colors.buttonOutlineBorderColor,
-                                    color:
-                                      variables.colors.buttonOutlineTextColor,
-                                    height: "2.25rem",
-                                  }
+                                  backgroundColor:
+                                    variables.colors
+                                      .buttonOutlineBackgroundColor,
+                                  borderColor:
+                                    variables.colors.buttonOutlineBorderColor,
+                                  color:
+                                    variables.colors.buttonOutlineTextColor,
+                                  height: "2.25rem",
+                                }
                             }
                           >
                             Upload
@@ -1063,23 +1060,23 @@ export function BulkEditModal({
                             style={
                               formData.brandGuidelinesType === "text"
                                 ? {
-                                    backgroundColor:
-                                      variables.colors
-                                        .buttonDefaultBackgroundColor,
-                                    color:
-                                      variables.colors.buttonDefaultTextColor,
-                                    height: "2.25rem",
-                                  }
+                                  backgroundColor:
+                                    variables.colors
+                                      .buttonDefaultBackgroundColor,
+                                  color:
+                                    variables.colors.buttonDefaultTextColor,
+                                  height: "2.25rem",
+                                }
                                 : {
-                                    backgroundColor:
-                                      variables.colors
-                                        .buttonOutlineBackgroundColor,
-                                    borderColor:
-                                      variables.colors.buttonOutlineBorderColor,
-                                    color:
-                                      variables.colors.buttonOutlineTextColor,
-                                    height: "2.25rem",
-                                  }
+                                  backgroundColor:
+                                    variables.colors
+                                      .buttonOutlineBackgroundColor,
+                                  borderColor:
+                                    variables.colors.buttonOutlineBorderColor,
+                                  color:
+                                    variables.colors.buttonOutlineTextColor,
+                                  height: "2.25rem",
+                                }
                             }
                           >
                             Direct Input

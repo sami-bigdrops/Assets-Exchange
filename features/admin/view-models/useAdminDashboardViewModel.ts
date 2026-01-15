@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { getAdminDashboardData } from "../services/admin.service";
+import { getAdminDashboardData } from "../services/dashboard.client";
 import type { AdminDashboardData } from "../types/admin.types";
 
 export function useAdminDashboardViewModel() {

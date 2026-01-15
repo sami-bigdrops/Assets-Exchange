@@ -3,9 +3,10 @@ import { Inter } from "next/font/google";
 
 import "./globals.css";
 import { getVariables } from "@/components/_variables/variables";
-import { OfflineDetector } from "@/components/offline-detector";
 import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { Toaster } from "@/components/ui/sonner";
+import { GlobalSyncProvider } from "@/features/admin/context/GlobalSyncContext";
+import { GlobalSyncIndicator } from "@/features/admin/components/GlobalSyncIndicator";
 
 const variables = getVariables();
 
@@ -30,10 +31,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
-        <OfflineDetector />
-        <div className="h-screen overflow-y-auto overflow-x-hidden">
+        {/* Temporarily disabled for testing - TODO: Fix client component import in server layout */}
+        {/* <OfflineDetectorWrapper /> */}
+        <GlobalSyncProvider>
           {children}
-        </div>
+          <GlobalSyncIndicator />
+        </GlobalSyncProvider>
         <Toaster position="top-right" richColors />
         <ConfirmDialogProvider />
       </body>

@@ -1,169 +1,83 @@
-/**
- * TODO: BACKEND - Advertiser Service Layer
- *
- * This file currently uses mock data. Replace all mock data imports and
- * function implementations with actual API calls to the backend.
- *
- * Required Backend API Endpoints:
- * - GET  /api/admin/advertisers (with pagination, filtering, sorting)
- * - GET  /api/admin/advertisers/:id
- * - POST /api/admin/advertisers (create new advertiser)
- * - PUT  /api/admin/advertisers/:id (update advertiser)
- * - DELETE /api/admin/advertisers/:id (delete advertiser)
- * - PATCH /api/admin/advertisers/:id/status (activate/deactivate)
- *
- * Authentication Requirements:
- * - All endpoints must validate JWT token
- * - Verify user has admin role/permissions
- * - Log all actions for audit trail
- */
+import { eq, ilike, sql } from "drizzle-orm"
 
-import { manageAdvertisers } from "../models/advertiser.model";
-import type { Advertiser } from "../types/admin.types";
+import { db } from "@/lib/db"
+import { advertisers } from "@/lib/schema"
 
-/**
- * TODO: BACKEND - Implement getAllAdvertisers API
- *
- * Replace with: GET /api/admin/advertisers
- *
- * Query Parameters:
- * - page: number (default: 1)
- * - limit: number (default: 20)
- * - status: 'Active' | 'Inactive' (optional filter)
- * - search: string (optional - search by advertiserName, advPlatform)
- * - sortBy: string (id, advertiserName, advPlatform, status)
- * - sortOrder: 'asc' | 'desc'
- *
- * Response:
- * {
- *   data: Advertiser[],
- *   pagination: { total: number, page: number, limit: number, totalPages: number }
- * }
- *
- * Error Handling:
- * - 401: Unauthorized (invalid/expired token)
- * - 403: Forbidden (insufficient permissions)
- * - 500: Internal server error
- *
- * Example Implementation:
- * ```typescript
- * export async function getAllAdvertisers(): Promise<Advertiser[]> {
- *   const response = await fetch('/api/admin/advertisers', {
- *     headers: {
- *       'Authorization': `Bearer ${getAuthToken()}`,
- *       'Content-Type': 'application/json'
- *     }
- *   });
- *
- *   if (!response.ok) {
- *     throw new Error('Failed to fetch advertisers');
- *   }
- *
- *   const result = await response.json();
- *   return result.data;
- * }
- * ```
- */
-export async function getAllAdvertisers(): Promise<Advertiser[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(manageAdvertisers);
-    }, 100);
-  });
+import type { Advertiser } from "../types/advertiser.types"
+
+function mapAdvertiser(row: typeof advertisers.$inferSelect): Advertiser {
+  return {
+    id: row.id,
+    advertiserId: row.everflowAdvertiserId ? String(row.everflowAdvertiserId) : row.id,
+    name: row.name,
+    advertiserName: row.name,
+    advPlatform: row.everflowAdvertiserId ? "Everflow" : "",
+    createdMethod: row.everflowAdvertiserId ? ("API" as const) : ("Manually" as const),
+    contactEmail: row.contactEmail,
+    status: row.status as "active" | "inactive",
+    everflowAdvertiserId: row.everflowAdvertiserId ? String(row.everflowAdvertiserId) : null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  } as Advertiser;
 }
 
-/**
- * TODO: BACKEND - Implement getAdvertiserById API
- *
- * Replace with: GET /api/admin/advertisers/:id
- */
-export async function getAdvertiserById(
-  id: string
-): Promise<Advertiser | null> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const advertiser = manageAdvertisers.find((adv) => adv.id === id);
-      resolve(advertiser || null);
-    }, 100);
-  });
+export async function listAdvertisers({ search }: { search?: string }) {
+  const rows = await db
+    .select()
+    .from(advertisers)
+    .where(search ? ilike(advertisers.name, `%${search}%`) : undefined)
+    .orderBy(sql`${advertisers.createdAt} DESC`)
+
+  return rows.map(mapAdvertiser)
 }
 
-/**
- * TODO: BACKEND - Implement createAdvertiser API
- *
- * Replace with: POST /api/admin/advertisers
- */
-export async function createAdvertiser(
-  advertiser: Omit<Advertiser, "id">,
-  advertiserId?: string
-): Promise<Advertiser> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const newAdvertiser: Advertiser = {
-        ...advertiser,
-        id: advertiserId || Math.random().toString(36).substring(7),
-      };
-      resolve(newAdvertiser);
-    }, 100);
-  });
+export async function getAdvertiser(id: string) {
+  const [row] = await db.select().from(advertisers).where(eq(advertisers.id, id))
+  return row ? mapAdvertiser(row) : null
 }
 
-/**
- * TODO: BACKEND - Implement updateAdvertiser API
- *
- * Replace with: PUT /api/admin/advertisers/:id
- */
+export async function createAdvertiser(data: { id?: string; name: string; contactEmail?: string }) {
+  const insertValues: {
+    name: string;
+    contactEmail?: string;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+    id?: string;
+  } = {
+    name: data.name,
+    contactEmail: data.contactEmail,
+    status: "active",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  if (data.id) {
+    insertValues.id = data.id;
+  }
+
+  const [row] = await db.insert(advertisers).values(insertValues).returning()
+
+  return mapAdvertiser(row)
+}
+
 export async function updateAdvertiser(
   id: string,
-  updates: Partial<Advertiser>
-): Promise<Advertiser> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const advertiser = manageAdvertisers.find((adv) => adv.id === id);
-      if (!advertiser) {
-        reject(new Error("Advertiser not found"));
-        return;
-      }
-      resolve({ ...advertiser, ...updates });
-    }, 100);
-  });
+  data: Partial<{ name: string; contactEmail: string; status: "active" | "inactive" }>
+) {
+  const [row] = await db.update(advertisers).set({
+    name: data.name,
+    contactEmail: data.contactEmail,
+    status: data.status,
+    updatedAt: new Date(),
+  }).where(eq(advertisers.id, id)).returning()
+
+  return row ? mapAdvertiser(row) : null
 }
 
-/**
- * TODO: BACKEND - Implement deleteAdvertiser API
- *
- * Replace with: DELETE /api/admin/advertisers/:id
- */
-export async function deleteAdvertiser(id: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const advertiser = manageAdvertisers.find((adv) => adv.id === id);
-      if (!advertiser) {
-        reject(new Error("Advertiser not found"));
-        return;
-      }
-      resolve();
-    }, 100);
-  });
-}
-
-/**
- * TODO: BACKEND - Implement updateAdvertiserStatus API
- *
- * Replace with: PATCH /api/admin/advertisers/:id/status
- */
-export async function updateAdvertiserStatus(
-  id: string,
-  status: "Active" | "Inactive"
-): Promise<Advertiser> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const advertiser = manageAdvertisers.find((adv) => adv.id === id);
-      if (!advertiser) {
-        reject(new Error("Advertiser not found"));
-        return;
-      }
-      resolve({ ...advertiser, status });
-    }, 100);
-  });
+export async function softDeleteAdvertiser(id: string) {
+  await db.update(advertisers).set({
+    status: "inactive",
+    updatedAt: new Date(),
+  }).where(eq(advertisers.id, id))
 }

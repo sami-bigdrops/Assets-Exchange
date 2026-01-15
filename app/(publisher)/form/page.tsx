@@ -18,6 +18,7 @@ export default function FormPage() {
           width={1000}
           height={1000}
           className="w-full h-full object-contain mx-auto"
+          style={{ width: "auto", height: "auto" }}
         />
       </div>
       <PublisherForm />

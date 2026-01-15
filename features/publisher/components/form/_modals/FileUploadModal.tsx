@@ -1,6 +1,9 @@
 "use client";
 
+import { Upload, CheckCircle, AlertCircle, FolderOpen, X, Loader2 } from "lucide-react";
 import React from "react";
+
+import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -9,11 +12,9 @@ import {
     DialogTitle,
     DialogBody,
 } from "@/components/ui/dialog";
-import { Upload, CheckCircle, AlertCircle, FolderOpen, X, Loader2 } from "lucide-react";
-import { getVariables } from "@/components/_variables/variables";
 import {
     useFileUploadModal,
-    UploadType,
+    type UploadType,
 } from "@/features/publisher/view-models/fileUploadModal.viewModel";
 
 interface FileUploadModalProps {

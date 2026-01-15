@@ -22,11 +22,11 @@ import { ChevronDown, ChevronUp, Download, Loader2 } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
-import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 import { getVariables } from "@/components/_variables/variables";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Popover,
   PopoverContent,
@@ -34,12 +34,12 @@ import {
 } from "@/components/ui/popover";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
-import type { Request } from "../types/admin.types";
+import type { CreativeRequest } from "../types/request.types";
 
 const MAX_COMMENT_LENGTH = 5000;
 
 interface RequestItemProps {
-  request: Request;
+  request: CreativeRequest;
   colorVariant: "purple" | "blue";
   viewButtonText?: string;
   showDownloadButton?: boolean;
@@ -160,7 +160,7 @@ const shouldShowNotifyButton = (
   approvalStage: string
 ): boolean => {
   const normalizedStatus = status.toLowerCase();
-  const normalizedStage = approvalStage.toLowerCase();
+  const _normalizedStage = approvalStage.toLowerCase();
 
   // Show Notify button for approved requests (both admin and completed stages)
   if (normalizedStatus === "approved") {
@@ -337,7 +337,7 @@ export function RequestItem({
             >
               {request.advertiserName} - AFF ID :{" "}
               <span className="font-inter font-semibold">
-                {request.affiliateId}
+                {request.affiliateId || ""}
               </span>
             </span>
             <span
@@ -408,50 +408,50 @@ export function RequestItem({
               variables.colors.requestCardViewButtonBackgroundColor,
             border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
           }}
-          // TODO: BACKEND - Implement View Request Navigation (UNIFIED MODEL)
-          //
-          // Frontend Implementation:
-          // onClick={() => {
-          //   router.push(`/requests/${request.id}`);
-          // })
-          //
-          // Backend API Endpoint: GET /api/admin/creative-requests/:id
-          //
-          // Backend Requirements:
-          // 1. Validate user has permission to view request
-          // 2. Retrieve full request details from creative_requests table
-          // 3. Retrieve complete approval timeline from creative_request_history table
-          // 4. Include related data:
-          //    - Offer details (from offers table via offer_id)
-          //    - Publisher details (from users table via publisher_id)
-          //    - Advertiser details (from users table via advertiser_id)
-          //    - Admin action details (admin_approved_by, admin_rejected_by, etc.)
-          //    - Advertiser action details (advertiser_approved_by, advertiser_rejected_by, etc.)
-          // 5. Return comprehensive request object with all related data
-          //
-          // Response Format:
-          // {
-          //   request: Request (full request object),
-          //   history: RequestHistory[] (array of history records),
-          //   offer: Offer (offer details),
-          //   publisher: User (publisher details),
-          //   advertiser: User (advertiser details)
-          // }
-          //
-          // Frontend Page: Create detailed view page at /requests/[id]/page.tsx showing:
-          // - Full creative/offer details (immutable)
-          // - Complete approval timeline from creative_request_history table
-          // - Admin approval info (who, when, comments)
-          // - Advertiser response info (who, when, comments)
-          // - Current status and next steps
-          // - Action buttons if applicable
-          // - Export functionality
-          //
-          // Example timeline:
-          // [Dec 20, 10:30] Publisher submitted creative
-          // [Dec 21, 14:15] Admin approved and forwarded to advertiser
-          // [Dec 22, 09:00] Advertiser sent back for reconsideration
-          // [Dec 22, 16:30] Admin rejected and sent to advertiser
+        // TODO: BACKEND - Implement View Request Navigation (UNIFIED MODEL)
+        //
+        // Frontend Implementation:
+        // onClick={() => {
+        //   router.push(`/requests/${request.id}`);
+        // })
+        //
+        // Backend API Endpoint: GET /api/admin/creative-requests/:id
+        //
+        // Backend Requirements:
+        // 1. Validate user has permission to view request
+        // 2. Retrieve full request details from creative_requests table
+        // 3. Retrieve complete approval timeline from creative_request_history table
+        // 4. Include related data:
+        //    - Offer details (from offers table via offer_id)
+        //    - Publisher details (from users table via publisher_id)
+        //    - Advertiser details (from users table via advertiser_id)
+        //    - Admin action details (admin_approved_by, admin_rejected_by, etc.)
+        //    - Advertiser action details (advertiser_approved_by, advertiser_rejected_by, etc.)
+        // 5. Return comprehensive request object with all related data
+        //
+        // Response Format:
+        // {
+        //   request: Request (full request object),
+        //   history: RequestHistory[] (array of history records),
+        //   offer: Offer (offer details),
+        //   publisher: User (publisher details),
+        //   advertiser: User (advertiser details)
+        // }
+        //
+        // Frontend Page: Create detailed view page at /requests/[id]/page.tsx showing:
+        // - Full creative/offer details (immutable)
+        // - Complete approval timeline from creative_request_history table
+        // - Admin approval info (who, when, comments)
+        // - Advertiser response info (who, when, comments)
+        // - Current status and next steps
+        // - Action buttons if applicable
+        // - Export functionality
+        //
+        // Example timeline:
+        // [Dec 20, 10:30] Publisher submitted creative
+        // [Dec 21, 14:15] Admin approved and forwarded to advertiser
+        // [Dec 22, 09:00] Advertiser sent back for reconsideration
+        // [Dec 22, 16:30] Admin rejected and sent to advertiser
         >
           {viewButtonText}
         </Button>
@@ -903,11 +903,10 @@ export function RequestItem({
                           </span>
                         </label>
                         <span
-                          className={`text-xs font-inter ${
-                            isRejectCommentsValid
+                          className={`text-xs font-inter ${isRejectCommentsValid
                               ? "text-muted-foreground"
                               : "text-destructive"
-                          }`}
+                            }`}
                         >
                           {rejectCommentsLength} / {MAX_COMMENT_LENGTH}
                         </span>
@@ -1275,9 +1274,9 @@ export function RequestItem({
               )}
             </div>
           ) : shouldShowRejectButtonOnly(
-              request.status,
-              request.approvalStage
-            ) ? (
+            request.status,
+            request.approvalStage
+          ) ? (
             <div className="flex flex-col gap-4 xl:gap-4 justify-self-end">
               <Popover
                 open={sendBackPopoverOpen}
@@ -1325,11 +1324,10 @@ export function RequestItem({
                           </span>
                         </label>
                         <span
-                          className={`text-xs font-inter ${
-                            isSendBackCommentsValid
+                          className={`text-xs font-inter ${isSendBackCommentsValid
                               ? "text-muted-foreground"
                               : "text-destructive"
-                          }`}
+                            }`}
                         >
                           {sendBackCommentsLength} / {MAX_COMMENT_LENGTH}
                         </span>

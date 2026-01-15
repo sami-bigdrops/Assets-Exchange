@@ -1,4 +1,4 @@
-import { PublisherFormData } from "../hooks/usePublisherForm";
+import { type PublisherFormData } from "../hooks/usePublisherForm";
 
 export interface PersonalDetailProps {
     formData: PublisherFormData;

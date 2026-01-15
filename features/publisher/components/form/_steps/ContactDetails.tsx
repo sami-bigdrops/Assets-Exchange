@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ContactDetailsProps } from "@/features/publisher/types/form.types";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+
 import { getVariables } from "@/components/_variables/variables";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { type ContactDetailsProps } from "@/features/publisher/types/form.types";
 
 const TELEGRAM_BOT_URL = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/your_bot_username";
 

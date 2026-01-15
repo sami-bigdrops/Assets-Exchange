@@ -46,7 +46,7 @@ async function handleGET(request: NextRequest) {
   const procedure = getProcedureFromPath(router, pathSegments);
 
   if (!procedure) {
-    logger.api.warn("RPC procedure not found (GET)", { path: rpcPath, pathSegments });
+    logger.rpc.warn({ path: rpcPath, pathSegments }, "RPC procedure not found (GET)");
     return NextResponse.json(
       { error: "Procedure not found" },
       { status: 404 }
@@ -71,10 +71,10 @@ async function handleGET(request: NextRequest) {
         undefined
       );
     } else {
-      logger.api.error("Procedure is not callable (GET)", {
+      logger.rpc.error({
         path: rpcPath,
         procedureKeys: Object.keys(procedureAny),
-      });
+      }, "Procedure is not callable (GET)");
       return NextResponse.json(
         { error: "Procedure is not callable" },
         { status: 500 }
@@ -83,10 +83,10 @@ async function handleGET(request: NextRequest) {
 
     return NextResponse.json({ json: result, meta: [] });
   } catch (error) {
-    logger.api.error("RPC procedure error (GET)", {
+    logger.rpc.error({
       path: rpcPath,
       error: error instanceof Error ? error.message : String(error),
-    });
+    }, "RPC procedure error (GET)");
 
     return NextResponse.json(
       {
@@ -122,7 +122,7 @@ async function handlePOST(request: NextRequest) {
   const procedure = getProcedureFromPath(router, pathSegments);
 
   if (!procedure) {
-    logger.api.warn("RPC procedure not found", { path: rpcPath, pathSegments });
+    logger.rpc.warn({ path: rpcPath, pathSegments }, "RPC procedure not found");
     return NextResponse.json(
       { error: "Procedure not found" },
       { status: 404 }
@@ -158,10 +158,10 @@ async function handlePOST(request: NextRequest) {
         input
       );
     } else {
-      logger.api.error("Procedure is not callable", {
+      logger.rpc.error({
         path: rpcPath,
         procedureKeys: Object.keys(procedureAny),
-      });
+      }, "Procedure is not callable");
       return NextResponse.json(
         { error: "Procedure is not callable" },
         { status: 500 }
@@ -170,10 +170,10 @@ async function handlePOST(request: NextRequest) {
 
     return NextResponse.json({ json: result, meta: [] });
   } catch (error) {
-    logger.api.error("RPC procedure error", {
+    logger.rpc.error({
       path: rpcPath,
       error: error instanceof Error ? error.message : String(error),
-    });
+    }, "RPC procedure error");
 
     if (error instanceof SyntaxError) {
       return NextResponse.json(

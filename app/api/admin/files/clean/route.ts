@@ -1,10 +1,10 @@
+import { eq, and, isNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { eq, and, isNull } from "drizzle-orm";
 
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { fileUploads } from "@/lib/schema";
-import { auth } from "@/lib/auth";
 
 async function requireAdmin() {
     const session = await auth.api.getSession({ headers: await headers() });

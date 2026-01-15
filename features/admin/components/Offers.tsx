@@ -81,6 +81,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { useGlobalSync } from "@/features/admin/context/GlobalSyncContext";
 import {
   EntityDataTable,
   EntityDataCard,
@@ -88,7 +89,6 @@ import {
 
 import type { Offer as OfferType } from "../types/offer.types";
 import { useOffersViewModel } from "../view-models/useOffersViewModel";
-import { useGlobalSync } from "@/features/admin/context/GlobalSyncContext";
 
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 import { BulkEditModal } from "./BulkEditModal";

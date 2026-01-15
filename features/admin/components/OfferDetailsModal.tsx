@@ -161,7 +161,6 @@ export function EditDetailsModal({
             setFormData(initialData);
             setInitialFormData(initialData);
             setIsEditingOfferId(false);
-            setIsEditingOfferName(false);
           } else {
             setError("Offer not found");
           }
@@ -275,13 +274,18 @@ export function EditDetailsModal({
       setIsSubmitting(true);
       setError(null);
 
-      const updatePayload: any = {
+      const updatePayload: {
+        visibility: "Public" | "Internal" | "Hidden";
+        name?: string;
+        status?: "active" | "inactive";
+        advertiserId?: string;
+      } = {
         visibility: formData.visibility,
       };
 
       if (!isApiSource(offer.createdMethod)) {
         updatePayload.name = formData.offerName;
-        updatePayload.status = formData.status.toLowerCase();
+        updatePayload.status = formData.status.toLowerCase() as "active" | "inactive";
         updatePayload.advertiserId = formData.advertiserId;
       }
 

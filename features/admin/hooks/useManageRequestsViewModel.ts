@@ -19,7 +19,7 @@ export function useManageRequestsViewModel() {
             setMeta(res.meta)
         } catch (e: unknown) {
             console.error("Load failed", e);
-            setError(e.message || "Failed to load requests")
+            setError(e instanceof Error ? e.message : "Failed to load requests")
         } finally {
             setLoading(false)
         }

@@ -67,7 +67,7 @@ export function classifyJobError(error: unknown): ClassifiedError {
 
     return {
         type: 'unknown',
-        message: message,
+        message,
         retryable: true,
         severity: 'medium',
     };

@@ -1,5 +1,6 @@
 import "server-only";
 import pino from "pino";
+
 import { getRequestId } from "./requestContext";
 
 const rootLogger = pino({

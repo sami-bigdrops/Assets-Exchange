@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { useGlobalSync } from "@/features/admin/context/GlobalSyncContext";
 import {
   EntityDataTable,
   EntityDataCard,
@@ -43,7 +44,6 @@ import {
 
 import type { Advertiser as AdvertiserType } from "../types/advertiser.types";
 import { useAdvertiserViewModel } from "../view-models/useAdvertiserViewModel";
-import { useGlobalSync } from "@/features/admin/context/GlobalSyncContext";
 
 import { AdvertiserDetailsModal } from "./AdvertiserDetailsModal";
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";

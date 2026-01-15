@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
+
 import { db } from "@/lib/db";
 import { systemStates } from "@/lib/schema";
-import { eq } from "drizzle-orm";
 
 export async function getSystemState<T>(key: string): Promise<T | null> {
     const result = await db.select().from(systemStates).where(eq(systemStates.key, key));

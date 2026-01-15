@@ -4,9 +4,9 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { backgroundJobs } from "@/lib/schema";
-import { withRequestContext } from "@/lib/requestContext";
 import { logger } from "@/lib/logger";
+import { withRequestContext } from "@/lib/requestContext";
+import { backgroundJobs } from "@/lib/schema";
 
 export async function GET(_req: Request) {
     return withRequestContext(async () => {
@@ -112,7 +112,7 @@ export async function GET(_req: Request) {
                     activeJobs: activeJobsCount.value,
                     failedJobs24h: failedJobsCount.value,
                     deadJobs: deadJobsCount.value,
-                    errorRate: errorRate,
+                    errorRate,
                     avgLatency: avgLatency.value ? Math.round(avgLatency.value) : null,
                 },
                 trends: trends.rows,

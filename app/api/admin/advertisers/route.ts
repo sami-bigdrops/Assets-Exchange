@@ -2,11 +2,11 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { listAdvertisers, createAdvertiser } from "@/features/admin/services/advertiser.service";
+import { handleApiError } from "@/lib/api-utils";
 import { auth } from "@/lib/auth";
 import { getRateLimitKey } from "@/lib/getRateLimitKey";
 import { ratelimit } from "@/lib/ratelimit";
 import { createAdvertiserSchema } from "@/lib/validations/admin";
-import { handleApiError } from "@/lib/api-utils";
 
 async function enforceRateLimit() {
     const key = await getRateLimitKey();

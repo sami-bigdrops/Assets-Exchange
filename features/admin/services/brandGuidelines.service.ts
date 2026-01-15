@@ -6,7 +6,7 @@ import { advertisers, offers } from "@/lib/schema"
 export async function attachBrandGuidelines(
     offerId: string,
     fileId: string,
-    adminId: string
+    _adminId: string
 ) {
     // TODO: Re-enable file validation when fileUploads table is created (Phase 8.1)
     // const [file] = await db
@@ -23,11 +23,9 @@ export async function attachBrandGuidelines(
     await db.update(offers)
         .set({
             brandGuidelines: {
-                fileId,
-                attachedAt: new Date().toISOString(),
-                attachedBy: adminId,
                 type: "file",
-            } as { fileId: string; attachedAt: string; attachedBy: string; type: string },
+                fileUrl: fileId,
+            },
             updatedAt: new Date(),
         })
         .where(eq(offers.id, offerId))
@@ -246,7 +244,7 @@ export async function getOfferBrandGuidelines(offerId: string) {
 
     if (offer.brandGuidelines) {
         const guidelines = offer.brandGuidelines as { type?: string; fileId?: string; url?: string; text?: string } | null;
-        if (guidelines.type) {
+        if (guidelines && guidelines.type) {
             return guidelines;
         }
     }

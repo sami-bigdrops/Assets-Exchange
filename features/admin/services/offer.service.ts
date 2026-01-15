@@ -61,11 +61,12 @@ export async function createOffer(data: {
         throw new Error("Advertiser not found");
     }
     const insertValues: {
+        id?: string;
         offerName: string;
         advertiserId: string;
         advertiserName: string;
-        status: string;
-        visibility: string;
+        status: "Active" | "Inactive";
+        visibility: "Public" | "Internal" | "Hidden";
         createdMethod: string;
         brandGuidelines?: { type: string; fileId: string } | null;
         createdAt: Date;
@@ -114,7 +115,7 @@ export async function updateOffer(id: string, data: Partial<{
         advertiserName,
         brandGuidelines: data.brandGuidelinesFileId !== undefined ? (data.brandGuidelinesFileId ? { type: "file", fileId: data.brandGuidelinesFileId } : null) : undefined,
         updatedAt: new Date(),
-    } as { offerName?: string; advertiserId?: string; advertiserName?: string; status?: string; visibility?: string; createdMethod?: string; brandGuidelines?: unknown; updatedAt?: Date }).where(eq(offers.id, id)).returning()
+    }).where(eq(offers.id, id)).returning()
 
     return row ? mapOffer(row) : null
 }
@@ -140,7 +141,7 @@ export async function bulkUpdateOffers(
 
     for (const id of offerIds) {
         try {
-            const set: { updatedAt: Date; visibility?: string; brandGuidelines?: unknown } = { updatedAt: new Date() }
+            const set: { updatedAt: Date; visibility?: "Public" | "Internal" | "Hidden"; brandGuidelines?: unknown } = { updatedAt: new Date() }
             if (updates.visibility) set.visibility = updates.visibility
             if (updates.brandGuidelines) set.brandGuidelines = updates.brandGuidelines
 

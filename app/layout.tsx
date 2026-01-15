@@ -5,8 +5,8 @@ import "./globals.css";
 import { getVariables } from "@/components/_variables/variables";
 import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { Toaster } from "@/components/ui/sonner";
-import { GlobalSyncProvider } from "@/features/admin/context/GlobalSyncContext";
 import { GlobalSyncIndicator } from "@/features/admin/components/GlobalSyncIndicator";
+import { GlobalSyncProvider } from "@/features/admin/context/GlobalSyncContext";
 
 const variables = getVariables();
 

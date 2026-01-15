@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useGlobalSync } from "@/features/admin/context/GlobalSyncContext";
 import { CheckCircle, XCircle } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
-import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { useGlobalSync } from "@/features/admin/context/GlobalSyncContext";
 
 function SyncNotificationCard({
     label,

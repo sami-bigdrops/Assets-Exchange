@@ -39,7 +39,7 @@ async function handleJobError(job: typeof backgroundJobs.$inferSelect, error: un
     const errorStack = error instanceof Error ? error.stack : undefined;
     const elapsed = Date.now() - startTime;
 
-    log.error({ type: 'failed', error: errorMessage, stack: errorStack, errorType, severity: classified.severity }, 'Job failed');
+    log.error({}, `Job failed - type: ${errorType}, error: ${errorMessage}, severity: ${classified.severity}${errorStack ? `, stack: ${errorStack}` : ''}`);
 
     if (classified.retryable && currentRetryCount < maxRetries) {
         const baseDelayMinutes = policy?.delayMinutes || 1;
@@ -64,7 +64,7 @@ async function handleJobError(job: typeof backgroundJobs.$inferSelect, error: un
                 })
                 .where(eq(backgroundJobs.id, job.id));
 
-            log.warn({ jobId: job.id, retryCount: currentRetryCount + 1, errorType, nextRun }, 'Retry scheduled');
+            log.warn({}, `Retry scheduled - jobId: ${job.id}, retryCount: ${currentRetryCount + 1}, errorType: ${errorType}, nextRun: ${nextRun.toISOString()}`);
 
             await logJobEvent({
                 jobId: job.id,
@@ -139,12 +139,20 @@ export async function GET(req: Request) {
     const isAdmin = session?.user?.role === "admin";
 
     if (!isAdmin) {
+        const isVercelCron = vercelCronHeader === "1";
+        const isAuthorizedSecret = cronSecret && authHeader === `Bearer ${cronSecret}`;
+        
         if (process.env.NODE_ENV === "production") {
-            if (vercelCronHeader !== "1") {
+            if (!isVercelCron) {
+                console.warn("Cron endpoint accessed without Vercel cron header", {
+                    hasHeader: !!vercelCronHeader,
+                    headerValue: vercelCronHeader,
+                    userAgent: req.headers.get("user-agent"),
+                });
                 return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             }
         } else {
-            if (cronSecret && authHeader !== `Bearer ${cronSecret}` && vercelCronHeader !== "1") {
+            if (!isVercelCron && !isAuthorizedSecret) {
                 return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             }
         }
@@ -200,7 +208,7 @@ export async function GET(req: Request) {
 
             if (job.type === "everflow_sync") {
                 const log = withJobContext(job.id);
-                log.info({ type: 'started' }, 'Everflow sync started');
+                log.info({}, 'Everflow sync started');
                 await logJobEvent({
                     jobId: job.id,
                     type: JobEventType.STARTED,
@@ -209,7 +217,7 @@ export async function GET(req: Request) {
                 await processEverflowSync(job, startTime, log);
             } else if (job.type === "everflow_advertiser_sync") {
                 const log = withJobContext(job.id);
-                log.info({ type: 'started' }, 'Everflow advertiser sync started');
+                log.info({}, 'Everflow advertiser sync started');
                 await logJobEvent({
                     jobId: job.id,
                     type: JobEventType.STARTED,
@@ -273,7 +281,7 @@ async function processEverflowSync(job: typeof backgroundJobs.$inferSelect, star
                     })
                     .where(eq(backgroundJobs.id, job.id));
 
-                log.info({ type: 'progress', processed: progress.current, total: progress.total }, 'Progress update');
+                log.info({}, `Progress update - processed: ${progress.current}, total: ${progress.total}`);
 
                 await logJobEvent({
                     jobId: job.id,
@@ -288,12 +296,7 @@ async function processEverflowSync(job: typeof backgroundJobs.$inferSelect, star
             },
             onEvent: async (event) => {
                 if (event.type === 'chunk_processed') {
-                    log.info({
-                        type: 'chunk_processed',
-                        chunkNumber: event.data?.chunkNumber,
-                        processed: event.data?.processed,
-                        total: event.data?.total
-                    }, 'Chunk processed');
+                    log.info({}, `Chunk processed - chunkNumber: ${event.data?.chunkNumber}, processed: ${event.data?.processed}, total: ${event.data?.total}`);
                 }
 
                 await logJobEvent({
@@ -324,14 +327,7 @@ async function processEverflowSync(job: typeof backgroundJobs.$inferSelect, star
                 })
                 .where(eq(backgroundJobs.id, job.id));
 
-            log.info({
-                type: 'completed',
-                syncedRecords: syncResult.syncedRecords,
-                createdRecords: syncResult.createdRecords,
-                updatedRecords: syncResult.updatedRecords,
-                skippedRecords: syncResult.skippedRecords,
-                failedRecords: syncResult.failedRecords
-            }, 'Everflow sync completed successfully');
+            log.info({}, `Everflow sync completed successfully - syncedRecords: ${syncResult.syncedRecords}, createdRecords: ${syncResult.createdRecords}, updatedRecords: ${syncResult.updatedRecords}, skippedRecords: ${syncResult.skippedRecords}, failedRecords: ${syncResult.failedRecords}`);
 
             await logJobEvent({
                 jobId: job.id,
@@ -377,7 +373,7 @@ async function processEverflowAdvertiserSync(job: typeof backgroundJobs.$inferSe
                     })
                     .where(eq(backgroundJobs.id, job.id));
 
-                log.info({ type: 'progress', processed: progress.current, total: progress.total }, 'Progress update');
+                log.info({}, `Progress update - processed: ${progress.current}, total: ${progress.total}`);
 
                 await logJobEvent({
                     jobId: job.id,
@@ -392,12 +388,7 @@ async function processEverflowAdvertiserSync(job: typeof backgroundJobs.$inferSe
             },
             onEvent: async (event) => {
                 if (event.type === 'chunk_processed') {
-                    log.info({
-                        type: 'chunk_processed',
-                        chunkNumber: event.data?.chunkNumber,
-                        processed: event.data?.processed,
-                        total: event.data?.total
-                    }, 'Chunk processed');
+                    log.info({}, `Chunk processed - chunkNumber: ${event.data?.chunkNumber}, processed: ${event.data?.processed}, total: ${event.data?.total}`);
                 }
 
                 await logJobEvent({
@@ -428,14 +419,7 @@ async function processEverflowAdvertiserSync(job: typeof backgroundJobs.$inferSe
                 })
                 .where(eq(backgroundJobs.id, job.id));
 
-            log.info({
-                type: 'completed',
-                syncedRecords: syncResult.syncedRecords,
-                createdRecords: syncResult.createdRecords,
-                updatedRecords: syncResult.updatedRecords,
-                skippedRecords: syncResult.skippedRecords,
-                failedRecords: syncResult.failedRecords
-            }, 'Everflow advertiser sync completed successfully');
+            log.info({}, `Everflow advertiser sync completed successfully - syncedRecords: ${syncResult.syncedRecords}, createdRecords: ${syncResult.createdRecords}, updatedRecords: ${syncResult.updatedRecords}, skippedRecords: ${syncResult.skippedRecords}, failedRecords: ${syncResult.failedRecords}`);
 
             await logJobEvent({
                 jobId: job.id,

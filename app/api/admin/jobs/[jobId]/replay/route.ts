@@ -75,15 +75,18 @@ export async function POST(
             return [job];
         });
 
-        logger.info({
-            type: 'job_replayed',
-            originalJobId: jobId,
-            newJobId: newJob.id,
-            userId: session.user.id
-        }, "Job replayed manually");
+        logger.app.info(`Job replayed manually - originalJobId: ${jobId}, newJobId: ${newJob.id}, userId: ${session.user.id}`);
 
-        fetch(`${new URL(req.url).origin}/api/cron/process-jobs`)
-            .catch(err => console.error("Failed to trigger worker", err));
+        const cronSecret = process.env.CRON_SECRET;
+        const headers: HeadersInit = {};
+        if (cronSecret) {
+            headers["Authorization"] = `Bearer ${cronSecret}`;
+        }
+        
+        fetch(`${new URL(req.url).origin}/api/cron/process-jobs`, {
+            method: "GET",
+            headers,
+        }).catch(err => console.error("Failed to trigger worker", err));
 
         return NextResponse.json({ success: true, newJobId: newJob.id }, { status: 201 });
 

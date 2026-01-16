@@ -34,24 +34,23 @@ export async function POST(req: Request) {
             })
             .returning({ id: backgroundJobs.id });
 
-        logger.everflow.info({
-            type: 'job_created',
-            jobId: job.id,
-            route: '/api/admin/everflow/advertisers/sync',
-            userId: session.user.id
-        }, 'Everflow advertiser sync job created');
+        logger.everflow.info(`Everflow advertiser sync job created - jobId: ${job.id}, route: /api/admin/everflow/advertisers/sync, userId: ${session.user.id}`);
 
-        fetch(`${new URL(req.url).origin}/api/cron/process-jobs`)
-            .catch(err => console.error("Failed to trigger worker", err));
+        const cronSecret = process.env.CRON_SECRET;
+        const headers: HeadersInit = {};
+        if (cronSecret) {
+            headers["Authorization"] = `Bearer ${cronSecret}`;
+        }
+        
+        fetch(`${new URL(req.url).origin}/api/cron/process-jobs`, {
+            method: "GET",
+            headers,
+        }).catch(err => console.error("Failed to trigger worker", err));
 
         return NextResponse.json({ jobId: job.id });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Unknown error";
-        logger.everflow.error({
-            type: 'job_creation_failed',
-            route: '/api/admin/everflow/advertisers/sync',
-            error: message
-        }, "Failed to start sync job");
+        logger.everflow.error(`Failed to start sync job - route: /api/admin/everflow/advertisers/sync, error: ${message}`);
 
         return NextResponse.json(
             { error: "Failed to start sync job" },

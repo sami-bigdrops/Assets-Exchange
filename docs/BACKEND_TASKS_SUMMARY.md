@@ -1,11 +1,12 @@
 # Backend Tasks Summary - Completed vs Remaining
 
 **Generated:** 2025-01-XX  
+**Last Updated:** 2025-01-XX  
 **Based on:** Admin Architecture Test Report & Backend Sequential Plan
 
 ---
 
-## ✅ Completed Tasks (50+ tasks)
+## ✅ Completed Tasks (60+ tasks)
 
 ### Phase 3.1: Admin Dashboard & Stats ✅
 - ✅ Dashboard statistics API (`GET /api/admin/dashboard/stats`)
@@ -46,6 +47,7 @@
 - ✅ POST /api/admin/offers
 - ✅ PUT /api/admin/offers/[id]
 - ✅ DELETE /api/admin/offers/[id] (soft delete)
+- ✅ POST /api/admin/offers/bulk-update (bulk update multiple offers)
 - ✅ Service: `features/admin/services/offer.service.ts`
 
 ### Phase 3.7: Advertisers CRUD ✅
@@ -104,8 +106,10 @@
 - ✅ GET /api/admin/jobs/[jobId]/events (get job events)
 - ✅ POST /api/admin/jobs/[jobId]/retry (retry failed job)
 - ✅ POST /api/admin/jobs/[jobId]/cancel (cancel running job)
+- ✅ POST /api/admin/jobs/[jobId]/replay (replay job)
 - ✅ GET /api/admin/everflow/sync-status/[jobId] (get sync job status)
 - ✅ POST /api/admin/everflow/cancel/[jobId] (cancel sync job)
+- ✅ GET /api/admin/everflow/active-job (get active sync job)
 - ✅ Database schema: `background_jobs` table with status tracking
 - ✅ Job event logging system
 
@@ -113,12 +117,16 @@
 - ✅ **Authentication**: All API endpoints require authentication
 - ✅ **Authorization**: Admin role checks enforced on all admin endpoints
 - ✅ **SQL Injection Protection**: Drizzle ORM with parameterized queries (all endpoints)
-- ✅ **Rate Limiting**: Implemented on brand guidelines endpoints
+- ✅ **Rate Limiting**: Implemented on brand guidelines and offers endpoints
   - `app/api/admin/advertisers/[id]/brand-guidelines/route.ts`
   - `app/api/admin/offers/[id]/brand-guidelines/route.ts`
+  - `app/api/admin/offers/route.ts`
+  - `app/api/admin/offers/[id]/route.ts`
   - Uses `@upstash/ratelimit` with Redis
 - ✅ **Error Handling**: Consistent error responses across endpoints
 - ✅ **Input Validation**: Basic validation on brand guidelines endpoints (type, url, text required)
+- ✅ **Health Check**: GET /api/health endpoint implemented
+- ✅ **Metrics**: GET /api/admin/ops/metrics endpoint implemented
 - ⚠️ **Input Sanitization**: Not yet implemented (Priority 1)
 - ⚠️ **Zod Schemas**: Not yet implemented for all endpoints (Priority 1)
 - ⚠️ **Admin Seed Endpoint**: Not secured (Priority 1 - Critical)
@@ -191,9 +199,9 @@
 - ⏳ GET /api/admin/responses/:id/related-request
 
 ### Phase 5 Offers Management (Partial)
+- ✅ POST /api/admin/offers/bulk-update (bulk update multiple offers with same changes)
 - ⏳ PATCH /api/admin/offers/:id/status (activate/deactivate offer)
 - ⏳ PATCH /api/admin/offers/:id/visibility (update visibility - used by dropdown in offers table)
-- ⏳ POST /api/admin/offers/bulk-update (bulk update multiple offers with same changes)
 
 ### Phase 6 Advertisers & Publishers (Partial)
 - ⏳ PATCH /api/admin/advertisers/:id/status (activate/deactivate advertiser)
@@ -238,22 +246,245 @@
 - ⏳ Implement malware scan background job
 - ⏳ And 9 more tasks...
 
-### Phase 9: Creative Tracking & File Management
-- ⏳ GET /api/track/:trackingId (track creative submission by tracking ID)
-  - Location: `app/page.tsx` line 72
-  - Purpose: Allow users to track their creative submissions using 12-character tracking ID
-  - Requirements:
-    - Validate tracking ID format (12 alphanumeric characters)
-    - Return creative request details and status
-    - Handle 404 if tracking ID not found
-- ⏳ GET /api/admin/creative-requests/:id/download (download creative files)
-  - Location: `features/admin/components/RequestItem.tsx` (multiple locations)
-  - Purpose: Allow admins to download creative files submitted by publishers
-  - Requirements:
-    - Authenticate admin user
-    - Validate file exists and is accessible
-    - Return file with appropriate content-type headers
-    - Support multiple file types (HTML, images, ZIP archives)
+### Phase 9: Publisher Flow, Analytics & Ops Integration ⏳
+
+**Goal:** Turn publisher form into first-class backend workflow with tracking, grammar AI integration, and operational analytics.
+
+**Key Principles:**
+- All API calls made by Admin portal only (no direct publisher/advertiser API access)
+- Single immutable approval chain: Publisher → Admin → Advertiser
+- Analytics tracks operational metrics only (not approval/rejection events)
+- Tracking ID system for publisher visibility
+- Grammar AI integration (all calls from Admin backend)
+- Ops dashboard for monitoring external calls
+
+#### Sprint 9.1: Core Submission & Workflow Backbone ⏳
+
+**Database Migrations:**
+- ⏳ Create `publisher_submissions` table
+  - Fields: id, tracking_id (unique), affiliate_id, company_name, first_name, last_name, email, telegram_id, status, created_at, updated_at
+- ⏳ Create `creatives` table
+  - Fields: id, submission_id (FK), offer_id, creative_type, priority, notes, created_at
+- ⏳ Create `creative_files` table
+  - Fields: id, creative_id (FK), filename, storage_path, file_type, created_at
+- ⏳ Create `submission_reviews` table
+  - Fields: id, submission_id (FK), reviewer_role, reviewer_id, decision, reason, created_at
+
+**Zod Schemas:**
+- ⏳ `PublisherSubmissionSchema` - validation for form submission
+- ⏳ `CreativeSchema` - validation for creative details
+- ⏳ `FileUploadSchema` - validation for file uploads
+
+**Backend Endpoints (Admin-Only):**
+- ⏳ POST /api/admin/publisher/submissions - Create submission from form data
+- ⏳ POST /api/admin/publisher/submissions/:id/creative - Attach creative to submission
+- ⏳ POST /api/admin/publisher/submissions/:id/submit - Lock submission (make immutable)
+- ⏳ GET /api/admin/publisher/submissions - List all submissions (admin view)
+- ⏳ GET /api/admin/publisher/submissions/:id - Get submission details
+
+**Service Layer:**
+- ⏳ `features/publisher/services/submission.service.ts` - Core submission logic
+- ⏳ `features/publisher/services/file.service.ts` - File handling logic
+- ⏳ Generate unique tracking ID (12 alphanumeric characters)
+
+**Testing:**
+- ⏳ Submit full form → entry created
+- ⏳ Creatives attached properly
+- ⏳ Submission becomes immutable after submit
+- ⏳ Tracking ID generated and unique
+
+#### Sprint 9.2: Tracking & Status Flow ⏳
+
+**Status Enum:**
+```typescript
+type SubmissionStatus =
+  | 'submitted'
+  | 'admin_review'
+  | 'admin_approved'
+  | 'admin_rejected'
+  | 'advertiser_review'
+  | 'advertiser_approved'
+  | 'advertiser_rejected';
+```
+
+**Backend Endpoints:**
+- ⏳ GET /api/public/track/:trackingId - Public tracking page (read-only)
+  - Returns: current status, admin approval state, advertiser approval state, uploaded creatives, grammar processing status
+- ⏳ POST /api/admin/publisher/:id/admin-approve - Admin approves submission
+- ⏳ POST /api/admin/publisher/:id/admin-reject - Admin rejects submission
+- ⏳ POST /api/admin/publisher/:id/forward-to-advertiser - Move to advertiser review
+- ⏳ POST /api/admin/publisher/:id/advertiser-approve - Advertiser approves (called by admin)
+- ⏳ POST /api/admin/publisher/:id/advertiser-reject - Advertiser rejects (called by admin)
+
+**Status Transition Logic:**
+- ⏳ Validate status transitions (enforce workflow rules)
+- ⏳ Log all status changes in `submission_reviews` table
+- ⏳ Prevent invalid transitions
+
+**Service Layer:**
+- ⏳ `features/publisher/services/tracking.service.ts` - Tracking logic
+- ⏳ `features/publisher/services/status.service.ts` - Status transition logic
+
+**Testing:**
+- ⏳ Status transitions are enforced
+- ⏳ Invalid transitions rejected
+- ⏳ Tracking page shows correct step
+- ⏳ Status history is logged
+
+#### Sprint 9.3: Grammar AI Integration + Analytics ⏳
+
+**Grammar Model Integration:**
+- Model URL: `https://grammar-correction-1-5tha.onrender.com`
+- ⏳ Create `lib/grammarClient.ts` - Grammar API wrapper
+  - POST /process - Upload and process files
+  - GET /task/{task_id} - Get task status
+  - GET /download/{filename} - Download processed files
+  - GET /health - Check service health
+- ⏳ All grammar calls made from Admin backend only (never from publisher)
+- ⏳ Create `external_tasks` table
+  - Fields: id, source ('grammar'), submission_id, asset_id, status, task_id (external), started_at, finished_at, error
+
+**Analytics Table:**
+- ⏳ Create `external_calls` table
+  - Fields: id, service, endpoint, request_size, response_time_ms, status_code, created_at
+- ⏳ Log all external API calls (grammar, everflow, email, telegram)
+- ⏳ Wrap external calls with logging hook
+
+**Backend Endpoints:**
+- ⏳ POST /api/admin/publisher/submissions/:id/process-grammar - Trigger grammar processing
+- ⏳ GET /api/admin/publisher/submissions/:id/grammar-status - Get grammar processing status
+- ⏳ POST /api/admin/publisher/submissions/:id/retry-grammar - Retry failed grammar job
+
+**Service Layer:**
+- ⏳ `features/publisher/services/grammar.service.ts` - Grammar processing logic
+- ⏳ `lib/analytics/externalCalls.service.ts` - External call logging
+- ⏳ Background job integration for async grammar processing
+
+**Testing:**
+- ⏳ Upload creative → grammar call logged
+- ⏳ Failed calls logged with status
+- ⏳ Metrics visible in Ops dashboard
+- ⏳ Grammar processing works end-to-end
+
+#### Sprint 9.4: Admin Portal Integration ⏳
+
+**Admin Portal Changes:**
+- ⏳ Update "Manage Requests" page to show publisher submissions
+- ⏳ Add "View Request" functionality that shows same submission window as publisher
+- ⏳ Admin can see: creatives, notes, status, tracking ID
+- ⏳ Admin actions: Approve, Reject, Forward to Advertiser, Trigger Grammar Check
+
+**Ops Dashboard Extensions:**
+- ⏳ New section: "External Operations"
+  - Table: External API Calls (grammar, everflow, email, telegram)
+  - Metrics: Submissions per day, Approval rates, Time to approval
+  - Health: Avg grammar time, Failure rate, Retry counts
+- ⏳ Add "Publisher Funnel" metrics card
+- ⏳ Add "Processing Health" metrics card
+
+**UI Components:**
+- ⏳ Update `ManageRequestsPage` - List + filters for publisher submissions
+- ⏳ Create `SubmissionDetails` component - Read-only mirror of publisher UI
+- ⏳ Update `OpsDashboard` - Add External Calls card
+
+**Service Layer:**
+- ⏳ `features/admin/services/publisherSubmissions.service.ts` - Admin submission management
+- ⏳ Integration with existing request service
+
+**Testing:**
+- ⏳ Admin sees submissions
+- ⏳ Can view same publisher UI
+- ⏳ Ops shows grammar API calls
+- ⏳ All admin actions work correctly
+
+#### Sprint 9.5: Notifications ⏳
+
+**Notification Triggers:**
+- ⏳ On submission created → Send email + Telegram with tracking ID
+- ⏳ On admin_approved → Notify publisher
+- ⏳ On admin_rejected → Notify publisher
+- ⏳ On advertiser_approved → Notify publisher
+- ⏳ On advertiser_rejected → Notify publisher
+
+**Notification Channels:**
+- ⏳ Email notifications (with tracking ID)
+- ⏳ Telegram notifications (if telegram_id provided)
+
+**Service Layer:**
+- ⏳ `features/notifications/services/publisherNotifications.service.ts` - Publisher notification logic
+- ⏳ Integration with existing notification service
+- ⏳ Email template for tracking ID
+- ⏳ Telegram bot integration
+
+**Testing:**
+- ⏳ Email sent on submission
+- ⏳ Telegram sent if ID provided
+- ⏳ Status change notifications work
+- ⏳ Tracking ID included in all notifications
+
+#### Phase 9 Analytics (Operational Only) ⏳
+
+**Metrics Tracked:**
+- ⏳ submissions/day - Growth metric
+- ⏳ approval_rate - Quality metric
+- ⏳ avg_admin_response_time - Ops performance
+- ⏳ avg_advertiser_response_time - Partner performance
+- ⏳ grammar_failure_rate - AI health
+- ⏳ external_api_latency - Reliability
+
+**NOT Tracked (as per requirements):**
+- ❌ submission_approved events
+- ❌ submission_rejected events
+- ❌ Admin moderation actions as analytics
+
+**Analytics Service:**
+- ⏳ `features/analytics/services/publisherAnalytics.service.ts` - Publisher analytics
+- ⏳ `features/analytics/services/operationalAnalytics.service.ts` - Operational metrics
+
+#### Phase 9 Security & Validation ⏳
+
+**Security Rules:**
+- ⏳ Public submit endpoint: Rate limiting + CAPTCHA (optional)
+- ⏳ File scanning enforced (malware scanning)
+- ⏳ No direct model exposure to publisher
+- ⏳ No direct advertiser API exposure
+- ⏳ Tracking endpoint is read-only
+- ⏳ Admin orchestrates all transitions
+
+**Validation:**
+- ⏳ Input validation on all submission fields
+- ⏳ File type and size validation
+- ⏳ ZIP bomb protection
+- ⏳ Tracking ID format validation (12 alphanumeric)
+
+#### Phase 9 Testing Plan ⏳
+
+**Manual Testing:**
+- ⏳ Submit form → Receive email & telegram
+- ⏳ See in Admin → Approve → Forward to advertiser
+- ⏳ Track status change
+- ⏳ Grammar processing success/failure
+- ⏳ Replay grammar job
+
+**Failure Scenarios:**
+- ⏳ Broken grammar model
+- ⏳ Telegram fail
+- ⏳ Email fail
+- ⏳ Duplicate submission
+- ⏳ Invalid status transitions
+
+#### Phase 9 Completion Criteria ⏳
+
+Phase 9 is complete when:
+- ✅ Publisher can submit form
+- ✅ Admin sees request in Manage Requests
+- ✅ Admin reviews and forwards to advertiser
+- ✅ Advertiser reviews (via admin)
+- ✅ Publisher tracks status via tracking ID
+- ✅ Grammar model integration works
+- ✅ Ops dashboard shows health metrics
+- ✅ All external calls logged and visible
+- ✅ No frontend changes required (backend only)
 
 ### Phase 5.5 Everflow Integration (Partial)
 - ✅ POST /api/admin/advertisers/sync (create sync job)
@@ -263,12 +494,11 @@
 - ⏳ Additional Everflow API endpoints (if needed)
 - ⏳ Advanced filtering and conflict resolution options
 
-### Phase 9-13 (Advanced Features)
-- ⏳ Notifications table schema
+### Phase 10+ (Advanced Features - Future)
+- ⏳ Notifications table schema (enhanced)
 - ⏳ WebSocket/SSE for real-time notifications
 - ⏳ Compliance Model Integration (8 tasks blocked pending deployment)
-- ⏳ Grammar Correction APIs
-- ⏳ Analytics Frontend
+- ⏳ Analytics Frontend (enhanced)
 - ⏳ Testing & Cleanup
 
 ---
@@ -276,8 +506,8 @@
 ## 📊 Summary Statistics
 
 ### By Status:
-- **✅ Done:** 50+ tasks
-- **⏳ Remaining:** 70+ tasks
+- **✅ Done:** 60+ tasks
+- **⏳ Remaining:** 80+ tasks (includes Phase 9)
 - **⚠️ Security Issues (Priority 1):** 4 tasks
 - **⏳ Blocked:** 8 tasks (Compliance Model Integration)
 - **⚠️ File Upload Security:** Not implemented (correctly blocked until Phase 8.1)
@@ -429,6 +659,166 @@
 
 ---
 
-**Last Updated:** 2026-01-08  
+**Last Updated:** 2025-01-XX  
 **Next Review:** After Priority 1 Security Fixes
+
+## Recent Completions (Latest Update)
+
+### Bulk Update Offers - Completed ✅
+- ✅ `POST /api/admin/offers/bulk-update` - Bulk update multiple offers
+- ✅ Supports updating visibility and brand guidelines for multiple offers
+- ✅ FormData handling for file uploads (prepared for future)
+- ✅ Rate limiting implemented
+- ✅ API: `app/api/admin/offers/bulk-update/route.ts`
+
+### Additional Endpoints Completed ✅
+- ✅ `POST /api/admin/jobs/[jobId]/replay` - Replay background job
+- ✅ `GET /api/admin/everflow/active-job` - Get active sync job
+- ✅ `GET /api/health` - Health check endpoint
+- ✅ `GET /api/admin/ops/metrics` - Metrics endpoint
+
+---
+
+## Phase 9: Publisher Flow, Analytics & Ops Integration - Detailed Plan
+
+**Status:** ⏳ **Not Started**  
+**Priority:** 🔴 **HIGH**  
+**Dependencies:** None (can start immediately)
+
+**📖 Full Implementation Guide:** See [PHASE_9_IMPLEMENTATION.md](./PHASE_9_IMPLEMENTATION.md) for complete details including:
+- Database migrations (SQL + Drizzle)
+- Zod schemas
+- API endpoint specifications
+- Service layer implementations
+- Grammar AI integration
+- Analytics implementation
+- Testing plan
+
+### Overview
+
+Phase 9 transforms the publisher form into a complete backend workflow system with:
+- Full submission pipeline (Publisher → Admin → Advertiser)
+- Tracking ID system for publisher visibility
+- Grammar AI integration (all calls from Admin)
+- Operational analytics and monitoring
+- Ops dashboard for external API visibility
+
+### Key Architecture Decisions
+
+1. **Admin-Only API Calls**: All external APIs (grammar, notifications) called by Admin backend only
+2. **Single Source of Truth**: One submission object shared across Publisher → Admin → Advertiser
+3. **Immutable Approval Chain**: Status transitions are logged and auditable
+4. **Operational Analytics Only**: Track system behavior, not business events like approvals
+5. **No Frontend Changes**: All work is backend-only
+
+### Sprint Breakdown
+
+**Sprint 9.1** (Week 1-2): Core submission backbone  
+**Sprint 9.2** (Week 2-3): Tracking & status flow  
+**Sprint 9.3** (Week 3-4): Grammar AI integration  
+**Sprint 9.4** (Week 4-5): Admin portal integration  
+**Sprint 9.5** (Week 5-6): Notifications & polish
+
+### Database Schema
+
+See Sprint 9.1 section above for complete table definitions:
+- `publisher_submissions`
+- `creatives`
+- `creative_files`
+- `submission_reviews`
+- `external_tasks`
+- `external_calls`
+
+### API Endpoints Summary
+
+**Public Endpoints:**
+- `GET /api/public/track/:trackingId` - Tracking page (read-only)
+
+**Admin Endpoints:**
+- `POST /api/admin/publisher/submissions` - Create submission
+- `GET /api/admin/publisher/submissions` - List submissions
+- `GET /api/admin/publisher/submissions/:id` - Get submission details
+- `POST /api/admin/publisher/submissions/:id/creative` - Attach creative
+- `POST /api/admin/publisher/submissions/:id/submit` - Lock submission
+- `POST /api/admin/publisher/:id/admin-approve` - Admin approves
+- `POST /api/admin/publisher/:id/admin-reject` - Admin rejects
+- `POST /api/admin/publisher/:id/forward-to-advertiser` - Forward to advertiser
+- `POST /api/admin/publisher/:id/advertiser-approve` - Advertiser approves
+- `POST /api/admin/publisher/:id/advertiser-reject` - Advertiser rejects
+- `POST /api/admin/publisher/submissions/:id/process-grammar` - Trigger grammar
+- `GET /api/admin/publisher/submissions/:id/grammar-status` - Grammar status
+- `POST /api/admin/publisher/submissions/:id/retry-grammar` - Retry grammar
+
+### Grammar AI Integration Details
+
+**Model:** `https://grammar-correction-1-5tha.onrender.com`
+
+**Endpoints Used:**
+- `POST /process` - Upload and process files
+- `GET /task/{task_id}` - Get task status
+- `GET /download/{filename}` - Download processed files
+- `GET /health` - Health check
+
+**Integration Rules:**
+- All calls made from Admin backend only
+- Async processing via background jobs
+- Results stored in `external_tasks` table
+- All calls logged in `external_calls` table
+
+### Ops Dashboard Additions
+
+**New Sections:**
+1. **External Operations**
+   - Table: All external API calls (grammar, everflow, email, telegram)
+   - Filters: Service, status, date range
+   - Metrics: Success rate, avg latency, failure count
+
+2. **Publisher Funnel**
+   - Submissions per day
+   - Approval rates
+   - Time to approval
+   - Drop-off points
+
+3. **Processing Health**
+   - Avg grammar processing time
+   - Grammar failure rate
+   - Retry counts
+   - Queue depth
+
+### Analytics Philosophy
+
+**Tracked:**
+- Publisher behavior (form starts, completions, abandonments)
+- System performance (processing times, latency)
+- AI usage (grammar requests, success rates)
+- Operational metrics (submissions/day, approval rates)
+
+**NOT Tracked:**
+- Admin approval/rejection events (workflow state, not analytics)
+- Moderation decisions (internal operations)
+
+### Security Considerations
+
+- Rate limiting on public submit endpoint
+- File validation (type, size, malware scanning)
+- ZIP bomb protection
+- Input sanitization
+- Tracking endpoint is read-only
+- Admin-only external API access
+
+### Testing Strategy
+
+**Automated:**
+- Submission validation
+- Status transition validation
+- Grammar integration
+- Notification delivery
+- Analytics accuracy
+
+**Manual:**
+- End-to-end submission flow
+- Admin review workflow
+- Tracking page functionality
+- Grammar processing
+- Ops dashboard visibility
 

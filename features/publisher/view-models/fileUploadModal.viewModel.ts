@@ -86,7 +86,6 @@ export const useFileUploadModal = ({
         }
 
         const fileName = file.name.toLowerCase();
-        const fileExtension = "." + fileName.split(".").pop()?.toLowerCase();
         
         const isValidExtension = config.ALLOWED_TYPES.some((ext) =>
             fileName.endsWith(ext.toLowerCase())

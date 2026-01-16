@@ -29,7 +29,7 @@ export async function createAdvertiser(data: { id?: string; name: string; contac
     return res.json() as Promise<Advertiser>;
 }
 
-export async function updateAdvertiser(id: string, data: Partial<{ name: string; contactEmail: string; status: "active" | "inactive" }>) {
+export async function updateAdvertiser(id: string, data: Partial<{ name: string; contactEmail: string | null; status: "active" | "inactive" | "Active" | "Inactive" }>) {
     const res = await fetch(`/api/admin/advertisers/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

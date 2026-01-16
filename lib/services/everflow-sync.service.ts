@@ -127,11 +127,7 @@ export async function syncOffersFromEverflow(
       },
     });
 
-  logger.everflow.info("Starting offers sync", {
-    syncId,
-    userId,
-    options,
-  });
+  logger.everflow.info(`Starting offers sync - syncId: ${syncId}, userId: ${userId}, options: ${JSON.stringify(options)}`);
 
   const errors: Array<{ offerId: number; error: string }> = [];
   let totalRecords = 0;
@@ -200,54 +196,24 @@ export async function syncOffersFromEverflow(
       totalCount = firstPaging.total_count;
       actualPageSize = firstPaging.page_size;
       totalPages = Math.ceil(totalCount / actualPageSize);
-      logger.everflow.info("Extracted pagination info from Everflow response", {
-        syncId,
-        totalCount: firstPaging.total_count,
-        pageSize: firstPaging.page_size,
-        totalPages,
-        currentPage: firstPaging.page,
-      });
+      logger.everflow.info(`Extracted pagination info from Everflow response - syncId: ${syncId}, totalCount: ${firstPaging.total_count}, pageSize: ${firstPaging.page_size}, totalPages: ${totalPages}, currentPage: ${firstPaging.page}`);
     } else {
       totalCount = firstPageOffers.length;
       totalPages = firstPageOffers.length === pageSize ? 2 : 1; // If we got full page, there might be more
-      logger.everflow.warn("No paging object in Everflow response, using fallback", {
-        syncId,
-        offersReceived: firstPageOffers.length,
-        pageSize,
-        assumedTotalPages: totalPages,
-      });
+      logger.everflow.warn(`No paging object in Everflow response, using fallback - syncId: ${syncId}, offersReceived: ${firstPageOffers.length}, pageSize: ${pageSize}, assumedTotalPages: ${totalPages}`);
     }
 
     allEverflowOffers = [...firstPageOffers];
-    logger.everflow.info("Fetched first page from Everflow", {
-      syncId,
-      page: 1,
-      offersInPage: firstPageOffers.length,
-      totalCount,
-      totalPages,
-      actualPageSize,
-    });
+    logger.everflow.info(`Fetched first page from Everflow - syncId: ${syncId}, page: 1, offersInPage: ${firstPageOffers.length}, totalCount: ${totalCount}, totalPages: ${totalPages}, actualPageSize: ${actualPageSize}`);
 
     if (totalPages > 1) {
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
         if (allEverflowOffers.length >= totalCount && totalCount > 0) {
-          logger.everflow.warn("Stopping pagination - already fetched all unique offers", {
-            syncId,
-            currentPage,
-            totalPages,
-            fetchedSoFar: allEverflowOffers.length,
-            totalCount,
-          });
+          logger.everflow.warn(`Stopping pagination - already fetched all unique offers - syncId: ${syncId}, currentPage: ${currentPage}, totalPages: ${totalPages}, fetchedSoFar: ${allEverflowOffers.length}, totalCount: ${totalCount}`);
           break;
         }
 
-        logger.everflow.info("Fetching page from Everflow", {
-          syncId,
-          page: currentPage,
-          totalPages,
-          fetchedSoFar: allEverflowOffers.length,
-          totalCount,
-        });
+        logger.everflow.info(`Fetching page from Everflow - syncId: ${syncId}, page: ${currentPage}, totalPages: ${totalPages}, fetchedSoFar: ${allEverflowOffers.length}, totalCount: ${totalCount}`);
 
         const pageResponse = await everflowService.getOffers({
           page: currentPage,
@@ -259,28 +225,14 @@ export async function syncOffersFromEverflow(
         const { offers: pageOffers } = extractOffersAndPaging(pageResponse);
 
         allEverflowOffers = [...allEverflowOffers, ...pageOffers];
-        logger.everflow.info("Fetched page from Everflow", {
-          syncId,
-          page: currentPage,
-          offersInPage: pageOffers.length,
-          totalFetched: allEverflowOffers.length,
-          totalCount,
-        });
+        logger.everflow.info(`Fetched page from Everflow - syncId: ${syncId}, page: ${currentPage}, offersInPage: ${pageOffers.length}, totalFetched: ${allEverflowOffers.length}, totalCount: ${totalCount}`);
 
         if (pageOffers.length < actualPageSize) {
-          logger.everflow.info("Received fewer offers than page size, likely last page", {
-            syncId,
-            page: currentPage,
-            offersReceived: pageOffers.length,
-            pageSize: actualPageSize,
-          });
+          logger.everflow.info(`Received fewer offers than page size, likely last page - syncId: ${syncId}, page: ${currentPage}, offersReceived: ${pageOffers.length}, pageSize: ${actualPageSize}`);
         }
 
         if (pageOffers.length === 0) {
-          logger.everflow.warn("Received 0 offers, stopping pagination", {
-            syncId,
-            page: currentPage,
-          });
+          logger.everflow.warn(`Received 0 offers, stopping pagination - syncId: ${syncId}, page: ${currentPage}`);
           break;
         }
       }
@@ -292,23 +244,14 @@ export async function syncOffersFromEverflow(
       if (!uniqueOffersMap.has(offerId)) {
         uniqueOffersMap.set(offerId, offer);
       } else {
-        logger.everflow.warn("Duplicate offer detected, keeping first occurrence", {
-          syncId,
-          offerId,
-          offerName: offer.name,
-        });
+        logger.everflow.warn(`Duplicate offer detected, keeping first occurrence - syncId: ${syncId}, offerId: ${offerId}, offerName: ${offer.name}`);
       }
     }
 
     const everflowOffers = Array.from(uniqueOffersMap.values());
     totalRecords = everflowOffers.length;
 
-    logger.everflow.info("Fetched and deduplicated offers from Everflow", {
-      syncId,
-      totalFetched: allEverflowOffers.length,
-      totalUnique: totalRecords,
-      duplicatesRemoved: allEverflowOffers.length - totalRecords,
-    });
+    logger.everflow.info(`Fetched and deduplicated offers from Everflow - syncId: ${syncId}, totalFetched: ${allEverflowOffers.length}, totalUnique: ${totalRecords}, duplicatesRemoved: ${allEverflowOffers.length - totalRecords}`);
 
     if (options.onProgress && totalRecords > 0) {
       await options.onProgress({ current: 0, total: totalRecords, stage: `Fetched ${totalRecords} offers, starting sync` });
@@ -317,10 +260,7 @@ export async function syncOffersFromEverflow(
     }
 
     if (dryRun) {
-      logger.everflow.info("Dry run mode - skipping database operations", {
-        syncId,
-        totalRecords,
-      });
+      logger.everflow.info(`Dry run mode - skipping database operations - syncId: ${syncId}, totalRecords: ${totalRecords}`);
 
       await db
         .update(syncHistory)
@@ -363,10 +303,7 @@ export async function syncOffersFromEverflow(
             if (options.onProgress && (processedCount % 5 === 0 || processedCount === totalRecords)) {
               await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing offers" });
             }
-            logger.everflow.info("Skipping existing offer", {
-              syncId,
-              offerId: mappedOffer.everflowOfferId,
-            });
+            logger.everflow.info(`Skipping existing offer - syncId: ${syncId}, offerId: ${mappedOffer.everflowOfferId}`);
             continue;
           }
 
@@ -391,10 +328,7 @@ export async function syncOffersFromEverflow(
             if (options.onProgress && (processedCount % 5 === 0 || processedCount === totalRecords)) {
               await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing offers" });
             }
-            logger.everflow.info("Updated existing offer", {
-              syncId,
-              offerId: mappedOffer.everflowOfferId,
-            });
+            logger.everflow.info(`Updated existing offer - syncId: ${syncId}, offerId: ${mappedOffer.everflowOfferId}`);
           } else if (conflictResolution === "merge") {
             const everflowUpdated = everflowOffer.time_saved
               ? new Date((everflowOffer.time_saved as number) * 1000)
@@ -422,20 +356,14 @@ export async function syncOffersFromEverflow(
               if (options.onProgress && processedCount % 10 === 0) {
                 await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing offers" });
               }
-              logger.everflow.info("Merged offer (Everflow data newer)", {
-                syncId,
-                offerId: mappedOffer.everflowOfferId,
-              });
+              logger.everflow.info(`Merged offer (Everflow data newer) - syncId: ${syncId}, offerId: ${mappedOffer.everflowOfferId}`);
             } else {
               skippedRecords++;
               processedCount++;
               if (options.onProgress && processedCount % 10 === 0) {
                 await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing offers" });
               }
-              logger.everflow.info("Skipped merge (local data newer)", {
-                syncId,
-                offerId: mappedOffer.everflowOfferId,
-              });
+              logger.everflow.info(`Skipped merge (local data newer) - syncId: ${syncId}, offerId: ${mappedOffer.everflowOfferId}`);
             }
           }
         } else {
@@ -450,10 +378,7 @@ export async function syncOffersFromEverflow(
           if (options.onProgress && processedCount % 10 === 0) {
             await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing offers" });
           }
-          logger.everflow.info("Created new offer", {
-            syncId,
-            offerId: mappedOffer.everflowOfferId,
-          });
+          logger.everflow.info(`Created new offer - syncId: ${syncId}, offerId: ${mappedOffer.everflowOfferId}`);
         }
 
         // Emit chunk event every 50 records
@@ -482,11 +407,7 @@ export async function syncOffersFromEverflow(
           error: errorMessage,
         });
 
-        logger.everflow.error("Failed to sync offer", {
-          syncId,
-          offerId: everflowOffer.network_offer_id,
-          error: errorMessage,
-        });
+        logger.everflow.error(`Failed to sync offer - syncId: ${syncId}, offerId: ${everflowOffer.network_offer_id}, error: ${errorMessage}`);
       }
     }
 
@@ -504,15 +425,7 @@ export async function syncOffersFromEverflow(
       })
       .where(eq(syncHistory.id, syncId));
 
-    logger.everflow.success("Offers sync completed", {
-      syncId,
-      totalRecords,
-      syncedRecords,
-      createdRecords,
-      updatedRecords,
-      skippedRecords,
-      failedRecords,
-    });
+    logger.everflow.success(`Offers sync completed - syncId: ${syncId}, totalRecords: ${totalRecords}, syncedRecords: ${syncedRecords}, createdRecords: ${createdRecords}, updatedRecords: ${updatedRecords}, skippedRecords: ${skippedRecords}, failedRecords: ${failedRecords}`);
 
     return {
       syncId,
@@ -543,10 +456,7 @@ export async function syncOffersFromEverflow(
       })
       .where(eq(syncHistory.id, syncId));
 
-    logger.everflow.error("Offers sync failed", {
-      syncId,
-      error: errorMessage,
-    });
+    logger.everflow.error(`Offers sync failed - syncId: ${syncId}, error: ${errorMessage}`);
 
     return {
       syncId,
@@ -651,11 +561,7 @@ export async function syncAdvertisersFromEverflow(
       },
     });
 
-  logger.everflow.info("Starting advertisers sync", {
-    syncId,
-    userId,
-    options,
-  });
+  logger.everflow.info(`Starting advertisers sync - syncId: ${syncId}, userId: ${userId}, options: ${JSON.stringify(options)}`);
 
   const errors: Array<{ advertiserId: number; error: string }> = [];
   let totalRecords = 0;
@@ -717,14 +623,7 @@ export async function syncAdvertisersFromEverflow(
       status: filters.status,
     });
 
-    logger.everflow.info("Everflow advertisers API response received", {
-      syncId,
-      responseType: typeof firstResponse,
-      hasData: firstResponse && typeof firstResponse === "object" && "data" in firstResponse,
-      hasError: firstResponse && typeof firstResponse === "object" && "error" in firstResponse,
-      responseKeys: firstResponse && typeof firstResponse === "object" ? Object.keys(firstResponse) : [],
-      rawResponse: JSON.stringify(firstResponse).substring(0, 1000),
-    });
+    logger.everflow.info(`Everflow advertisers API response received - syncId: ${syncId}, responseType: ${typeof firstResponse}, hasData: ${firstResponse && typeof firstResponse === "object" && "data" in firstResponse}, hasError: ${firstResponse && typeof firstResponse === "object" && "error" in firstResponse}, responseKeys: ${firstResponse && typeof firstResponse === "object" ? Object.keys(firstResponse).join(",") : ""}, rawResponse: ${JSON.stringify(firstResponse).substring(0, 1000)}`);
 
     if (firstResponse && typeof firstResponse === "object" && "error" in firstResponse) {
       const error = firstResponse.error as { code?: string; message?: string };
@@ -737,65 +636,30 @@ export async function syncAdvertisersFromEverflow(
 
     const { advertisers: firstPageAdvertisers, paging: firstPaging } = extractAdvertisersAndPaging(responseData);
 
-    logger.everflow.info("Extracted advertisers from response", {
-      syncId,
-      advertisersCount: firstPageAdvertisers.length,
-      hasPaging: !!firstPaging,
-      pagingInfo: firstPaging,
-    });
+    logger.everflow.info(`Extracted advertisers from response - syncId: ${syncId}, advertisersCount: ${firstPageAdvertisers.length}, hasPaging: ${!!firstPaging}, pagingInfo: ${JSON.stringify(firstPaging)}`);
 
     if (firstPaging) {
       totalCount = firstPaging.total_count;
       actualPageSize = firstPaging.page_size;
       totalPages = Math.ceil(totalCount / actualPageSize);
-      logger.everflow.info("Extracted pagination info from Everflow response", {
-        syncId,
-        totalCount: firstPaging.total_count,
-        pageSize: firstPaging.page_size,
-        totalPages,
-        currentPage: firstPaging.page,
-      });
+      logger.everflow.info(`Extracted pagination info from Everflow response - syncId: ${syncId}, totalCount: ${firstPaging.total_count}, pageSize: ${firstPaging.page_size}, totalPages: ${totalPages}, currentPage: ${firstPaging.page}`);
     } else {
       totalCount = firstPageAdvertisers.length;
       totalPages = firstPageAdvertisers.length === pageSize ? 2 : 1;
-      logger.everflow.warn("No paging object in Everflow response, using fallback", {
-        syncId,
-        advertisersReceived: firstPageAdvertisers.length,
-        pageSize,
-        assumedTotalPages: totalPages,
-      });
+      logger.everflow.warn(`No paging object in Everflow response, using fallback - syncId: ${syncId}, advertisersReceived: ${firstPageAdvertisers.length}, pageSize: ${pageSize}, assumedTotalPages: ${totalPages}`);
     }
 
     allEverflowAdvertisers = [...firstPageAdvertisers];
-    logger.everflow.info("Fetched first page from Everflow", {
-      syncId,
-      page: 1,
-      advertisersInPage: firstPageAdvertisers.length,
-      totalCount,
-      totalPages,
-      actualPageSize,
-    });
+    logger.everflow.info(`Fetched first page from Everflow - syncId: ${syncId}, page: 1, advertisersInPage: ${firstPageAdvertisers.length}, totalCount: ${totalCount}, totalPages: ${totalPages}, actualPageSize: ${actualPageSize}`);
 
     if (totalPages > 1) {
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
         if (allEverflowAdvertisers.length >= totalCount && totalCount > 0) {
-          logger.everflow.warn("Stopping pagination - already fetched all unique advertisers", {
-            syncId,
-            currentPage,
-            totalPages,
-            fetchedSoFar: allEverflowAdvertisers.length,
-            totalCount,
-          });
+          logger.everflow.warn(`Stopping pagination - already fetched all unique advertisers - syncId: ${syncId}, currentPage: ${currentPage}, totalPages: ${totalPages}, fetchedSoFar: ${allEverflowAdvertisers.length}, totalCount: ${totalCount}`);
           break;
         }
 
-        logger.everflow.info("Fetching page from Everflow", {
-          syncId,
-          page: currentPage,
-          totalPages,
-          fetchedSoFar: allEverflowAdvertisers.length,
-          totalCount,
-        });
+        logger.everflow.info(`Fetching page from Everflow - syncId: ${syncId}, page: ${currentPage}, totalPages: ${totalPages}, fetchedSoFar: ${allEverflowAdvertisers.length}, totalCount: ${totalCount}`);
 
         const pageResponse = await everflowService.getAdvertisers({
           page: currentPage,
@@ -815,28 +679,14 @@ export async function syncAdvertisersFromEverflow(
         const { advertisers: pageAdvertisers } = extractAdvertisersAndPaging(pageResponseData);
 
         allEverflowAdvertisers = [...allEverflowAdvertisers, ...pageAdvertisers];
-        logger.everflow.info("Fetched page from Everflow", {
-          syncId,
-          page: currentPage,
-          advertisersInPage: pageAdvertisers.length,
-          totalFetched: allEverflowAdvertisers.length,
-          totalCount,
-        });
+        logger.everflow.info(`Fetched page from Everflow - syncId: ${syncId}, page: ${currentPage}, advertisersInPage: ${pageAdvertisers.length}, totalFetched: ${allEverflowAdvertisers.length}, totalCount: ${totalCount}`);
 
         if (pageAdvertisers.length < actualPageSize) {
-          logger.everflow.info("Received fewer advertisers than page size, likely last page", {
-            syncId,
-            page: currentPage,
-            advertisersReceived: pageAdvertisers.length,
-            pageSize: actualPageSize,
-          });
+          logger.everflow.info(`Received fewer advertisers than page size, likely last page - syncId: ${syncId}, page: ${currentPage}, advertisersReceived: ${pageAdvertisers.length}, pageSize: ${actualPageSize}`);
         }
 
         if (pageAdvertisers.length === 0) {
-          logger.everflow.warn("Received 0 advertisers, stopping pagination", {
-            syncId,
-            page: currentPage,
-          });
+          logger.everflow.warn(`Received 0 advertisers, stopping pagination - syncId: ${syncId}, page: ${currentPage}`);
           break;
         }
       }
@@ -848,23 +698,14 @@ export async function syncAdvertisersFromEverflow(
       if (!uniqueAdvertisersMap.has(advertiserId)) {
         uniqueAdvertisersMap.set(advertiserId, advertiser);
       } else {
-        logger.everflow.warn("Duplicate advertiser detected, keeping first occurrence", {
-          syncId,
-          advertiserId,
-          advertiserName: advertiser.name,
-        });
+        logger.everflow.warn(`Duplicate advertiser detected, keeping first occurrence - syncId: ${syncId}, advertiserId: ${advertiserId}, advertiserName: ${advertiser.name}`);
       }
     }
 
     const everflowAdvertisers = Array.from(uniqueAdvertisersMap.values());
     totalRecords = everflowAdvertisers.length;
 
-    logger.everflow.info("Fetched and deduplicated advertisers from Everflow", {
-      syncId,
-      totalFetched: allEverflowAdvertisers.length,
-      totalUnique: totalRecords,
-      duplicatesRemoved: allEverflowAdvertisers.length - totalRecords,
-    });
+    logger.everflow.info(`Fetched and deduplicated advertisers from Everflow - syncId: ${syncId}, totalFetched: ${allEverflowAdvertisers.length}, totalUnique: ${totalRecords}, duplicatesRemoved: ${allEverflowAdvertisers.length - totalRecords}`);
 
     if (options.onProgress && totalRecords > 0) {
       await options.onProgress({ current: 0, total: totalRecords, stage: `Fetched ${totalRecords} advertisers, starting sync` });
@@ -873,10 +714,7 @@ export async function syncAdvertisersFromEverflow(
     }
 
     if (dryRun) {
-      logger.everflow.info("Dry run mode - skipping database operations", {
-        syncId,
-        totalRecords,
-      });
+      logger.everflow.info(`Dry run mode - skipping database operations - syncId: ${syncId}, totalRecords: ${totalRecords}`);
 
       await db
         .update(syncHistory)
@@ -927,10 +765,7 @@ export async function syncAdvertisersFromEverflow(
             if (options.onProgress && (processedCount % 5 === 0 || processedCount === totalRecords)) {
               await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing advertisers" });
             }
-            logger.everflow.info("Skipping existing advertiser", {
-              syncId,
-              advertiserId: mappedAdvertiser.everflowAdvertiserId,
-            });
+            logger.everflow.info(`Skipping existing advertiser - syncId: ${syncId}, advertiserId: ${mappedAdvertiser.everflowAdvertiserId}`);
             continue;
           }
 
@@ -958,10 +793,7 @@ export async function syncAdvertisersFromEverflow(
             if (options.onProgress && (processedCount % 5 === 0 || processedCount === totalRecords)) {
               await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing advertisers" });
             }
-            logger.everflow.info("Updated existing advertiser", {
-              syncId,
-              advertiserId: mappedAdvertiser.everflowAdvertiserId,
-            });
+            logger.everflow.info(`Updated existing advertiser - syncId: ${syncId}, advertiserId: ${mappedAdvertiser.everflowAdvertiserId}`);
           } else if (conflictResolution === "merge") {
             const everflowUpdated = everflowAdvertiser.time_saved
               ? new Date((everflowAdvertiser.time_saved as number) * 1000)
@@ -992,20 +824,14 @@ export async function syncAdvertisersFromEverflow(
               if (options.onProgress && processedCount % 10 === 0) {
                 await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing advertisers" });
               }
-              logger.everflow.info("Merged advertiser (Everflow data newer)", {
-                syncId,
-                advertiserId: mappedAdvertiser.everflowAdvertiserId,
-              });
+              logger.everflow.info(`Merged advertiser (Everflow data newer) - syncId: ${syncId}, advertiserId: ${mappedAdvertiser.everflowAdvertiserId}`);
             } else {
               skippedRecords++;
               processedCount++;
               if (options.onProgress && processedCount % 10 === 0) {
                 await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing advertisers" });
               }
-              logger.everflow.info("Skipped merge (local data newer)", {
-                syncId,
-                advertiserId: mappedAdvertiser.everflowAdvertiserId,
-              });
+              logger.everflow.info(`Skipped merge (local data newer) - syncId: ${syncId}, advertiserId: ${mappedAdvertiser.everflowAdvertiserId}`);
             }
           }
         } else {
@@ -1027,10 +853,7 @@ export async function syncAdvertisersFromEverflow(
             if (options.onProgress && processedCount % 10 === 0) {
               await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing advertisers" });
             }
-            logger.everflow.info("Created new advertiser", {
-              syncId,
-              advertiserId: mappedAdvertiser.everflowAdvertiserId,
-            });
+            logger.everflow.info(`Created new advertiser - syncId: ${syncId}, advertiserId: ${mappedAdvertiser.everflowAdvertiserId}`);
           } catch (insertError: any) {
             if (insertError?.code === "23505" || insertError?.message?.includes("duplicate key") || insertError?.message?.includes("unique constraint")) {
               const [conflictingAdvertiser] = await db
@@ -1058,10 +881,7 @@ export async function syncAdvertisersFromEverflow(
                 if (options.onProgress && processedCount % 10 === 0) {
                   await options.onProgress({ current: processedCount, total: totalRecords, stage: "Processing advertisers" });
                 }
-                logger.everflow.info("Updated existing advertiser (ID conflict resolved)", {
-                  syncId,
-                  advertiserId: mappedAdvertiser.everflowAdvertiserId,
-                });
+                logger.everflow.info(`Updated existing advertiser (ID conflict resolved) - syncId: ${syncId}, advertiserId: ${mappedAdvertiser.everflowAdvertiserId}`);
               } else {
                 throw insertError;
               }
@@ -1096,11 +916,7 @@ export async function syncAdvertisersFromEverflow(
           error: errorMessage,
         });
 
-        logger.everflow.error("Failed to sync advertiser", {
-          syncId,
-          advertiserId: everflowAdvertiser.network_advertiser_id,
-          error: errorMessage,
-        });
+        logger.everflow.error(`Failed to sync advertiser - syncId: ${syncId}, advertiserId: ${everflowAdvertiser.network_advertiser_id}, error: ${errorMessage}`);
       }
     }
 
@@ -1118,15 +934,7 @@ export async function syncAdvertisersFromEverflow(
       })
       .where(eq(syncHistory.id, syncId));
 
-    logger.everflow.success("Advertisers sync completed", {
-      syncId,
-      totalRecords,
-      syncedRecords,
-      createdRecords,
-      updatedRecords,
-      skippedRecords,
-      failedRecords,
-    });
+    logger.everflow.success(`Advertisers sync completed - syncId: ${syncId}, totalRecords: ${totalRecords}, syncedRecords: ${syncedRecords}, createdRecords: ${createdRecords}, updatedRecords: ${updatedRecords}, skippedRecords: ${skippedRecords}, failedRecords: ${failedRecords}`);
 
     return {
       syncId,
@@ -1157,10 +965,7 @@ export async function syncAdvertisersFromEverflow(
       })
       .where(eq(syncHistory.id, syncId));
 
-    logger.everflow.error("Advertisers sync failed", {
-      syncId,
-      error: errorMessage,
-    });
+    logger.everflow.error(`Advertisers sync failed - syncId: ${syncId}, error: ${errorMessage}`);
 
     return {
       syncId,

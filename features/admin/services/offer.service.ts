@@ -15,7 +15,7 @@ function mapOffer(row: typeof offers.$inferSelect): Offer {
         status: row.status as "Active" | "Inactive",
         visibility: row.visibility as "Public" | "Internal" | "Hidden",
         createdMethod: row.createdMethod as "API" | "Manually",
-        brandGuidelinesFileId: (row.brandGuidelines as { fileId?: string } | null)?.fileId ?? null,
+        brandGuidelinesFileId: (row.brandGuidelines as { fileUrl?: string } | null)?.fileUrl ?? null,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
     }
@@ -67,8 +67,17 @@ export async function createOffer(data: {
         advertiserName: string;
         status: "Active" | "Inactive";
         visibility: "Public" | "Internal" | "Hidden";
-        createdMethod: string;
-        brandGuidelines?: { type: string; fileId: string } | null;
+        createdMethod: "Manually" | "API";
+        brandGuidelines?: {
+            type: "url" | "file" | "text" | null;
+            url?: string;
+            fileUrl?: string;
+            fileName?: string;
+            fileSize?: number;
+            mimeType?: string;
+            text?: string;
+            notes?: string;
+        } | null;
         createdAt: Date;
         updatedAt: Date;
     } = {
@@ -78,7 +87,7 @@ export async function createOffer(data: {
         status: data.status || "Active",
         visibility: data.visibility || "Public",
         createdMethod: "Manually",
-        brandGuidelines: data.brandGuidelinesFileId ? { type: "file", fileId: data.brandGuidelinesFileId } : null,
+        brandGuidelines: data.brandGuidelinesFileId ? { type: "file", fileUrl: data.brandGuidelinesFileId } : null,
         createdAt: new Date(),
         updatedAt: new Date(),
     };
@@ -113,7 +122,7 @@ export async function updateOffer(id: string, data: Partial<{
         visibility: data.visibility,
         advertiserId: data.advertiserId,
         advertiserName,
-        brandGuidelines: data.brandGuidelinesFileId !== undefined ? (data.brandGuidelinesFileId ? { type: "file", fileId: data.brandGuidelinesFileId } : null) : undefined,
+        brandGuidelines: data.brandGuidelinesFileId !== undefined ? (data.brandGuidelinesFileId ? { type: "file" as const, fileUrl: data.brandGuidelinesFileId } : null) : undefined,
         updatedAt: new Date(),
     }).where(eq(offers.id, id)).returning()
 
@@ -131,7 +140,16 @@ export async function bulkUpdateOffers(
     offerIds: string[],
     updates: {
         visibility?: "Public" | "Internal" | "Hidden"
-        brandGuidelines?: { type: string; fileId?: string; url?: string; text?: string; notes?: string } | null
+        brandGuidelines?: {
+            type: "url" | "file" | "text" | null;
+            url?: string;
+            fileUrl?: string;
+            fileName?: string;
+            fileSize?: number;
+            mimeType?: string;
+            text?: string;
+            notes?: string;
+        } | null
     }
 ) {
     const results = {
@@ -141,9 +159,22 @@ export async function bulkUpdateOffers(
 
     for (const id of offerIds) {
         try {
-            const set: { updatedAt: Date; visibility?: "Public" | "Internal" | "Hidden"; brandGuidelines?: unknown } = { updatedAt: new Date() }
+            const set: {
+                updatedAt: Date;
+                visibility?: "Public" | "Internal" | "Hidden";
+                brandGuidelines?: {
+                    type: "url" | "file" | "text" | null;
+                    url?: string;
+                    fileUrl?: string;
+                    fileName?: string;
+                    fileSize?: number;
+                    mimeType?: string;
+                    text?: string;
+                    notes?: string;
+                } | null;
+            } = { updatedAt: new Date() }
             if (updates.visibility) set.visibility = updates.visibility
-            if (updates.brandGuidelines) set.brandGuidelines = updates.brandGuidelines
+            if (updates.brandGuidelines !== undefined) set.brandGuidelines = updates.brandGuidelines
 
             const [row] = await db.update(offers)
                 .set(set)

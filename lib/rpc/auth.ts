@@ -31,7 +31,7 @@ export async function getRpcSession(): Promise<RpcSession> {
       },
     };
   } catch (error) {
-    logger.rpc.error("Failed to get RPC session", { error });
+    logger.rpc.error(`Failed to get RPC session: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error("Unauthorized");
   }
 }

@@ -17,13 +17,13 @@ export async function getAdminRequests({
 }: {
   page: number
   limit: number
-  status?: string[]
-  approvalStage?: string
+  status?: ("new" | "pending" | "approved" | "rejected" | "sent-back")[]
+  approvalStage?: "admin" | "advertiser" | "completed"
   search?: string
   sort?: string
 }) {
   const where: SQL[] = []
-  if (status) where.push(inArray(creativeRequests.status, status as string[]))
+  if (status) where.push(inArray(creativeRequests.status, status))
   if (approvalStage) where.push(eq(creativeRequests.approvalStage, approvalStage))
   if (search) {
     const searchCondition = or(

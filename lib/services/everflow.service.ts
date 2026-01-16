@@ -44,7 +44,7 @@ class EverflowService {
     };
 
     if (!this.config.apiKey) {
-      logger.api.warn("Everflow API key not configured");
+      logger.everflow.warn("Everflow API key not configured");
     }
   }
 
@@ -86,10 +86,7 @@ class EverflowService {
             : retry.retryDelay! * Math.pow(2, attempt);
 
           if (attempt < (retry.maxRetries || 0)) {
-            logger.api.warn(`Rate limited, retrying after ${delay}ms`, {
-              endpoint,
-              attempt: attempt + 1,
-            });
+            logger.everflow.warn(`Rate limited, retrying after ${delay}ms - endpoint: ${endpoint}, attempt: ${attempt + 1}`);
             await this.sleep(delay);
             continue;
           }
@@ -112,11 +109,7 @@ class EverflowService {
             ? retry.retryDelay! * Math.pow(2, attempt)
             : retry.retryDelay!;
 
-          logger.api.warn(`Request failed, retrying`, {
-            endpoint,
-            attempt: attempt + 1,
-            error: lastError.message,
-          });
+          logger.everflow.warn(`Request failed, retrying - endpoint: ${endpoint}, attempt: ${attempt + 1}, error: ${lastError.message}`);
 
           await this.sleep(delay);
           continue;
@@ -124,10 +117,7 @@ class EverflowService {
       }
     }
 
-    logger.api.error("Everflow API request failed after retries", {
-      endpoint,
-      error: lastError?.message,
-    });
+    logger.everflow.error(`Everflow API request failed after retries - endpoint: ${endpoint}, error: ${lastError?.message}`);
 
     throw lastError || new Error("Request failed");
   }
@@ -154,12 +144,7 @@ class EverflowService {
             headers["X-Eflow-Network-Id"] = this.config.networkId;
           }
 
-          logger.everflow.info("Testing connection", {
-            url,
-            endpoint,
-            hasApiKey: !!this.config.apiKey,
-            hasNetworkId: !!this.config.networkId,
-          });
+          logger.everflow.info(`Testing connection - url: ${url}, endpoint: ${endpoint}, hasApiKey: ${!!this.config.apiKey}, hasNetworkId: ${!!this.config.networkId}`);
 
           const response = await fetch(url, {
             method: "GET",
@@ -177,12 +162,7 @@ class EverflowService {
 
             const errorMsg = errorData.message || errorData.error || `HTTP ${response.status}`;
             
-            logger.everflow.warn(`Connection test failed for ${endpoint}`, {
-              status: response.status,
-              statusText: response.statusText,
-              error: errorMsg,
-              url,
-            });
+            logger.everflow.warn(`Connection test failed for ${endpoint} - status: ${response.status}, statusText: ${response.statusText}, error: ${errorMsg}, url: ${url}`);
 
             lastError = new Error(errorMsg);
             continue;
@@ -202,17 +182,11 @@ class EverflowService {
             data = text || null;
           }
 
-          logger.everflow.success("Everflow connection test passed", { 
-            endpoint,
-            status: response.status,
-            data: data || "Empty response",
-          });
+          logger.everflow.success(`Everflow connection test passed - endpoint: ${endpoint}, status: ${response.status}, data: ${data || "Empty response"}`);
           return true;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
-          logger.everflow.warn(`Connection test error for ${endpoint}`, {
-            error: lastError.message,
-          });
+          logger.everflow.warn(`Connection test error for ${endpoint} - error: ${lastError.message}`);
           continue;
         }
       }
@@ -220,12 +194,7 @@ class EverflowService {
       throw lastError || new Error("All connection test endpoints failed");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.everflow.error("Everflow connection test failed", {
-        error: errorMessage,
-        baseUrl: this.config.baseUrl,
-        hasApiKey: !!this.config.apiKey,
-        hasNetworkId: !!this.config.networkId,
-      });
+      logger.everflow.error(`Everflow connection test failed - error: ${errorMessage}, baseUrl: ${this.config.baseUrl}, hasApiKey: ${!!this.config.apiKey}, hasNetworkId: ${!!this.config.networkId}`);
       return false;
     }
   }
@@ -249,12 +218,7 @@ class EverflowService {
     const body: Record<string, unknown> = {};
     if (Object.keys(filters).length > 0) body.filters = filters;
 
-    logger.everflow.info("Fetching offers from Everflow", {
-      endpoint,
-      page: params?.page || 1,
-      pageSize: params?.limit || 100,
-      filters,
-    });
+    logger.everflow.info(`Fetching offers from Everflow - endpoint: ${endpoint}, page: ${params?.page || 1}, pageSize: ${params?.limit || 100}, filters: ${JSON.stringify(filters)}`);
 
     return this.request<ApiResponse<{ offers: unknown[]; total: number }>>(endpoint, {
       method: "POST",
@@ -279,12 +243,7 @@ class EverflowService {
     const body: Record<string, unknown> = {};
     if (Object.keys(filters).length > 0) body.filters = filters;
 
-    logger.everflow.info("Fetching advertisers from Everflow", {
-      endpoint,
-      page: params?.page || 1,
-      pageSize: params?.limit || 100,
-      filters,
-    });
+    logger.everflow.info(`Fetching advertisers from Everflow - endpoint: ${endpoint}, page: ${params?.page || 1}, pageSize: ${params?.limit || 100}, filters: ${JSON.stringify(filters)}`);
 
     return this.request<ApiResponse<{ advertisers: unknown[]; total: number }>>(endpoint, {
       method: "POST",

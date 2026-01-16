@@ -20,8 +20,14 @@ export async function GET(req: Request) {
 
         const page = Number(searchParams.get("page") ?? 1);
         const limit = Number(searchParams.get("limit") ?? 20);
-        const status = searchParams.get("status")?.split(",");
-        const approvalStage = searchParams.get("approvalStage") ?? undefined;
+        const statusParam = searchParams.get("status");
+        const status = statusParam
+            ? (statusParam.split(",") as ("new" | "pending" | "approved" | "rejected" | "sent-back")[])
+            : undefined;
+        const approvalStageParam = searchParams.get("approvalStage");
+        const approvalStage = approvalStageParam
+            ? (approvalStageParam as "admin" | "advertiser" | "completed")
+            : undefined;
         const search = searchParams.get("search") ?? undefined;
         const sort = searchParams.get("sort") ?? undefined;
 

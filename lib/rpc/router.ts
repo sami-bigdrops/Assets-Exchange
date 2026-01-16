@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-const logger = { rpc: { info: console.log, success: console.log, error: console.error } };
+import { logger } from "@/lib/logger";
 import { creativeRequests, creativeRequestHistory, offers } from "@/lib/schema";
 import { getEverflowService } from "@/lib/services/everflow.service";
 
@@ -25,7 +25,7 @@ export const health = os
       status: "ok",
       timestamp: new Date().toISOString(),
     };
-    logger.rpc.success("Health check completed", response);
+    logger.rpc.success(`Health check completed - status: ${response.status}, timestamp: ${response.timestamp}`);
     return response;
   });
 
@@ -55,7 +55,7 @@ const currentUser = os
         role: session.user.role as "admin" | "advertiser" | "administrator",
       };
     } catch (error) {
-      logger.rpc.error("Failed to get current user", { error });
+      logger.rpc.error(`Failed to get current user: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   });
@@ -76,7 +76,7 @@ const currentRole = os
 
       return session.user.role as "admin" | "advertiser" | "administrator";
     } catch (error) {
-      logger.rpc.error("Failed to get current role", { error });
+      logger.rpc.error(`Failed to get current role: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   });
@@ -135,7 +135,7 @@ const checkPermission = os
 
       return resourcePermissions.includes(input.action);
     } catch (error) {
-      logger.rpc.error("Failed to check permission", { error, input });
+      logger.rpc.error(`Failed to check permission: ${error instanceof Error ? error.message : String(error)}, input: ${JSON.stringify(input)}`);
       return false;
     }
   });
@@ -395,7 +395,7 @@ const dashboardStats = os
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      logger.rpc.error("Failed to get dashboard stats", { error });
+      logger.rpc.error(`Failed to get dashboard stats: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -640,10 +640,7 @@ const dashboardPerformance = os
         xAxisLabel = "Date";
       }
 
-      logger.rpc.success("Dashboard performance data fetched", {
-        comparisonType,
-        dataPoints: data.length,
-      });
+      logger.rpc.success(`Dashboard performance data fetched - comparisonType: ${comparisonType}, dataPoints: ${data.length}`);
 
       return {
         comparisonType,
@@ -652,7 +649,7 @@ const dashboardPerformance = os
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      logger.rpc.error("Failed to get dashboard performance", { error });
+      logger.rpc.error(`Failed to get dashboard performance: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -757,7 +754,7 @@ const getAllRequests = os
         },
       };
     } catch (error) {
-      logger.rpc.error("Failed to get all requests", { error });
+      logger.rpc.error(`Failed to get all requests: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -782,7 +779,7 @@ const getRecentRequests = os
 
       return data;
     } catch (error) {
-      logger.rpc.error("Failed to get recent requests", { error });
+      logger.rpc.error(`Failed to get recent requests: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -820,7 +817,7 @@ const getRequestById = os
         history,
       };
     } catch (error) {
-      logger.rpc.error("Failed to get request by ID", { error, id: input.id });
+      logger.rpc.error(`Failed to get request by ID ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -924,7 +921,7 @@ const getAllResponses = os
         },
       };
     } catch (error) {
-      logger.rpc.error("Failed to get all responses", { error });
+      logger.rpc.error(`Failed to get all responses: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -955,7 +952,7 @@ const getRecentResponses = os
 
       return data;
     } catch (error) {
-      logger.rpc.error("Failed to get recent responses", { error });
+      logger.rpc.error(`Failed to get recent responses: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -993,7 +990,7 @@ const getResponseById = os
         history,
       };
     } catch (error) {
-      logger.rpc.error("Failed to get response by ID", { error, id: input.id });
+      logger.rpc.error(`Failed to get response by ID ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1072,7 +1069,7 @@ const approveAndForward = os
         .where(eq(creativeRequests.id, id))
         .limit(1);
 
-      logger.rpc.success("Request approved and forwarded", { requestId: id, actionBy });
+      logger.rpc.success(`Request approved and forwarded - requestId: ${id}, actionBy: ${actionBy}`);
 
       return {
         success: true,
@@ -1082,7 +1079,7 @@ const approveAndForward = os
         message: "Request approved and forwarded to advertiser",
       };
     } catch (error) {
-      logger.rpc.error("Failed to approve and forward request", { error, id: input.id });
+      logger.rpc.error(`Failed to approve and forward request ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1160,7 +1157,7 @@ const rejectAndSendBack = os
         .where(eq(creativeRequests.id, id))
         .limit(1);
 
-      logger.rpc.success("Request rejected", { requestId: id, actionBy });
+      logger.rpc.success(`Request rejected - requestId: ${id}, actionBy: ${actionBy}`);
 
       return {
         success: true,
@@ -1170,7 +1167,7 @@ const rejectAndSendBack = os
         message: "Request rejected and sent back to publisher",
       };
     } catch (error) {
-      logger.rpc.error("Failed to reject request", { error, id: input.id });
+      logger.rpc.error(`Failed to reject request ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1248,7 +1245,7 @@ const rejectResponseAndSendBack = os
         .where(eq(creativeRequests.id, id))
         .limit(1);
 
-      logger.rpc.success("Response sent back", { requestId: id, actionBy });
+      logger.rpc.success(`Response sent back - requestId: ${id}, actionBy: ${actionBy}`);
 
       return {
         success: true,
@@ -1258,7 +1255,7 @@ const rejectResponseAndSendBack = os
         message: "Response sent back to advertiser",
       };
     } catch (error) {
-      logger.rpc.error("Failed to send back response", { error, id: input.id });
+      logger.rpc.error(`Failed to send back response ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1359,7 +1356,7 @@ const getAllOffers = os
         },
       };
     } catch (error) {
-      logger.rpc.error("Failed to get all offers", { error });
+      logger.rpc.error(`Failed to get all offers: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1387,7 +1384,7 @@ const getOfferById = os
 
       return offer;
     } catch (error) {
-      logger.rpc.error("Failed to get offer by ID", { error, id: input.id });
+      logger.rpc.error(`Failed to get offer by ID ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1437,14 +1434,14 @@ const createOffer = os
         })
         .returning();
 
-      logger.rpc.success("Offer created", { id: newOffer.id });
+      logger.rpc.success(`Offer created - id: ${newOffer.id}`);
       return {
         success: true,
         data: newOffer,
         message: "Offer created successfully",
       };
     } catch (error) {
-      logger.rpc.error("Failed to create offer", { error });
+      logger.rpc.error(`Failed to create offer: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1510,14 +1507,14 @@ const updateOffer = os
         .where(eq(offers.id, id))
         .returning();
 
-      logger.rpc.success("Offer updated", { id });
+      logger.rpc.success(`Offer updated - id: ${id}`);
       return {
         success: true,
         data: updatedOffer,
         message: "Offer updated successfully",
       };
     } catch (error) {
-      logger.rpc.error("Failed to update offer", { error, id: input.id });
+      logger.rpc.error(`Failed to update offer ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1562,13 +1559,13 @@ const deleteOffer = os
 
       await db.delete(offers).where(eq(offers.id, id));
 
-      logger.rpc.success("Offer deleted", { id });
+      logger.rpc.success(`Offer deleted - id: ${id}`);
       return {
         success: true,
         message: "Offer deleted successfully",
       };
     } catch (error) {
-      logger.rpc.error("Failed to delete offer", { error, id: input.id });
+      logger.rpc.error(`Failed to delete offer ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1606,14 +1603,14 @@ const updateOfferStatus = os
         throw new Error("Offer not found");
       }
 
-      logger.rpc.success("Offer status updated", { id, status });
+      logger.rpc.success(`Offer status updated - id: ${id}, status: ${status}`);
       return {
         success: true,
         data: updatedOffer,
         message: "Offer status updated successfully",
       };
     } catch (error) {
-      logger.rpc.error("Failed to update offer status", { error, id: input.id });
+      logger.rpc.error(`Failed to update offer status ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1651,14 +1648,14 @@ const updateOfferVisibility = os
         throw new Error("Offer not found");
       }
 
-      logger.rpc.success("Offer visibility updated", { id, visibility });
+      logger.rpc.success(`Offer visibility updated - id: ${id}, visibility: ${visibility}`);
       return {
         success: true,
         data: updatedOffer,
         message: "Offer visibility updated successfully",
       };
     } catch (error) {
-      logger.rpc.error("Failed to update offer visibility", { error, id: input.id });
+      logger.rpc.error(`Failed to update offer visibility ${input.id}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1759,11 +1756,7 @@ const bulkUpdateOffers = os
       const updated = successful.length;
       const failedCount = failed.length;
 
-      logger.rpc.success("Bulk update completed", {
-        total: offerIds.length,
-        updated,
-        failed: failedCount,
-      });
+      logger.rpc.success(`Bulk update completed - total: ${offerIds.length}, updated: ${updated}, failed: ${failedCount}`);
 
       return {
         success: failedCount === 0,
@@ -1779,7 +1772,7 @@ const bulkUpdateOffers = os
             : `Updated ${updated} offer(s), ${failedCount} failed`,
       };
     } catch (error) {
-      logger.rpc.error("Failed to bulk update offers", { error });
+      logger.rpc.error(`Failed to bulk update offers: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   });
@@ -1828,7 +1821,7 @@ export const adminRouter = {
         const service = getEverflowService();
         const config = service.getConfig();
 
-        logger.everflow.info("Everflow config retrieved", { userId: session.user.id });
+        logger.everflow.info(`Everflow config retrieved - userId: ${session.user.id}`);
 
         return {
           apiKey: config.apiKey ? "***" : undefined,
@@ -1887,9 +1880,7 @@ export const adminRouter = {
         if (input.apiKey) {
           const connectionTest = await service.testConnection();
           if (!connectionTest) {
-            logger.everflow.warn("Everflow connection test failed after config update", {
-              userId: session.user.id,
-            });
+            logger.everflow.warn(`Everflow connection test failed after config update - userId: ${session.user.id}`);
             return {
               success: false,
               message: "Configuration updated but connection test failed. Please verify your API credentials.",
@@ -1898,7 +1889,7 @@ export const adminRouter = {
           }
         }
 
-        logger.everflow.success("Everflow config updated", { userId: session.user.id });
+        logger.everflow.success(`Everflow config updated - userId: ${session.user.id}`);
 
         return {
           success: true,
@@ -1921,12 +1912,7 @@ export const adminRouter = {
         const service = getEverflowService();
         const config = service.getConfig();
 
-        logger.everflow.info("Testing Everflow connection", {
-          userId: session.user.id,
-          baseUrl: config.baseUrl,
-          hasApiKey: !!config.apiKey,
-          hasNetworkId: !!config.networkId,
-        });
+        logger.everflow.info(`Testing Everflow connection - userId: ${session.user.id}, baseUrl: ${config.baseUrl}, hasApiKey: ${!!config.apiKey}, hasNetworkId: ${!!config.networkId}`);
 
         if (!config.apiKey) {
           return {
@@ -1940,13 +1926,13 @@ export const adminRouter = {
           const isConnected = await service.testConnection();
 
           if (isConnected) {
-            logger.everflow.success("Everflow connection test passed", { userId: session.user.id });
+            logger.everflow.success(`Everflow connection test passed - userId: ${session.user.id}`);
             return {
               success: true,
               message: "Connection successful",
             };
           } else {
-            logger.everflow.error("Everflow connection test failed", { userId: session.user.id });
+            logger.everflow.error(`Everflow connection test failed - userId: ${session.user.id}`);
             return {
               success: false,
               message: "Connection failed. Please check your API credentials and endpoint.",
@@ -1960,11 +1946,7 @@ export const adminRouter = {
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.everflow.error("Everflow connection test error", {
-            userId: session.user.id,
-            error: errorMessage,
-            baseUrl: config.baseUrl,
-          });
+          logger.everflow.error(`Everflow connection test error - userId: ${session.user.id}, error: ${errorMessage}, baseUrl: ${config.baseUrl}`);
           return {
             success: false,
             message: `Connection failed: ${errorMessage}`,
@@ -2016,10 +1998,7 @@ export const adminRouter = {
         const session = await requireRpcAdmin();
         const { syncOffersFromEverflow } = await import("@/lib/services/everflow-sync.service");
 
-        logger.everflow.info("Starting offers sync", {
-          userId: session.user.id,
-          options: input,
-        });
+        logger.everflow.info(`Starting offers sync - userId: ${session.user.id}, options: ${JSON.stringify(input)}`);
 
         try {
           const result = await syncOffersFromEverflow(session.user.id, {
@@ -2046,10 +2025,7 @@ export const adminRouter = {
           };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.everflow.error("Offers sync error", {
-            userId: session.user.id,
-            error: errorMessage,
-          });
+          logger.everflow.error(`Offers sync error - userId: ${session.user.id}, error: ${errorMessage}`);
 
           return {
             success: false,
@@ -2104,10 +2080,7 @@ export const adminRouter = {
         const session = await requireRpcAdmin();
         const { syncAdvertisersFromEverflow } = await import("@/lib/services/everflow-sync.service");
 
-        logger.everflow.info("Starting advertisers sync", {
-          userId: session.user.id,
-          options: input,
-        });
+        logger.everflow.info(`Starting advertisers sync - userId: ${session.user.id}, options: ${JSON.stringify(input)}`);
 
         try {
           const result = await syncAdvertisersFromEverflow(session.user.id, {
@@ -2134,10 +2107,7 @@ export const adminRouter = {
           };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.everflow.error("Advertisers sync error", {
-            userId: session.user.id,
-            error: errorMessage,
-          });
+          logger.everflow.error(`Advertisers sync error - userId: ${session.user.id}, error: ${errorMessage}`);
 
           return {
             success: false,
@@ -2201,7 +2171,7 @@ export const adminRouter = {
       .handler(async () => {
         const session = await requireRpcAdmin();
 
-        logger.db.info("Clearing dummy data", { userId: session.user.id });
+        logger.rpc.info(`Clearing dummy data - userId: ${session.user.id}`);
 
         try {
           // Get counts before deletion
@@ -2231,11 +2201,7 @@ export const adminRouter = {
             .select({ count: sql<number>`count(*)::int` })
             .from(creativeRequests);
 
-          logger.db.success("Dummy data cleared", {
-            userId: session.user.id,
-            deletedOffers: initialOffersCount,
-            deletedCreativeRequests: initialRequestsCount,
-          });
+          logger.rpc.success(`Dummy data cleared - userId: ${session.user.id}, deletedOffers: ${initialOffersCount}, deletedCreativeRequests: ${initialRequestsCount}`);
 
           return {
             success: true,
@@ -2245,10 +2211,7 @@ export const adminRouter = {
           };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.db.error("Error clearing dummy data", {
-            userId: session.user.id,
-            error: errorMessage,
-          });
+          logger.rpc.error(`Error clearing dummy data - userId: ${session.user.id}, error: ${errorMessage}`);
 
           return {
             success: false,

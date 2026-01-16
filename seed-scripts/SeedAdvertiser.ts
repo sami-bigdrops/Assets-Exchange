@@ -80,7 +80,7 @@ async function seedAdvertiser() {
     logger.app.info(`User ID: ${result.user.id}`);
     logger.app.info(`Role: advertiser`);
   } catch (error) {
-    logger.app.error("Error seeding advertiser user:", error);
+    logger.app.error(`Error seeding advertiser user: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   } finally {
     // Close database connection

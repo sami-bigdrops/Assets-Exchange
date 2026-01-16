@@ -29,7 +29,7 @@ export async function createPublisher(data: { name: string; contactEmail?: strin
     return res.json() as Promise<Publisher>;
 }
 
-export async function updatePublisher(id: string, data: Partial<{ name: string; contactEmail: string; status: "active" | "inactive" }>) {
+export async function updatePublisher(id: string, data: Partial<{ name: string; contactEmail: string | null; status: "active" | "inactive" | "Active" | "Inactive" }>) {
     const res = await fetch(`/api/admin/publishers/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

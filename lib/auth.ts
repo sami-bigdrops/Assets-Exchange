@@ -79,10 +79,7 @@ if (process.env.NODE_ENV === "development") {
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000");
-  logger.auth.info("BetterAuth initialized", {
-    baseURL,
-    basePath: "/api/auth",
-  });
+  logger.auth.info(`BetterAuth initialized - baseURL: ${baseURL}, basePath: /api/auth`);
 }
 
 export type Session = typeof auth.$Infer.Session;

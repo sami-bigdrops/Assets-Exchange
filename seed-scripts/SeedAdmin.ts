@@ -77,7 +77,7 @@ async function seedAdmin() {
     logger.app.info(`User ID: ${result.user.id}`);
     logger.app.info(`Role: admin`);
   } catch (error) {
-    logger.app.error("Error seeding admin user:", error);
+    logger.app.error(`Error seeding admin user: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   } finally {
     // Close database connection

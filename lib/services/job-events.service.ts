@@ -2,36 +2,41 @@ import { db } from "@/lib/db";
 import { backgroundJobEvents } from "@/lib/schema";
 
 export const JobEventType = {
-    STARTED: 'started',
-    PROGRESS: 'progress',
-    CHUNK: 'chunk_processed',
-    CANCELLED: 'cancelled',
-    FAILED: 'failed',
-    COMPLETED: 'completed',
+  STARTED: "started",
+  PROGRESS: "progress",
+  CHUNK: "chunk_processed",
+  CANCELLED: "cancelled",
+  FAILED: "failed",
+  COMPLETED: "completed",
 } as const;
 
+type Database = typeof db;
+type DatabaseOrTransaction =
+  | Database
+  | Parameters<Parameters<Database["transaction"]>[0]>[0];
+
 export async function logJobEvent({
-    jobId,
-    type,
-    message,
-    data,
-    tx,
+  jobId,
+  type,
+  message,
+  data,
+  tx,
 }: {
-    jobId: string;
-    type: string;
-    message?: string;
-    data?: any;
-    tx?: any;
+  jobId: string;
+  type: string;
+  message?: string;
+  data?: unknown;
+  tx?: DatabaseOrTransaction;
 }) {
-    try {
-        const database = tx || db;
-        await database.insert(backgroundJobEvents).values({
-            jobId,
-            type,
-            message,
-            data,
-        });
-    } catch (error) {
-        console.error(`Failed to log job event ${type} for job ${jobId}:`, error);
-    }
+  try {
+    const database = tx || db;
+    await database.insert(backgroundJobEvents).values({
+      jobId,
+      type,
+      message,
+      data,
+    });
+  } catch (error) {
+    console.error(`Failed to log job event ${type} for job ${jobId}:`, error);
+  }
 }

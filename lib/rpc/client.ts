@@ -15,7 +15,7 @@ const link = new RPCLink({
   },
 });
 
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const client = createORPCClient<any>(link);
 
 export const rpc = client;

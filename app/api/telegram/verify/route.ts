@@ -82,6 +82,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const existingPublisher = await db
+      .select()
+      .from(publishers)
+      .where(eq(publishers.telegramId, normalizedTelegramId))
+      .limit(1);
+
+    if (existingPublisher.length > 0) {
+      const publisher = existingPublisher[0];
+      return NextResponse.json({
+        verified: true,
+        verifiedAt:
+          publisher.updatedAt?.toISOString() ||
+          publisher.createdAt?.toISOString(),
+        savedInDb: true,
+      });
+    }
+
     const verificationKey = `telegram_verify:${normalizedTelegramId}`;
     const verificationData = await redis.get(verificationKey);
 
@@ -106,15 +123,21 @@ export async function POST(req: NextRequest) {
 
       if (parsed.verified === true) {
         await saveTelegramIdToPublisher(normalizedTelegramId, email);
+        return NextResponse.json({
+          verified: true,
+          verifiedAt: parsed.verifiedAt,
+          savedInDb: true,
+        });
       }
 
       return NextResponse.json({
-        verified: parsed.verified === true,
+        verified: Boolean(parsed.verified),
         verifiedAt: parsed.verifiedAt,
+        savedInDb: false,
       });
     }
 
-    return NextResponse.json({ verified: false });
+    return NextResponse.json({ verified: false, savedInDb: false });
   } catch (error) {
     console.error("Error verifying Telegram ID:", error);
     return NextResponse.json(

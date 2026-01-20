@@ -1,18 +1,10 @@
 "use client";
 
-import { File, FileArchive, PencilLine, Search, X } from "lucide-react";
+import { File, FileArchive, PencilLine, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 
 import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogBody,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +19,7 @@ import { type CreativeDetailsProps } from "@/features/publisher/types/form.types
 
 import FileUploadModal from "../_modals/FileUploadModal";
 import FromSubjectLinesModal from "../_modals/FromSubjectLinesModal";
+import MultipleCreativesModal from "../_modals/MultipleCreativesModal";
 import SingleCreativeViewModal from "../_modals/SingleCreativeViewModal";
 
 type UploadedFileMeta = {
@@ -174,17 +167,26 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   const handleSingleFileUpload = async (file: File) => {
     try {
       setUploading(true);
-      const fd = new FormData();
-      fd.append("file", file);
+      let r: Response;
 
       if (
         file.type === "application/zip" ||
         file.name.toLowerCase().endsWith(".zip")
       ) {
-        fd.append("smartDetection", "true");
-      }
+        const url = new URL("/api/upload", window.location.href);
+        url.searchParams.set("smartDetection", "true");
+        url.searchParams.set("filename", encodeURIComponent(file.name));
 
-      const r = await fetch("/api/upload", { method: "POST", body: fd });
+        r = await fetch(url.toString(), {
+          method: "POST",
+          body: file,
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+        });
+      } else {
+        const fd = new FormData();
+        fd.append("file", file);
+        r = await fetch("/api/upload", { method: "POST", body: fd });
+      }
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
 
@@ -250,33 +252,46 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   const handleMultipleFileUpload = async (file: File) => {
     try {
       setUploading(true);
-      const fd = new FormData();
-      fd.append("file", file);
-      const r = await fetch("/api/upload-zip", { method: "POST", body: fd });
+
+      const url = new URL("/api/upload", window.location.href);
+      url.searchParams.set("smartDetection", "true");
+      url.searchParams.set("filename", encodeURIComponent(file.name));
+
+      const r = await fetch(url.toString(), {
+        method: "POST",
+        body: file,
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+      });
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
 
-      const mapped: UploadedFileMeta[] = (data.extractedFiles || []).map(
+      const zipItems = data.zipAnalysis?.items || [];
+
+      if (zipItems.length === 0) {
+        throw new Error("No files found in ZIP archive");
+      }
+
+      const mapped: UploadedFileMeta[] = zipItems.map(
         (f: {
-          fileId: string;
-          fileName: string;
-          fileUrl: string;
-          fileSize: number;
-          fileType?: string;
-          previewUrl?: string;
-          assetCount?: number;
-          hasAssets?: boolean;
+          id: string;
+          name: string;
+          url: string;
+          size: number;
+          type?: string;
+          isDependency?: boolean;
         }) => {
-          const isImageFile = /\.(png|jpe?g|gif|webp|svg)$/i.test(f.fileName);
+          const isImageFile = /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name);
           return {
-            id: f.fileId,
-            name: f.fileName,
-            url: f.fileUrl,
-            size: f.fileSize,
-            type: f.fileType || "application/octet-stream",
+            id: f.id,
+            name: f.name,
+            url: f.url,
+            size: f.size,
+            type: f.type || "application/octet-stream",
             source: "zip",
-            html: /\.html?$/i.test(f.fileName),
-            previewUrl: f.previewUrl || (isImageFile ? f.fileUrl : undefined),
+            html: /\.html?$/i.test(f.name),
+            previewUrl: isImageFile ? f.url : undefined,
           };
         }
       );
@@ -822,77 +837,13 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         )}
 
         {selectedCreatives.length > 0 && (
-          <Dialog
-            open={isMultipleCreativeDialogOpen}
-            onOpenChange={setIsMultipleCreativeDialogOpen}
-          >
-            <DialogContent className="max-w-4xl max-h-[80vh]">
-              <DialogHeader>
-                <DialogTitle>
-                  Multiple Creatives ({selectedCreatives.length})
-                </DialogTitle>
-              </DialogHeader>
-              <DialogBody className="overflow-y-auto">
-                <div className="space-y-4">
-                  {selectedCreatives.map((creative) => (
-                    <div
-                      key={creative.id}
-                      className="flex items-center gap-4 p-4 border rounded-lg"
-                    >
-                      {creative.previewUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={creative.previewUrl}
-                          alt={creative.name}
-                          className="w-24 h-24 object-cover rounded border"
-                        />
-                      ) : (
-                        <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded border">
-                          <span className="text-xs text-gray-600">
-                            {creative.html ? "HTML" : "FILE"}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{creative.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {formatFileSize(creative.size)}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <a
-                            href={creative.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Open
-                          </a>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoveCreative(creative.id)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </DialogBody>
-              <DialogFooter>
-                <Button
-                  onClick={() => {
-                    setIsMultipleCreativeDialogOpen(false);
-                    setSelectedCreatives([]);
-                  }}
-                >
-                  Close
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <MultipleCreativesModal
+            isOpen={isMultipleCreativeDialogOpen}
+            onClose={() => setIsMultipleCreativeDialogOpen(false)}
+            creatives={selectedCreatives}
+            onRemoveCreative={handleRemoveCreative}
+            uploadedZipFileName={uploadedZipFileName}
+          />
         )}
       </div>
     </>

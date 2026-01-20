@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [verificationAttempted, setVerificationAttempted] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -85,11 +86,8 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
     }
   };
 
-  const handleVerify = async () => {
-    if (!formData.telegramId || formData.telegramId === "@") return;
-
-    setIsVerifying(true);
-    setVerificationAttempted(true);
+  const checkVerificationStatus = useCallback(async () => {
+    if (!formData.telegramId || formData.telegramId === "@") return false;
 
     try {
       await fetch("/api/telegram/poll", { method: "POST" });
@@ -104,18 +102,84 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
       });
 
       if (!res.ok) {
-        throw new Error("Verification request failed");
+        return false;
       }
 
       const data = await res.json();
-      setIsVerified(Boolean(data.verified));
+      const verified = Boolean(data.verified && data.savedInDb);
+
+      if (verified) {
+        setIsVerified(true);
+        setIsVerifying(false);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+      }
+
+      return verified;
     } catch (err) {
-      console.error("Verification failed:", err);
-      setIsVerified(false);
-    } finally {
+      console.error("Verification check failed:", err);
+      return false;
+    }
+  }, [formData.telegramId, formData.email]);
+
+  const handleVerify = async () => {
+    if (!formData.telegramId || formData.telegramId === "@") return;
+
+    setIsVerifying(true);
+    setVerificationAttempted(true);
+
+    const verified = await checkVerificationStatus();
+
+    if (!verified) {
       setIsVerifying(false);
+      if (!pollingIntervalRef.current) {
+        pollingIntervalRef.current = setInterval(async () => {
+          await checkVerificationStatus();
+        }, 3000);
+      }
     }
   };
+
+  useEffect(() => {
+    if (formData.telegramId && formData.telegramId !== "@") {
+      checkVerificationStatus();
+    } else {
+      setIsVerified(false);
+      setVerificationAttempted(false);
+    }
+  }, [formData.telegramId, checkVerificationStatus]);
+
+  useEffect(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+
+    if (
+      verificationAttempted &&
+      !isVerified &&
+      formData.telegramId &&
+      formData.telegramId !== "@"
+    ) {
+      pollingIntervalRef.current = setInterval(async () => {
+        await checkVerificationStatus();
+      }, 3000);
+    }
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [
+    verificationAttempted,
+    isVerified,
+    formData.telegramId,
+    checkVerificationStatus,
+  ]);
 
   return (
     <div className="space-y-6 w-full">

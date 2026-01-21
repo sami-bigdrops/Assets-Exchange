@@ -190,10 +190,20 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   }, [uploadedFiles.length, formData.creativeType]);
 
   // Auto-save files state whenever uploadedFiles changes (but not on initial mount)
+  // Use debouncing to reduce save frequency and prevent quota errors
   useEffect(() => {
     // Skip saving on initial mount to avoid overwriting loaded data
     if (!isInitialMount) {
-      saveFilesState(uploadedFiles, uploadedZipFileName);
+      // Debounce the save operation to avoid excessive writes
+      const timeoutId = setTimeout(() => {
+        try {
+          saveFilesState(uploadedFiles, uploadedZipFileName);
+        } catch (error) {
+          console.error("Failed to auto-save files state:", error);
+        }
+      }, 500); // Wait 500ms after last change before saving
+
+      return () => clearTimeout(timeoutId);
     }
   }, [uploadedFiles, uploadedZipFileName, isInitialMount]);
 
@@ -267,24 +277,29 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       const data = await r.json();
 
       if (data.zipAnalysis) {
+        // All ZIP files should open MultipleCreativesModal, even if single creative
         if (data.zipAnalysis.isSingleCreative) {
+          // Convert single creative to array format for MultipleCreativesModal
           const mainFile = data.zipAnalysis.mainCreative;
-          const uploadedFile: UploadedFileMeta = {
-            id: mainFile.fileId,
-            name: mainFile.fileName,
-            url: mainFile.fileUrl,
-            size: mainFile.fileSize,
-            type: mainFile.fileType || "text/html",
-            source: "single",
-            html: /\.html?$/i.test(mainFile.fileName),
-            previewUrl: mainFile.previewUrl,
-            assetCount: data.zipAnalysis.assetCount,
-            hasAssets: data.zipAnalysis.assetCount > 0,
-          };
-          addFiles([uploadedFile]);
-          setSelectedCreative(uploadedFile);
+          const mapped: UploadedFileMeta[] = [
+            {
+              id: mainFile.fileId,
+              name: mainFile.fileName,
+              url: mainFile.fileUrl,
+              size: mainFile.fileSize,
+              type: mainFile.fileType || "text/html",
+              source: "zip",
+              html: /\.html?$/i.test(mainFile.fileName),
+              previewUrl: mainFile.previewUrl,
+              assetCount: data.zipAnalysis.assetCount,
+              hasAssets: data.zipAnalysis.assetCount > 0,
+            },
+          ];
+          addFiles(mapped);
+          setSelectedCreatives(mapped);
+          setUploadedZipFileName(file.name);
           setIsUploadDialogOpen(false);
-          setIsSingleCreativeDialogOpen(true);
+          setIsMultipleCreativeDialogOpen(true);
           return;
         } else {
           await handleMultipleFileUpload(file);
@@ -392,7 +407,8 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     onDataChange({ fromLines, subjectLines });
     validation.handleFieldChange("fromLines", fromLines);
     validation.handleFieldChange("subjectLines", subjectLines);
-    setHasFromSubjectLines(true);
+    setHasFromSubjectLines(!!(fromLines && subjectLines));
+    validation.updateFromSubjectLinesState(!!(fromLines && subjectLines));
     setIsFromSubjectLinesDialogOpen(false);
   };
 
@@ -615,14 +631,151 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
 
         <div className="space-y-2">
           <Label className="text-sm font-medium font-inter">
-            {hasFromSubjectLines
-              ? "Uploaded From & Subject Lines"
-              : hasUploadedFiles
-                ? "Uploaded Files"
+            {hasUploadedFiles
+              ? "Uploaded Files"
+              : hasFromSubjectLines
+                ? "Uploaded From & Subject Lines"
                 : "Upload Creatives"}
           </Label>
 
-          {hasFromSubjectLines ? (
+          {hasUploadedFiles ? (
+            <>
+              <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {uploadedZipFileName ? (
+                      <FileArchive className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <File className="h-5 w-5 text-green-600" />
+                    )}
+                    <div>
+                      <p className="font-medium text-green-800">
+                        {uploadedFiles.length === 1
+                          ? uploadedFiles[0].name
+                          : uploadedZipFileName ||
+                            `${uploadedFiles.length} Files Uploaded`}
+                      </p>
+                      <p className="text-sm text-green-600">
+                        {uploadedFiles.length} file
+                        {uploadedFiles.length !== 1 ? "s" : ""} •{" "}
+                        {formatFileSize(
+                          uploadedFiles.reduce(
+                            (total, file) => total + file.size,
+                            0
+                          )
+                        )}
+                        {/* Show from/subject line counts for single HTML email creatives */}
+                        {uploadedFiles.length === 1 &&
+                          uploadedFiles[0].html &&
+                          formData.creativeType === "email" &&
+                          (uploadedFiles[0].fromLines || uploadedFiles[0].subjectLines) && (
+                            <>
+                              {" • "}
+                              {uploadedFiles[0].fromLines
+                                ? uploadedFiles[0].fromLines.split("\n").filter((line) => line.trim()).length
+                                : 0}{" "}
+                              from line
+                              {(uploadedFiles[0].fromLines
+                                ? uploadedFiles[0].fromLines.split("\n").filter((line) => line.trim()).length
+                                : 0) !== 1
+                                ? "s"
+                                : ""}{" "}
+                              •{" "}
+                              {uploadedFiles[0].subjectLines
+                                ? uploadedFiles[0].subjectLines.split("\n").filter((line) => line.trim()).length
+                                : 0}{" "}
+                              subject line
+                              {(uploadedFiles[0].subjectLines
+                                ? uploadedFiles[0].subjectLines.split("\n").filter((line) => line.trim()).length
+                                : 0) !== 1
+                                ? "s"
+                                : ""}
+                            </>
+                          )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleViewUploadedFiles}
+                      className="text-green-700 border-green-300 hover:bg-green-100"
+                    >
+                      View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteUploadedFiles}
+                      className="text-red-700 border-red-300 hover:bg-red-100"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Show From & Subject Lines section for ZIP files when creative type is email */}
+              {uploadedZipFileName && formData.creativeType === "email" && (
+                <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <PencilLine className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="font-medium text-green-800">
+                          {formData.fromLines && formData.subjectLines
+                            ? "From & Subject Lines Uploaded"
+                            : "From & Subject Lines"}
+                        </p>
+                        {formData.fromLines && formData.subjectLines ? (
+                          <p className="text-sm text-green-600">
+                            {formData.fromLines.split("\n").filter((line) => line.trim()).length} from lines •{" "}
+                            {formData.subjectLines.split("\n").filter((line) => line.trim()).length} subject lines
+                          </p>
+                        ) : (
+                          <p className="text-sm text-green-600">
+                            Add from and subject lines for your email campaign
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {formData.fromLines && formData.subjectLines ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsFromSubjectLinesDialogOpen(true)}
+                            className="text-green-700 border-green-300 hover:bg-green-100"
+                          >
+                            View
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDeleteFromSubjectLines}
+                            className="text-red-700 border-red-300 hover:bg-red-100"
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsFromSubjectLinesDialogOpen(true)}
+                          className="text-green-700 border-green-300 hover:bg-green-100"
+                        >
+                          Add
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : hasFromSubjectLines ? (
             <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -632,8 +785,8 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                       From & Subject Lines Uploaded
                     </p>
                     <p className="text-sm text-green-600">
-                      {formData.fromLines.split("\n").length} from lines •{" "}
-                      {formData.subjectLines.split("\n").length} subject lines
+                      {formData.fromLines.split("\n").filter((line) => line.trim()).length} from lines •{" "}
+                      {formData.subjectLines.split("\n").filter((line) => line.trim()).length} subject lines
                     </p>
                   </div>
                 </div>
@@ -650,82 +803,6 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={handleDeleteFromSubjectLines}
-                    className="text-red-700 border-red-300 hover:bg-red-100"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : hasUploadedFiles ? (
-            <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {uploadedZipFileName ? (
-                    <FileArchive className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <File className="h-5 w-5 text-green-600" />
-                  )}
-                  <div>
-                    <p className="font-medium text-green-800">
-                      {uploadedFiles.length === 1
-                        ? uploadedFiles[0].name
-                        : uploadedZipFileName ||
-                          `${uploadedFiles.length} Files Uploaded`}
-                    </p>
-                    <p className="text-sm text-green-600">
-                      {uploadedFiles.length} file
-                      {uploadedFiles.length !== 1 ? "s" : ""} •{" "}
-                      {formatFileSize(
-                        uploadedFiles.reduce(
-                          (total, file) => total + file.size,
-                          0
-                        )
-                      )}
-                      {/* Show from/subject line counts for single HTML email creatives */}
-                      {uploadedFiles.length === 1 &&
-                        uploadedFiles[0].html &&
-                        formData.creativeType === "email" &&
-                        (uploadedFiles[0].fromLines || uploadedFiles[0].subjectLines) && (
-                          <>
-                            {" • "}
-                            {uploadedFiles[0].fromLines
-                              ? uploadedFiles[0].fromLines.split("\n").filter((line) => line.trim()).length
-                              : 0}{" "}
-                            from line
-                            {(uploadedFiles[0].fromLines
-                              ? uploadedFiles[0].fromLines.split("\n").filter((line) => line.trim()).length
-                              : 0) !== 1
-                              ? "s"
-                              : ""}{" "}
-                            •{" "}
-                            {uploadedFiles[0].subjectLines
-                              ? uploadedFiles[0].subjectLines.split("\n").filter((line) => line.trim()).length
-                              : 0}{" "}
-                            subject line
-                            {(uploadedFiles[0].subjectLines
-                              ? uploadedFiles[0].subjectLines.split("\n").filter((line) => line.trim()).length
-                              : 0) !== 1
-                              ? "s"
-                              : ""}
-                          </>
-                        )}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleViewUploadedFiles}
-                    className="text-green-700 border-green-300 hover:bg-green-100"
-                  >
-                    View
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDeleteUploadedFiles}
                     className="text-red-700 border-red-300 hover:bg-red-100"
                   >
                     Delete
@@ -968,6 +1045,24 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
             creatives={selectedCreatives}
             onRemoveCreative={handleRemoveCreative}
             uploadedZipFileName={uploadedZipFileName}
+            onZipFileNameChange={(newZipFileName) => {
+              setUploadedZipFileName(newZipFileName);
+            }}
+            onFileNameChange={(fileId, newFileName) => {
+              setUploadedFiles((prev) =>
+                prev.map((file) =>
+                  file.id === fileId ? { ...file, name: newFileName } : file
+                )
+              );
+              setSelectedCreatives((prev) =>
+                prev.map((creative) =>
+                  creative.id === fileId
+                    ? { ...creative, name: newFileName }
+                    : creative
+                )
+              );
+            }}
+            creativeType={formData.creativeType}
           />
         )}
       </div>

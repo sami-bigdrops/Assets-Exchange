@@ -38,7 +38,7 @@ const getConfig = (uploadType: UploadType) => {
             PLACEHOLDER: "Drag and drop a ZIP file containing multiple creatives",
             REQUIREMENTS: [
                 "File must be a ZIP archive",
-                "Maximum file size: 100MB",
+                "Maximum file size: 50MB",
                 "Each HTML file in the ZIP will be treated as a separate creative",
             ],
         };

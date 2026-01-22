@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import { saveBuffer } from "@/lib/fileStorage";
 import { externalTasks } from "@/lib/schema";
 
 const AI_BASE_URL = process.env.GRAMMAR_AI_URL;
@@ -193,7 +194,48 @@ export const GrammarService = {
             );
           }
 
-          const data = (await response.json()) as { task_id: string };
+          const data = (await response.json()) as {
+            task_id: string;
+            status?: string;
+            corrections?: unknown[];
+            issues?: unknown[];
+            corrected_html?: string;
+            result?: Record<string, unknown>;
+          };
+
+          const isSync =
+            data.task_id === "universal" ||
+            data.status === "SUCCESS" ||
+            data.corrections ||
+            data.issues ||
+            data.corrected_html ||
+            data.result;
+
+          if (isSync) {
+            const resultData = data.result || data;
+
+            const [task] = await db
+              .insert(externalTasks)
+              .values({
+                creativeId,
+                userId,
+                source: "grammar_ai",
+                externalTaskId: data.task_id || `sync-${Date.now()}`,
+                status: "completed",
+                result: resultData,
+                startedAt: new Date(),
+                finishedAt: new Date(),
+              })
+              .returning();
+
+            return {
+              success: true,
+              taskId: task.externalTaskId,
+              dbTaskId: task.id,
+              status: "completed",
+              result: resultData,
+            };
+          }
 
           const [task] = await db
             .insert(externalTasks)
@@ -245,10 +287,53 @@ export const GrammarService = {
       const response = await fetch(`${AI_BASE_URL}/task/${externalTaskId}`);
       const data = (await response.json()) as {
         status: string;
-        result?: unknown;
+        result?: Record<string, unknown>;
       };
 
       if (data.status === "SUCCESS") {
+        // IMAGE OPTIMIZATION: Scan result for Base64 images and upload to blob storage
+        if (data.result && typeof data.result === "object") {
+          const keys = Object.keys(data.result);
+
+          for (const key of keys) {
+            const value = data.result[key];
+
+            // Detect Base64 Image string (starts with data:image/...)
+            if (typeof value === "string" && value.startsWith("data:image/")) {
+              try {
+                console.warn(
+                  `Found Base64 image in key: '${key}'. Converting...`
+                );
+
+                const matches = value.match(
+                  /^data:(image\/([a-z]+));base64,(.+)$/
+                );
+                if (matches) {
+                  const ext = matches[2];
+                  const base64Data = matches[3];
+
+                  const buffer = Buffer.from(base64Data, "base64");
+                  const filename = `proofread-${externalTaskId}-${key}.${ext}`;
+
+                  const uploaded = await saveBuffer(
+                    buffer,
+                    filename,
+                    "proofread-results"
+                  );
+
+                  // Replace huge Base64 string with the URL
+                  data.result[key] = uploaded.url;
+
+                  console.warn(`Converted & Saved: ${uploaded.url}`);
+                }
+              } catch (err) {
+                console.error(`Failed to save image for ${key}:`, err);
+                // Keep original base64 as fallback so it still works
+              }
+            }
+          }
+        }
+
         await db
           .update(externalTasks)
           .set({

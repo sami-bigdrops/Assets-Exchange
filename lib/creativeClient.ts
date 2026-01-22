@@ -5,6 +5,20 @@ interface SaveHtmlParams {
   html: string;
 }
 
+interface UpdateContentParams {
+  creativeId: string;
+  content: string;
+  filename: string;
+}
+
+interface UpdateContentResponse {
+  success: boolean;
+  newUrl?: string;
+  filename?: string;
+  size?: number;
+  error?: string;
+}
+
 interface RenameCreativeParams {
   creativeId: string;
   fileUrl: string;
@@ -45,7 +59,7 @@ export async function saveHtml(params: SaveHtmlParams): Promise<void> {
   try {
     // First, fetch existing metadata to preserve it
     const existingMetadata = await getCreativeMetadata(params.creativeId);
-    
+
     // Merge existing metadata with new HTML content
     const metadataToSave = {
       creativeId: params.creativeId,
@@ -184,6 +198,44 @@ export async function getCreativeMetadata(
     console.error("Get creative metadata error:", error);
     return {
       success: false,
+    };
+  }
+}
+
+export async function updateCreativeContent(
+  params: UpdateContentParams
+): Promise<UpdateContentResponse> {
+  try {
+    const response = await fetch("/api/creative/update-content", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Failed to update content";
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        }
+      } catch {
+        // Ignore parse error
+      }
+      return { success: false, error: errorMessage };
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Update creative content error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

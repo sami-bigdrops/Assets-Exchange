@@ -1,5 +1,6 @@
 import type React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import {
@@ -7,9 +8,13 @@ import {
   renameCreative,
   saveCreativeMetadata,
   getCreativeMetadata,
+  updateCreativeContent,
 } from "@/lib/creativeClient";
 import { generateEmailContent } from "@/lib/generationClient";
-import { proofreadCreative } from "@/lib/proofreadCreativeClient";
+import {
+  proofreadCreative,
+  checkProofreadStatus,
+} from "@/lib/proofreadCreativeClient";
 import { type ProofreadCreativeResponse } from "@/lib/proofreadCreativeClient";
 
 export interface Creative {
@@ -77,53 +82,89 @@ export const useSingleCreativeViewModal = ({
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showOriginal, setShowOriginal] = useState(false); // Default to false (show marked/corrections) - for preview
-  const [showOriginalFullscreen, setShowOriginalFullscreen] = useState(false); // Separate state for fullscreen image view
-  const [showOriginalHtmlFullscreen, setShowOriginalHtmlFullscreen] = useState(false); // Separate state for fullscreen HTML view
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [showOriginalFullscreen, setShowOriginalFullscreen] = useState(false);
+  const [showOriginalHtmlFullscreen, setShowOriginalHtmlFullscreen] =
+    useState(false);
+
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
 
   // Helper function to extract marked image URL from proofreading result
   const getMarkedImageUrl = useCallback((): string | null => {
-    if (!proofreadingData?.result || typeof proofreadingData.result !== "object") {
+    if (
+      !proofreadingData?.result ||
+      typeof proofreadingData.result !== "object"
+    ) {
       return null;
     }
     const result = proofreadingData.result as Record<string, unknown>;
-    
+
     // Check direct properties
-    if (result.corrected_file_url && typeof result.corrected_file_url === "string") {
+    if (
+      result.corrected_file_url &&
+      typeof result.corrected_file_url === "string"
+    ) {
       return result.corrected_file_url;
     }
-    if (result.annotated_image_url && typeof result.annotated_image_url === "string") {
+    if (
+      result.annotated_image_url &&
+      typeof result.annotated_image_url === "string"
+    ) {
       return result.annotated_image_url;
     }
-    if (result.marked_image_url && typeof result.marked_image_url === "string") {
+    if (
+      result.marked_image_url &&
+      typeof result.marked_image_url === "string"
+    ) {
       return result.marked_image_url;
     }
-    
+
     // Check nested result structure (result.result.corrected_file_url)
     if (result.result && typeof result.result === "object") {
       const nestedResult = result.result as Record<string, unknown>;
-      if (nestedResult.corrected_file_url && typeof nestedResult.corrected_file_url === "string") {
+      if (
+        nestedResult.corrected_file_url &&
+        typeof nestedResult.corrected_file_url === "string"
+      ) {
         return nestedResult.corrected_file_url;
       }
-      if (nestedResult.annotated_image_url && typeof nestedResult.annotated_image_url === "string") {
+      if (
+        nestedResult.annotated_image_url &&
+        typeof nestedResult.annotated_image_url === "string"
+      ) {
         return nestedResult.annotated_image_url;
       }
-      if (nestedResult.marked_image_url && typeof nestedResult.marked_image_url === "string") {
+      if (
+        nestedResult.marked_image_url &&
+        typeof nestedResult.marked_image_url === "string"
+      ) {
         return nestedResult.marked_image_url;
       }
     }
-    
+
     return null;
   }, [proofreadingData]);
 
   // Helper function to extract marked HTML content from proofreading result
   const getMarkedHtmlContent = useCallback((): string | null => {
-    if (!proofreadingData?.result || typeof proofreadingData.result !== "object") {
+    if (
+      !proofreadingData?.result ||
+      typeof proofreadingData.result !== "object"
+    ) {
       return null;
     }
     const result = proofreadingData.result as Record<string, unknown>;
-    
-    // Check direct properties
+
+    // Check direct properties - including output_content from grammar AI
+    if (result.output_content && typeof result.output_content === "string") {
+      return result.output_content;
+    }
     if (result.corrected_html && typeof result.corrected_html === "string") {
       return result.corrected_html;
     }
@@ -133,21 +174,36 @@ export const useSingleCreativeViewModal = ({
     if (result.marked_html && typeof result.marked_html === "string") {
       return result.marked_html;
     }
-    
-    // Check nested result structure (result.result.corrected_html)
+
+    // Check nested result structure
     if (result.result && typeof result.result === "object") {
       const nestedResult = result.result as Record<string, unknown>;
-      if (nestedResult.corrected_html && typeof nestedResult.corrected_html === "string") {
+      if (
+        nestedResult.output_content &&
+        typeof nestedResult.output_content === "string"
+      ) {
+        return nestedResult.output_content;
+      }
+      if (
+        nestedResult.corrected_html &&
+        typeof nestedResult.corrected_html === "string"
+      ) {
         return nestedResult.corrected_html;
       }
-      if (nestedResult.annotated_html && typeof nestedResult.annotated_html === "string") {
+      if (
+        nestedResult.annotated_html &&
+        typeof nestedResult.annotated_html === "string"
+      ) {
         return nestedResult.annotated_html;
       }
-      if (nestedResult.marked_html && typeof nestedResult.marked_html === "string") {
+      if (
+        nestedResult.marked_html &&
+        typeof nestedResult.marked_html === "string"
+      ) {
         return nestedResult.marked_html;
       }
     }
-    
+
     return null;
   }, [proofreadingData]);
 
@@ -478,58 +534,217 @@ export const useSingleCreativeViewModal = ({
   const handleRegenerateAnalysis = async () => {
     try {
       setIsAnalyzing(true);
+      if (pollRef.current) clearInterval(pollRef.current);
+
       const isHtml =
         creative.html ||
         creative.type === "html" ||
         /\.html?$/i.test(creative.name);
       const isImg = creative.type === "image" || /^image\//.test(creative.type);
 
+      let fileUrl: string | null = null;
+
       if (isHtml) {
         if (!htmlContent) {
+          setIsAnalyzing(false);
           return;
         }
-        let htmlUrl = creative.url;
-        if (!htmlUrl) {
+        fileUrl = creative.url;
+        if (!fileUrl) {
+          setIsAnalyzing(false);
           return;
         }
-
-        if (htmlUrl && htmlUrl.startsWith("/")) {
-          htmlUrl = `${window.location.origin}${htmlUrl}`;
+        if (fileUrl.startsWith("/")) {
+          fileUrl = `${window.location.origin}${fileUrl}`;
         }
-
-        const result = await proofreadCreative({
-          creativeId: creative.id,
-          fileUrl: htmlUrl,
-        });
-        setProofreadingData(result);
-        setShowOriginal(false); // Reset to Marked view when new analysis completes
-        setShowOriginalHtmlFullscreen(false); // Reset HTML fullscreen to Marked view when new analysis completes
       } else if (isImg) {
-        let imageUrl = creative.previewUrl || creative.url;
-        if (!imageUrl) {
+        fileUrl = creative.previewUrl || creative.url;
+        if (!fileUrl) {
+          setIsAnalyzing(false);
           return;
         }
-
-        if (imageUrl && imageUrl.startsWith("/")) {
-          imageUrl = `${window.location.origin}${imageUrl}`;
+        if (fileUrl.startsWith("/")) {
+          fileUrl = `${window.location.origin}${fileUrl}`;
         }
+      }
 
-        const result = await proofreadCreative({
-          creativeId: creative.id,
-          fileUrl: imageUrl,
-        });
-        setProofreadingData(result);
-        setShowOriginal(false); // Reset to Marked view when new analysis completes
-        setShowOriginalFullscreen(false); // Reset image fullscreen to Marked view when new analysis completes
+      if (!fileUrl) {
+        setIsAnalyzing(false);
+        return;
+      }
+
+      toast.info("Analysis started...", {
+        description: "This may take a few moments.",
+      });
+
+      const result = await proofreadCreative({
+        creativeId: creative.id,
+        fileUrl,
+      });
+
+      const isSyncComplete = result.status === "completed" || result.result;
+
+      if (isSyncComplete) {
+        const resultData = (result.result || result) as Record<string, unknown>;
+        const rawCorrections = (resultData.corrections ||
+          resultData.issues ||
+          []) as Array<{
+          original_word?: string;
+          corrected_word?: string;
+          original_context?: string;
+          corrected_context?: string;
+          type?: string;
+          original?: string;
+          correction?: string;
+          note?: string;
+        }>;
+
+        const issues: ProofreadCreativeResponse["issues"] = rawCorrections.map(
+          (c) => ({
+            type: c.type || "Spelling",
+            original: c.original || c.original_word || "",
+            correction: c.correction || c.corrected_word || "",
+            note:
+              c.note ||
+              (c.original_context
+                ? `"${c.original_context}" → "${c.corrected_context}"`
+                : undefined),
+          })
+        );
+
+        const finalResult: ProofreadCreativeResponse = {
+          success: true,
+          result: resultData,
+          issues,
+          suggestions:
+            (resultData.suggestions as ProofreadCreativeResponse["suggestions"]) ||
+            [],
+          qualityScore:
+            resultData.qualityScore as ProofreadCreativeResponse["qualityScore"],
+        };
+
+        setProofreadingData(finalResult);
+        setShowOriginal(false);
+        setShowOriginalFullscreen(false);
+        setShowOriginalHtmlFullscreen(false);
+        setIsAnalyzing(false);
+
+        const issueCount = issues?.length || 0;
+        if (issueCount === 0) {
+          toast.success("No issues found!", {
+            description: "Your creative looks great.",
+          });
+        } else {
+          toast.warning(
+            `${issueCount} issue${issueCount !== 1 ? "s" : ""} found`,
+            { description: "Switching to marked view..." }
+          );
+        }
+      } else if (result.taskId) {
+        pollRef.current = setInterval(async () => {
+          try {
+            const statusData = await checkProofreadStatus({
+              taskId: result.taskId!,
+            });
+
+            if (
+              statusData.status === "SUCCESS" ||
+              statusData.status === "completed"
+            ) {
+              if (pollRef.current) clearInterval(pollRef.current);
+
+              const resultData = (statusData.result || statusData) as Record<
+                string,
+                unknown
+              >;
+              const rawCorrections = (resultData.corrections ||
+                resultData.issues ||
+                []) as Array<{
+                original_word?: string;
+                corrected_word?: string;
+                original_context?: string;
+                corrected_context?: string;
+                type?: string;
+                original?: string;
+                correction?: string;
+                note?: string;
+              }>;
+
+              const issues: ProofreadCreativeResponse["issues"] =
+                rawCorrections.map((c) => ({
+                  type: c.type || "Spelling",
+                  original: c.original || c.original_word || "",
+                  correction: c.correction || c.corrected_word || "",
+                  note:
+                    c.note ||
+                    (c.original_context
+                      ? `"${c.original_context}" → "${c.corrected_context}"`
+                      : undefined),
+                }));
+
+              const finalResult: ProofreadCreativeResponse = {
+                success: true,
+                result: resultData,
+                issues,
+                suggestions:
+                  (resultData.suggestions as ProofreadCreativeResponse["suggestions"]) ||
+                  [],
+                qualityScore:
+                  resultData.qualityScore as ProofreadCreativeResponse["qualityScore"],
+              };
+
+              setProofreadingData(finalResult);
+              setShowOriginal(false);
+              setShowOriginalFullscreen(false);
+              setShowOriginalHtmlFullscreen(false);
+              setIsAnalyzing(false);
+
+              const issueCount = issues?.length || 0;
+              if (issueCount === 0) {
+                toast.success("No issues found!", {
+                  description: "Your creative looks great.",
+                });
+              } else {
+                toast.warning(
+                  `${issueCount} issue${issueCount !== 1 ? "s" : ""} found`,
+                  { description: "Switching to marked view..." }
+                );
+              }
+            } else if (
+              statusData.status === "FAILURE" ||
+              statusData.status === "failed"
+            ) {
+              if (pollRef.current) clearInterval(pollRef.current);
+              setIsAnalyzing(false);
+              toast.error("Analysis failed", {
+                description: "Please try again.",
+              });
+            }
+          } catch (err) {
+            console.error("Polling error:", err);
+            if (pollRef.current) clearInterval(pollRef.current);
+            setIsAnalyzing(false);
+            toast.error("Failed to retrieve results");
+          }
+        }, 2000);
+      } else {
+        setIsAnalyzing(false);
+        toast.error("No task ID received");
       }
     } catch (error) {
       console.error("Proofreading failed:", error);
+      if (pollRef.current) clearInterval(pollRef.current);
+      setIsAnalyzing(false);
+      toast.error("Proofreading failed", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      });
       setProofreadingData({
         success: false,
         issues: [],
         suggestions: [
           {
-            icon: "ℹ️",
+            icon: "info",
             type: "Notice",
             description: "Proofreading failed. Please try again.",
           },
@@ -541,24 +756,42 @@ export const useSingleCreativeViewModal = ({
           brandAlignment: 0,
         },
       });
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
   const handleSaveHtml = async () => {
     try {
       setIsSaving(true);
+
+      const updateResult = await updateCreativeContent({
+        creativeId: creative.id,
+        content: htmlContent,
+        filename: creative.name,
+      });
+
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || "Failed to update file");
+      }
+
+      if (updateResult.newUrl) {
+        creative.url = updateResult.newUrl;
+      }
+
       await saveHtml({
         creativeId: creative.id,
         html: htmlContent,
       });
+
       setPreviewKey((prev) => prev + 1);
+      toast.success("HTML saved successfully!", {
+        description: "File updated in storage.",
+      });
     } catch (error) {
       console.error("Failed to save HTML:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to save HTML";
-      alert(`Error: ${errorMessage}`);
+      toast.error("Failed to save HTML", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      });
     } finally {
       setIsSaving(false);
     }

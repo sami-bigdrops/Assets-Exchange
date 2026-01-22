@@ -33,9 +33,18 @@ export interface SavedFilesState {
 }
 
 /**
+ * Check if we're in a browser environment
+ */
+const isBrowser = typeof window !== "undefined";
+
+/**
  * Save form data to localStorage
  */
-export const saveFormState = (formData: PublisherFormData, currentStep: number): void => {
+export const saveFormState = (
+  formData: PublisherFormData,
+  currentStep: number
+): void => {
+  if (!isBrowser) return;
   try {
     const state: SavedFormState = {
       formData,
@@ -52,12 +61,13 @@ export const saveFormState = (formData: PublisherFormData, currentStep: number):
  * Load saved form data from localStorage
  */
 export const loadFormState = (): SavedFormState | null => {
+  if (!isBrowser) return null;
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return null;
 
     const state = JSON.parse(saved) as SavedFormState;
-    
+
     // Check if saved data is older than 7 days, if so, clear it
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     if (state.timestamp < sevenDaysAgo) {
@@ -76,6 +86,7 @@ export const loadFormState = (): SavedFormState | null => {
  * Clear saved form data
  */
 export const clearFormState = (): void => {
+  if (!isBrowser) return;
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(FILES_STORAGE_KEY);
@@ -105,18 +116,23 @@ const optimizeFileMeta = (file: SavedFileMeta): SavedFileMeta => {
     source: file.source,
     html: file.html,
     // Remove previewUrl if it's the same as url to save space
-    previewUrl: file.previewUrl && file.previewUrl !== file.url ? 
-      (file.previewUrl.length > 500 ? file.previewUrl.substring(0, 500) : file.previewUrl) : 
-      undefined,
+    previewUrl:
+      file.previewUrl && file.previewUrl !== file.url
+        ? file.previewUrl.length > 500
+          ? file.previewUrl.substring(0, 500)
+          : file.previewUrl
+        : undefined,
     assetCount: file.assetCount,
     hasAssets: file.hasAssets,
     // Truncate fromLines/subjectLines if too long (keep first 1000 chars)
-    fromLines: file.fromLines && file.fromLines.length > 1000 
-      ? file.fromLines.substring(0, 1000) 
-      : file.fromLines,
-    subjectLines: file.subjectLines && file.subjectLines.length > 1000 
-      ? file.subjectLines.substring(0, 1000) 
-      : file.subjectLines,
+    fromLines:
+      file.fromLines && file.fromLines.length > 1000
+        ? file.fromLines.substring(0, 1000)
+        : file.fromLines,
+    subjectLines:
+      file.subjectLines && file.subjectLines.length > 1000
+        ? file.subjectLines.substring(0, 1000)
+        : file.subjectLines,
   };
   return optimized;
 };
@@ -124,11 +140,15 @@ const optimizeFileMeta = (file: SavedFileMeta): SavedFileMeta => {
 /**
  * Save uploaded files state to localStorage
  */
-export const saveFilesState = (files: SavedFileMeta[], uploadedZipFileName: string): void => {
+export const saveFilesState = (
+  files: SavedFileMeta[],
+  uploadedZipFileName: string
+): void => {
+  if (!isBrowser) return;
   try {
     // Optimize files data to reduce storage size
     const optimizedFiles = files.map(optimizeFileMeta);
-    
+
     const state: SavedFilesState = {
       files: optimizedFiles,
       uploadedZipFileName,
@@ -140,10 +160,12 @@ export const saveFilesState = (files: SavedFileMeta[], uploadedZipFileName: stri
     const MAX_SIZE = 4 * 1024 * 1024; // 4MB limit (localStorage is usually 5-10MB)
 
     if (estimatedSize > MAX_SIZE) {
-      console.warn("Files state too large, clearing old data and saving minimal info");
+      console.warn(
+        "Files state too large, clearing old data and saving minimal info"
+      );
       // Clear old data and save only essential info
       clearFilesState();
-      
+
       // Save only minimal data
       const minimalState: SavedFilesState = {
         files: optimizedFiles.map((f) => ({
@@ -158,7 +180,7 @@ export const saveFilesState = (files: SavedFileMeta[], uploadedZipFileName: stri
         uploadedZipFileName,
         timestamp: Date.now(),
       };
-      
+
       try {
         localStorage.setItem(FILES_STORAGE_KEY, JSON.stringify(minimalState));
       } catch (minimalError) {
@@ -173,7 +195,9 @@ export const saveFilesState = (files: SavedFileMeta[], uploadedZipFileName: stri
   } catch (error) {
     // Handle quota exceeded error specifically
     if (error instanceof Error && error.name === "QuotaExceededError") {
-      console.warn("localStorage quota exceeded, clearing old data and retrying");
+      console.warn(
+        "localStorage quota exceeded, clearing old data and retrying"
+      );
       try {
         // Clear old data
         clearFilesState();
@@ -207,15 +231,15 @@ export const saveFilesState = (files: SavedFileMeta[], uploadedZipFileName: stri
  * Load saved files state from localStorage
  */
 export const loadFilesState = (): SavedFilesState | null => {
+  if (!isBrowser) return null;
   try {
     const saved = localStorage.getItem(FILES_STORAGE_KEY);
     if (!saved) {
-      console.log("No saved files state found in localStorage");
       return null;
     }
 
     const state = JSON.parse(saved) as SavedFilesState;
-    
+
     // Check if saved data is older than 7 days, if so, clear it
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     if (state.timestamp < sevenDaysAgo) {
@@ -233,6 +257,7 @@ export const loadFilesState = (): SavedFilesState | null => {
  * Clear saved files state
  */
 export const clearFilesState = (): void => {
+  if (!isBrowser) return;
   try {
     localStorage.removeItem(FILES_STORAGE_KEY);
   } catch (error) {

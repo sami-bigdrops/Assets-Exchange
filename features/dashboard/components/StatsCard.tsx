@@ -107,6 +107,26 @@ export function StatsCard({
   const TrendIcon = calculatedTrend?.trendIconValue;
   const isPositive = TrendIcon === TrendingUp;
 
+  // Filter and order historical data: remove "Today", order as Yesterday, Current Month, Last Month
+  const filteredAndOrderedHistoricalData = useMemo(() => {
+    if (!historicalData) return null;
+
+    // Filter out "Today"
+    const filtered = historicalData.filter(
+      (item) => item.label !== "Today"
+    );
+
+    // Define the desired order
+    const order = ["Yesterday", "Current Month", "Last Month"];
+
+    // Sort the filtered data according to the desired order
+    const ordered = order
+      .map((label) => filtered.find((item) => item.label === label))
+      .filter((item) => item !== undefined);
+
+    return ordered.length > 0 ? ordered : null;
+  }, [historicalData]);
+
   const getBackgroundColor = () => {
     switch (title) {
       case "Total Assets":
@@ -202,9 +222,9 @@ export function StatsCard({
           )}
         </div>
 
-        {historicalData && (
+        {filteredAndOrderedHistoricalData && (
           <div className="space-y-2 ">
-            {historicalData.map((item, index) => (
+            {filteredAndOrderedHistoricalData.map((item, index) => (
               <React.Fragment key={index}>
                 <div className="flex items-center justify-between">
                   <span
@@ -224,7 +244,7 @@ export function StatsCard({
                     {item.value}
                   </span>
                 </div>
-                {index < 2 && <Separator />}
+                {index < filteredAndOrderedHistoricalData.length - 1 && <Separator />}
               </React.Fragment>
             ))}
           </div>

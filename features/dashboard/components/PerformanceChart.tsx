@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import type {
   ComparisonType,
@@ -170,13 +171,60 @@ export function PerformanceChart({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader className="py-4">
-          <CardTitle>Performance Overview</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader
+          className="-mt-6 mb-0 px-6 py-6 gap-4 flex flex-row items-center justify-between"
+          style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
+        >
+          <CardTitle
+            className="xl:text-lg text-sm lg:text-base font-inter font-medium"
+            style={{ color: variables.colors.cardHeaderTextColor }}
+          >
+            Performance Overview
+          </CardTitle>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-[180px] rounded-[6px]" />
+            <Skeleton className="h-9 w-[200px] rounded-[6px]" />
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-[400px]">
-            <div className="text-muted-foreground">Loading chart...</div>
+        <CardContent className="space-y-4">
+          <div className="h-[400px] w-full">
+            {/* Chart skeleton with realistic bar pattern */}
+            <div className="h-full w-full flex flex-col justify-end">
+              <div className="flex items-end h-full gap-1.5 px-2">
+                {Array.from({ length: 24 }).map((_, i) => {
+                  // Create a wave-like pattern for the skeleton bars
+                  const height = Math.sin((i / 24) * Math.PI * 2) * 30 + 50;
+                  return (
+                    <Skeleton
+                      key={i}
+                      className="flex-1 rounded-t"
+                      style={{
+                        height: `${height}%`,
+                        minHeight: "20%",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              {/* X-axis skeleton */}
+              <div className="flex justify-between px-2 mt-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-3 w-12" />
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Legend skeleton */}
+          <div className="flex items-center justify-center gap-6 mt-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4 rounded" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4 rounded" />
+              <Skeleton className="h-4 w-24" />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -185,9 +233,17 @@ export function PerformanceChart({
 
   if (error) {
     return (
-      <Card>
-        <CardHeader className="py-4">
-          <CardTitle>Performance Overview</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader
+          className="-mt-6 mb-0 px-6 py-6"
+          style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
+        >
+          <CardTitle
+            className="xl:text-lg text-sm lg:text-base font-inter font-medium"
+            style={{ color: variables.colors.cardHeaderTextColor }}
+          >
+            Performance Overview
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[400px]">
@@ -200,9 +256,17 @@ export function PerformanceChart({
 
   if (!chartData || !chartData.data || chartData.data.length === 0) {
     return (
-      <Card>
-        <CardHeader className="py-4">
-          <CardTitle>Performance Overview</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader
+          className="-mt-6 mb-0 px-6 py-6"
+          style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
+        >
+          <CardTitle
+            className="xl:text-lg text-sm lg:text-base font-inter font-medium"
+            style={{ color: variables.colors.cardHeaderTextColor }}
+          >
+            Performance Overview
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[400px]">
@@ -216,7 +280,7 @@ export function PerformanceChart({
   return (
     <Card className="overflow-hidden">
       <CardHeader
-        className="-mt-6 mb-0 px-6 py-6 gap-0 flex flex-row items-center justify-between"
+        className="-mt-6 mb-0 px-6 py-6 gap-4 flex flex-row items-center justify-between"
         style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
       >
         <CardTitle

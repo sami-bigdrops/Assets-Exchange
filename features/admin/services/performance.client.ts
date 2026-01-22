@@ -1,13 +1,16 @@
 import type {
     ComparisonType,
+    MetricType,
     PerformanceChartData,
 } from "@/features/dashboard/types/dashboard.types";
 
 export async function getPerformanceChartData(
-    comparisonType: ComparisonType
+    comparisonType: ComparisonType,
+    metric: MetricType = "Total Assets"
 ): Promise<PerformanceChartData> {
     const params = new URLSearchParams();
     params.append("comparisonType", comparisonType);
+    params.append("metric", metric);
 
     const res = await fetch(`/api/admin/dashboard/performance?${params.toString()}`, {
         credentials: "include",

@@ -15,5 +15,40 @@ export type DashboardStats = {
             today: number
             yesterday: number
         }
+        rejected: {
+            today: number
+            yesterday: number
+        }
+        pending: {
+            today: number
+            yesterday: number
+        }
+    }
+    historicalData: {
+        totalAssets: {
+            yesterday: number
+            currentMonth: number
+            lastMonth: number
+        }
+        newRequests: {
+            yesterday: number
+            currentMonth: number
+            lastMonth: number
+        }
+        approved: {
+            yesterday: number
+            currentMonth: number
+            lastMonth: number
+        }
+        rejected: {
+            yesterday: number
+            currentMonth: number
+            lastMonth: number
+        }
+        pending: {
+            yesterday: number
+            currentMonth: number
+            lastMonth: number
+        }
     }
 }

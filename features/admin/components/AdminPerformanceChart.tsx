@@ -3,7 +3,10 @@
 import { useState } from "react";
 
 import { PerformanceChart } from "@/features/dashboard";
-import type { ComparisonType } from "@/features/dashboard/types/dashboard.types";
+import type {
+  ComparisonType,
+  MetricType,
+} from "@/features/dashboard/types/dashboard.types";
 
 import { usePerformanceChartViewModel } from "../view-models/usePerformanceChartViewModel";
 
@@ -32,11 +35,15 @@ const normalizeComparisonType = (comparison: string): ComparisonType => {
 export function AdminPerformanceChart() {
   const [selectedComparison, setSelectedComparison] =
     useState<string>("Today vs Yesterday");
+  const [selectedMetric, setSelectedMetric] =
+    useState<MetricType>("Total Assets");
 
   const comparisonType = normalizeComparisonType(selectedComparison);
 
-  const { data, isLoading, error } =
-    usePerformanceChartViewModel(comparisonType);
+  const { data, isLoading, error } = usePerformanceChartViewModel(
+    comparisonType,
+    selectedMetric
+  );
 
   const handleComparisonChange = (comparison: ComparisonType) => {
     const lastWeekDayName = getLastWeekDayName();
@@ -57,13 +64,19 @@ export function AdminPerformanceChart() {
     }
   };
 
+  const handleMetricChange = (metric: MetricType) => {
+    setSelectedMetric(metric);
+  };
+
   return (
     <PerformanceChart
       data={data}
       isLoading={isLoading}
       error={error}
       onComparisonChange={handleComparisonChange}
+      onMetricChange={handleMetricChange}
       defaultComparison={comparisonType}
+      defaultMetric={selectedMetric}
     />
   );
 }

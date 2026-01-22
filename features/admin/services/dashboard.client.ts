@@ -42,7 +42,14 @@ function getIconForTitle(title: string) {
 function transformBackendStatsToFrontend(
   backendStats: DashboardStats
 ): AdminStats[] {
-  const { totals, trends } = backendStats;
+  const { totals, trends, historicalData } = backendStats;
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}k`;
+    }
+    return num.toString();
+  };
 
   const newRequestsTrend = calculateTrendPercentage(
     trends.newRequests.today,
@@ -51,6 +58,14 @@ function transformBackendStatsToFrontend(
   const approvedTrend = calculateTrendPercentage(
     trends.approved.today,
     trends.approved.yesterday
+  );
+  const rejectedTrend = calculateTrendPercentage(
+    trends.rejected.today,
+    trends.rejected.yesterday
+  );
+  const pendingTrend = calculateTrendPercentage(
+    trends.pending.today,
+    trends.pending.yesterday
   );
 
   return [
@@ -63,7 +78,11 @@ function transformBackendStatsToFrontend(
         textValue: `${totals.totalAssets}`,
         trendIconValue: TrendingUp,
       },
-      historicalData: [],
+      historicalData: [
+        { label: "Yesterday", value: formatNumber(historicalData.totalAssets.yesterday) },
+        { label: "Current Month", value: formatNumber(historicalData.totalAssets.currentMonth) },
+        { label: "Last Month", value: formatNumber(historicalData.totalAssets.lastMonth) },
+      ],
     },
     {
       title: "New Requests",
@@ -77,8 +96,9 @@ function transformBackendStatsToFrontend(
           : TrendingDown,
       },
       historicalData: [
-        { label: "Today", value: trends.newRequests.today },
-        { label: "Yesterday", value: trends.newRequests.yesterday },
+        { label: "Yesterday", value: formatNumber(historicalData.newRequests.yesterday) },
+        { label: "Current Month", value: formatNumber(historicalData.newRequests.currentMonth) },
+        { label: "Last Month", value: formatNumber(historicalData.newRequests.lastMonth) },
       ],
     },
     {
@@ -91,21 +111,40 @@ function transformBackendStatsToFrontend(
         trendIconValue: approvedTrend.isPositive ? TrendingUp : TrendingDown,
       },
       historicalData: [
-        { label: "Today", value: trends.approved.today },
-        { label: "Yesterday", value: trends.approved.yesterday },
+        { label: "Yesterday", value: formatNumber(historicalData.approved.yesterday) },
+        { label: "Current Month", value: formatNumber(historicalData.approved.currentMonth) },
+        { label: "Last Month", value: formatNumber(historicalData.approved.lastMonth) },
       ],
     },
     {
       title: "Rejected Assets",
       value: totals.rejected,
       icon: getIconForTitle("Rejected Assets"),
-      historicalData: [],
+      trend: {
+        trendTextValue: "Today",
+        textValue: `${Math.round(rejectedTrend.percentage)}%`,
+        trendIconValue: rejectedTrend.isPositive ? TrendingUp : TrendingDown,
+      },
+      historicalData: [
+        { label: "Yesterday", value: formatNumber(historicalData.rejected.yesterday) },
+        { label: "Current Month", value: formatNumber(historicalData.rejected.currentMonth) },
+        { label: "Last Month", value: formatNumber(historicalData.rejected.lastMonth) },
+      ],
     },
     {
       title: "Pending Approval",
       value: totals.pending,
       icon: getIconForTitle("Pending Approval"),
-      historicalData: [],
+      trend: {
+        trendTextValue: "Today",
+        textValue: `${Math.round(pendingTrend.percentage)}%`,
+        trendIconValue: pendingTrend.isPositive ? TrendingUp : TrendingDown,
+      },
+      historicalData: [
+        { label: "Yesterday", value: formatNumber(historicalData.pending.yesterday) },
+        { label: "Current Month", value: formatNumber(historicalData.pending.currentMonth) },
+        { label: "Last Month", value: formatNumber(historicalData.pending.lastMonth) },
+      ],
     },
   ];
 }

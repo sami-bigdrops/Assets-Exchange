@@ -315,7 +315,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                           className="font-medium text-gray-900 text-xs sm:text-sm truncate mb-1"
                           title={creative.name}
                         >
-                          {creative.name}
+                      {creative.name}
                         </h3>
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span
@@ -330,8 +330,8 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                             {fileType}
                           </span>
                           <span className="font-medium text-xs">
-                            {formatFileSize(creative.size)}
-                          </span>
+                        {formatFileSize(creative.size)}
+                      </span>
                     </div>
                   </div>
 

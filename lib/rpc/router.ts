@@ -234,6 +234,29 @@ const dashboardStats = os
           )
         );
 
+      const newRequestsCurrentMonth = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creativeRequests)
+        .where(
+          and(
+            eq(creativeRequests.status, "new"),
+            eq(creativeRequests.approvalStage, "admin"),
+            gte(creativeRequests.submittedAt, currentMonthStart)
+          )
+        );
+
+      const newRequestsLastMonth = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creativeRequests)
+        .where(
+          and(
+            eq(creativeRequests.status, "new"),
+            eq(creativeRequests.approvalStage, "admin"),
+            gte(creativeRequests.submittedAt, lastMonthStart),
+            lte(creativeRequests.submittedAt, lastMonthEnd)
+          )
+        );
+
       const approvedToday = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(creativeRequests)
@@ -254,6 +277,29 @@ const dashboardStats = os
             eq(creativeRequests.approvalStage, "completed"),
             gte(creativeRequests.submittedAt, yesterdayStart),
             lte(creativeRequests.submittedAt, yesterdayEnd)
+          )
+        );
+
+      const approvedCurrentMonth = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creativeRequests)
+        .where(
+          and(
+            eq(creativeRequests.status, "approved"),
+            eq(creativeRequests.approvalStage, "completed"),
+            gte(creativeRequests.submittedAt, currentMonthStart)
+          )
+        );
+
+      const approvedLastMonth = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creativeRequests)
+        .where(
+          and(
+            eq(creativeRequests.status, "approved"),
+            eq(creativeRequests.approvalStage, "completed"),
+            gte(creativeRequests.submittedAt, lastMonthStart),
+            lte(creativeRequests.submittedAt, lastMonthEnd)
           )
         );
 
@@ -278,6 +324,27 @@ const dashboardStats = os
           )
         );
 
+      const rejectedCurrentMonth = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creativeRequests)
+        .where(
+          and(
+            eq(creativeRequests.status, "rejected"),
+            gte(creativeRequests.submittedAt, currentMonthStart)
+          )
+        );
+
+      const rejectedLastMonth = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creativeRequests)
+        .where(
+          and(
+            eq(creativeRequests.status, "rejected"),
+            gte(creativeRequests.submittedAt, lastMonthStart),
+            lte(creativeRequests.submittedAt, lastMonthEnd)
+          )
+        );
+
       const pendingToday = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(creativeRequests)
@@ -296,6 +363,27 @@ const dashboardStats = os
             inArray(creativeRequests.status, ["new", "pending"]),
             gte(creativeRequests.submittedAt, yesterdayStart),
             lte(creativeRequests.submittedAt, yesterdayEnd)
+          )
+        );
+
+      const pendingCurrentMonth = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creativeRequests)
+        .where(
+          and(
+            inArray(creativeRequests.status, ["new", "pending"]),
+            gte(creativeRequests.submittedAt, currentMonthStart)
+          )
+        );
+
+      const pendingLastMonth = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creativeRequests)
+        .where(
+          and(
+            inArray(creativeRequests.status, ["new", "pending"]),
+            gte(creativeRequests.submittedAt, lastMonthStart),
+            lte(creativeRequests.submittedAt, lastMonthEnd)
           )
         );
 
@@ -345,8 +433,8 @@ const dashboardStats = os
           ),
           historicalData: [
             { label: "Yesterday", value: formatNumber(newRequestsYesterday[0]?.count ?? 0) },
-            { label: "Current Month", value: formatNumber(newRequestsToday[0]?.count ?? 0) },
-            { label: "Last Month", value: formatNumber(newRequestsYesterday[0]?.count ?? 0) },
+            { label: "Current Month", value: formatNumber(newRequestsCurrentMonth[0]?.count ?? 0) },
+            { label: "Last Month", value: formatNumber(newRequestsLastMonth[0]?.count ?? 0) },
           ],
         },
         {
@@ -358,8 +446,8 @@ const dashboardStats = os
           ),
           historicalData: [
             { label: "Yesterday", value: formatNumber(approvedYesterday[0]?.count ?? 0) },
-            { label: "Current Month", value: formatNumber(approvedToday[0]?.count ?? 0) },
-            { label: "Last Month", value: formatNumber(approvedYesterday[0]?.count ?? 0) },
+            { label: "Current Month", value: formatNumber(approvedCurrentMonth[0]?.count ?? 0) },
+            { label: "Last Month", value: formatNumber(approvedLastMonth[0]?.count ?? 0) },
           ],
         },
         {
@@ -371,8 +459,8 @@ const dashboardStats = os
           ),
           historicalData: [
             { label: "Yesterday", value: formatNumber(rejectedYesterday[0]?.count ?? 0) },
-            { label: "Current Month", value: formatNumber(rejectedToday[0]?.count ?? 0) },
-            { label: "Last Month", value: formatNumber(rejectedYesterday[0]?.count ?? 0) },
+            { label: "Current Month", value: formatNumber(rejectedCurrentMonth[0]?.count ?? 0) },
+            { label: "Last Month", value: formatNumber(rejectedLastMonth[0]?.count ?? 0) },
           ],
         },
         {
@@ -384,8 +472,8 @@ const dashboardStats = os
           ),
           historicalData: [
             { label: "Yesterday", value: formatNumber(pendingYesterday[0]?.count ?? 0) },
-            { label: "Current Month", value: formatNumber(pendingToday[0]?.count ?? 0) },
-            { label: "Last Month", value: formatNumber(pendingYesterday[0]?.count ?? 0) },
+            { label: "Current Month", value: formatNumber(pendingCurrentMonth[0]?.count ?? 0) },
+            { label: "Last Month", value: formatNumber(pendingLastMonth[0]?.count ?? 0) },
           ],
         },
       ];
@@ -409,6 +497,13 @@ const dashboardPerformance = os
         "Current Week vs Last Week",
         "Current Month vs Last Month",
       ]),
+      metric: z.enum([
+        "Total Assets",
+        "New Requests",
+        "Approved Assets",
+        "Rejected Assets",
+        "Pending Approval",
+      ]).optional().default("Total Assets"),
     })
   )
   .output(
@@ -429,7 +524,32 @@ const dashboardPerformance = os
     try {
       await requireRpcAdmin();
       const now = new Date();
-      const { comparisonType } = input;
+      const { comparisonType, metric = "Total Assets" } = input;
+
+      // Build where clause based on metric
+      const getMetricWhereClause = () => {
+        switch (metric) {
+          case "New Requests":
+            return and(
+              eq(creativeRequests.status, "new"),
+              eq(creativeRequests.approvalStage, "admin")
+            );
+          case "Approved Assets":
+            return and(
+              eq(creativeRequests.status, "approved"),
+              eq(creativeRequests.approvalStage, "completed")
+            );
+          case "Rejected Assets":
+            return eq(creativeRequests.status, "rejected");
+          case "Pending Approval":
+            return inArray(creativeRequests.status, ["new", "pending"]);
+          case "Total Assets":
+          default:
+            return undefined; // No filter for total assets
+        }
+      };
+
+      const metricWhereClause = getMetricWhereClause();
 
       let data: Array<{ label: string; current: number; previous: number }> = [];
       let xAxisLabel = "Time";
@@ -453,6 +573,15 @@ const dashboardPerformance = os
 
         const todayEnd = new Date(now);
 
+        const whereConditions = [
+          gte(creativeRequests.submittedAt, comparisonStart),
+          lte(creativeRequests.submittedAt, todayEnd),
+        ];
+        if (metricWhereClause) {
+          whereConditions.push(metricWhereClause);
+        }
+
+        // Optimize query by using indexed column and limiting date range
         const query = await db
           .select({
             hour: sql<number>`EXTRACT(HOUR FROM ${creativeRequests.submittedAt})::int`,
@@ -460,15 +589,7 @@ const dashboardPerformance = os
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(
-            and(
-              gte(
-                creativeRequests.submittedAt,
-                comparisonStart
-              ),
-              lte(creativeRequests.submittedAt, todayEnd)
-            )
-          )
+          .where(and(...whereConditions))
           .groupBy(
             sql`DATE(${creativeRequests.submittedAt})`,
             sql`EXTRACT(HOUR FROM ${creativeRequests.submittedAt})`
@@ -515,6 +636,14 @@ const dashboardPerformance = os
         const lastWeekEnd = new Date(currentWeekStart);
         lastWeekEnd.setMilliseconds(-1);
 
+        const weekWhereConditions = [
+          gte(creativeRequests.submittedAt, lastWeekStart),
+          lte(creativeRequests.submittedAt, now),
+        ];
+        if (metricWhereClause) {
+          weekWhereConditions.push(metricWhereClause);
+        }
+
         const query = await db
           .select({
             dayOfWeek: sql<number>`EXTRACT(DOW FROM ${creativeRequests.submittedAt})::int`,
@@ -523,12 +652,7 @@ const dashboardPerformance = os
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(
-            and(
-              gte(creativeRequests.submittedAt, lastWeekStart),
-              lte(creativeRequests.submittedAt, now)
-            )
-          )
+          .where(and(...weekWhereConditions))
           .groupBy(
             sql`EXTRACT(YEAR FROM ${creativeRequests.submittedAt})`,
             sql`EXTRACT(WEEK FROM ${creativeRequests.submittedAt})`,
@@ -586,6 +710,14 @@ const dashboardPerformance = os
           999
         );
 
+        const monthWhereConditions = [
+          gte(creativeRequests.submittedAt, lastMonthStart),
+          lte(creativeRequests.submittedAt, now),
+        ];
+        if (metricWhereClause) {
+          monthWhereConditions.push(metricWhereClause);
+        }
+
         const query = await db
           .select({
             dayOfMonth: sql<number>`EXTRACT(DAY FROM ${creativeRequests.submittedAt})::int`,
@@ -594,12 +726,7 @@ const dashboardPerformance = os
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(
-            and(
-              gte(creativeRequests.submittedAt, lastMonthStart),
-              lte(creativeRequests.submittedAt, now)
-            )
-          )
+          .where(and(...monthWhereConditions))
           .groupBy(
             sql`EXTRACT(YEAR FROM ${creativeRequests.submittedAt})`,
             sql`EXTRACT(MONTH FROM ${creativeRequests.submittedAt})`,

@@ -1,4 +1,4 @@
-import { eq, and, inArray, sql, gte, lt } from "drizzle-orm"
+import { eq, and, inArray, sql, gte, lt, lte } from "drizzle-orm"
 
 import { db } from "@/lib/db"
 import { creativeRequests } from "@/lib/schema"
@@ -10,6 +10,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
     const yesterdayStart = new Date(todayStart)
     yesterdayStart.setDate(yesterdayStart.getDate() - 1)
+    const yesterdayEnd = new Date(todayStart)
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
 
     const [
         totalAssets,
@@ -19,8 +23,23 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         pending,
         newToday,
         newYesterday,
+        newCurrentMonth,
+        newLastMonth,
         approvedToday,
         approvedYesterday,
+        approvedCurrentMonth,
+        approvedLastMonth,
+        rejectedToday,
+        rejectedYesterday,
+        rejectedCurrentMonth,
+        rejectedLastMonth,
+        pendingToday,
+        pendingYesterday,
+        pendingCurrentMonth,
+        pendingLastMonth,
+        totalAssetsYesterday,
+        totalAssetsCurrentMonth,
+        totalAssetsLastMonth,
     ] = await Promise.all([
         db.select({ count: sql<number>`count(*)` }).from(creativeRequests),
         db.select({ count: sql<number>`count(*)` })
@@ -56,7 +75,28 @@ export async function getDashboardStats(): Promise<DashboardStats> {
                     eq(creativeRequests.status, "new"),
                     eq(creativeRequests.approvalStage, "admin"),
                     gte(creativeRequests.submittedAt, yesterdayStart),
-                    lt(creativeRequests.submittedAt, todayStart)
+                    lte(creativeRequests.submittedAt, yesterdayEnd)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    eq(creativeRequests.status, "new"),
+                    eq(creativeRequests.approvalStage, "admin"),
+                    gte(creativeRequests.submittedAt, currentMonthStart)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    eq(creativeRequests.status, "new"),
+                    eq(creativeRequests.approvalStage, "admin"),
+                    gte(creativeRequests.submittedAt, lastMonthStart),
+                    lte(creativeRequests.submittedAt, lastMonthEnd)
                 )
             ),
 
@@ -77,7 +117,126 @@ export async function getDashboardStats(): Promise<DashboardStats> {
                     eq(creativeRequests.status, "approved"),
                     eq(creativeRequests.approvalStage, "completed"),
                     gte(creativeRequests.adminApprovedAt, yesterdayStart),
-                    lt(creativeRequests.adminApprovedAt, todayStart)
+                    lte(creativeRequests.adminApprovedAt, yesterdayEnd)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    eq(creativeRequests.status, "approved"),
+                    eq(creativeRequests.approvalStage, "completed"),
+                    gte(creativeRequests.adminApprovedAt, currentMonthStart)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    eq(creativeRequests.status, "approved"),
+                    eq(creativeRequests.approvalStage, "completed"),
+                    gte(creativeRequests.adminApprovedAt, lastMonthStart),
+                    lte(creativeRequests.adminApprovedAt, lastMonthEnd)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    eq(creativeRequests.status, "rejected"),
+                    gte(creativeRequests.submittedAt, todayStart)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    eq(creativeRequests.status, "rejected"),
+                    gte(creativeRequests.submittedAt, yesterdayStart),
+                    lte(creativeRequests.submittedAt, yesterdayEnd)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    eq(creativeRequests.status, "rejected"),
+                    gte(creativeRequests.submittedAt, currentMonthStart)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    eq(creativeRequests.status, "rejected"),
+                    gte(creativeRequests.submittedAt, lastMonthStart),
+                    lte(creativeRequests.submittedAt, lastMonthEnd)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    inArray(creativeRequests.status, ["new", "pending"]),
+                    gte(creativeRequests.submittedAt, todayStart)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    inArray(creativeRequests.status, ["new", "pending"]),
+                    gte(creativeRequests.submittedAt, yesterdayStart),
+                    lte(creativeRequests.submittedAt, yesterdayEnd)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    inArray(creativeRequests.status, ["new", "pending"]),
+                    gte(creativeRequests.submittedAt, currentMonthStart)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    inArray(creativeRequests.status, ["new", "pending"]),
+                    gte(creativeRequests.submittedAt, lastMonthStart),
+                    lte(creativeRequests.submittedAt, lastMonthEnd)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    gte(creativeRequests.submittedAt, yesterdayStart),
+                    lte(creativeRequests.submittedAt, yesterdayEnd)
+                )
+            ),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(gte(creativeRequests.submittedAt, currentMonthStart)),
+
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(
+                and(
+                    gte(creativeRequests.submittedAt, lastMonthStart),
+                    lte(creativeRequests.submittedAt, lastMonthEnd)
                 )
             ),
     ])
@@ -98,6 +257,41 @@ export async function getDashboardStats(): Promise<DashboardStats> {
             approved: {
                 today: Number(approvedToday[0].count),
                 yesterday: Number(approvedYesterday[0].count),
+            },
+            rejected: {
+                today: Number(rejectedToday[0].count),
+                yesterday: Number(rejectedYesterday[0].count),
+            },
+            pending: {
+                today: Number(pendingToday[0].count),
+                yesterday: Number(pendingYesterday[0].count),
+            },
+        },
+        historicalData: {
+            totalAssets: {
+                yesterday: Number(totalAssetsYesterday[0].count),
+                currentMonth: Number(totalAssetsCurrentMonth[0].count),
+                lastMonth: Number(totalAssetsLastMonth[0].count),
+            },
+            newRequests: {
+                yesterday: Number(newYesterday[0].count),
+                currentMonth: Number(newCurrentMonth[0].count),
+                lastMonth: Number(newLastMonth[0].count),
+            },
+            approved: {
+                yesterday: Number(approvedYesterday[0].count),
+                currentMonth: Number(approvedCurrentMonth[0].count),
+                lastMonth: Number(approvedLastMonth[0].count),
+            },
+            rejected: {
+                yesterday: Number(rejectedYesterday[0].count),
+                currentMonth: Number(rejectedCurrentMonth[0].count),
+                lastMonth: Number(rejectedLastMonth[0].count),
+            },
+            pending: {
+                yesterday: Number(pendingYesterday[0].count),
+                currentMonth: Number(pendingCurrentMonth[0].count),
+                lastMonth: Number(pendingLastMonth[0].count),
             },
         },
     }

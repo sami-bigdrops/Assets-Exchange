@@ -61,12 +61,12 @@ export const adminMenuConfig: SidebarMenuConfig = [
       //   icon: "ChartColumnIncreasing",
       //   href: "/analytics",
       // },
-      {
-        id: "ai-settings",
-        label: "AI Settings",
-        icon: "Settings",
-        href: "/ai-settings",
-      },
+      // {
+      //   id: "ai-settings",
+      //   label: "AI Settings",
+      //   icon: "Settings",
+      //   href: "/ai-settings",
+      // },
       {
         id: "settings",
         label: "Settings",

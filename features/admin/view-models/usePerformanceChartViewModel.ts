@@ -4,12 +4,16 @@ import { useEffect, useState } from "react";
 
 import type {
   ComparisonType,
+  MetricType,
   PerformanceChartData,
 } from "@/features/dashboard/types/dashboard.types";
 
 import { getPerformanceChartData } from "../services/performance.client";
 
-export function usePerformanceChartViewModel(comparisonType: ComparisonType) {
+export function usePerformanceChartViewModel(
+  comparisonType: ComparisonType,
+  metric: MetricType = "Total Assets"
+) {
   const [data, setData] = useState<PerformanceChartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +23,7 @@ export function usePerformanceChartViewModel(comparisonType: ComparisonType) {
       try {
         setIsLoading(true);
         setError(null);
-        const chartData = await getPerformanceChartData(comparisonType);
+        const chartData = await getPerformanceChartData(comparisonType, metric);
         setData(chartData);
       } catch (err) {
         setError(
@@ -31,7 +35,7 @@ export function usePerformanceChartViewModel(comparisonType: ComparisonType) {
     };
 
     fetchData();
-  }, [comparisonType]);
+  }, [comparisonType, metric]);
 
   return {
     data,

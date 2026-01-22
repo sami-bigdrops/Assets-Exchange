@@ -345,39 +345,53 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                 <div className="flex-1 bg-white border border-gray-200 rounded-lg overflow-auto min-h-[300px] lg:min-h-0">
                   {isImage && (creative.previewUrl || creative.url) ? (
                     viewModel.proofreadingData && !viewModel.showOriginal ? (
-                      // Marked view - show icons/placeholders for corrections
-                      <div className="w-full h-full flex items-center justify-center p-8">
-                        <div className="flex flex-col items-center gap-4 text-center max-w-md">
-                          <div className="p-4 bg-amber-100 rounded-full">
-                            <FileText className="h-12 w-12 text-amber-600" />
+                      // Marked view - show the marked image from API
+                      (() => {
+                        const markedImageUrl = viewModel.getMarkedImageUrl();
+                        return markedImageUrl ? (
+                          <div className="w-full p-4 flex justify-center">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={markedImageUrl}
+                              alt={`Marked ${creative.name}`}
+                              className="max-w-[600px] w-full h-auto rounded-lg shadow-sm"
+                            />
                           </div>
-                          <div>
-                            <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                              Marked View
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              This view will display the image with corrections
-                              and error markings highlighted.
-                            </p>
-                            {viewModel.proofreadingData.issues &&
-                              viewModel.proofreadingData.issues.length > 0 && (
-                                <div className="mt-4 flex items-center justify-center gap-2">
-                                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                                    <X className="h-3 w-3" />
-                                    {
-                                      viewModel.proofreadingData.issues.length
-                                    }{" "}
-                                    Issue
-                                    {viewModel.proofreadingData.issues
-                                      .length !== 1
-                                      ? "s"
-                                      : ""}
-                                  </span>
-                                </div>
-                              )}
+                        ) : (
+                          // Fallback placeholder if marked image URL is not available
+                          <div className="w-full h-full flex items-center justify-center p-8">
+                            <div className="flex flex-col items-center gap-4 text-center max-w-md">
+                              <div className="p-4 bg-amber-100 rounded-full">
+                                <FileText className="h-12 w-12 text-amber-600" />
+                              </div>
+                              <div>
+                                <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                                  Marked View
+                                </h4>
+                                <p className="text-sm text-gray-600">
+                                  Marked image is being processed. Please wait...
+                                </p>
+                                {viewModel.proofreadingData.issues &&
+                                  viewModel.proofreadingData.issues.length > 0 && (
+                                    <div className="mt-4 flex items-center justify-center gap-2">
+                                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                                        <X className="h-3 w-3" />
+                                        {
+                                          viewModel.proofreadingData.issues.length
+                                        }{" "}
+                                        Issue
+                                        {viewModel.proofreadingData.issues
+                                          .length !== 1
+                                          ? "s"
+                                          : ""}
+                                      </span>
+                                    </div>
+                                  )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        );
+                      })()
                     ) : (
                       // Original view - show the actual image
                       <div className="w-full p-4 flex justify-center">
@@ -391,30 +405,44 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                     )
                   ) : isHtml ? (
                     viewModel.proofreadingData && !viewModel.showOriginal ? (
-                      // Marked view - show icons/placeholders for corrections
-                      <div className="w-full h-full flex items-center justify-center p-8">
-                        <div className="flex flex-col items-center gap-4 text-center max-w-md">
-                          <div className="p-4 bg-amber-100 rounded-full">
-                            <FileText className="h-12 w-12 text-amber-600" />
-                          </div>
-                          <div>
-                            <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                              Marked View
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              This view will display the HTML with corrections and error markings highlighted.
-                            </p>
-                            {viewModel.proofreadingData.issues && viewModel.proofreadingData.issues.length > 0 && (
-                              <div className="mt-4 flex items-center justify-center gap-2">
-                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                                  <X className="h-3 w-3" />
-                                  {viewModel.proofreadingData.issues.length} Issue{viewModel.proofreadingData.issues.length !== 1 ? 's' : ''}
-                                </span>
+                      // Marked view - show the marked HTML from API
+                      (() => {
+                        const markedHtmlContent = viewModel.getMarkedHtmlContent();
+                        return markedHtmlContent ? (
+                          <iframe
+                            key={`marked-${viewModel.previewKey}`}
+                            srcDoc={markedHtmlContent}
+                            title="Marked HTML Preview"
+                            className="w-full h-full border-0"
+                            sandbox="allow-scripts allow-same-origin"
+                          />
+                        ) : (
+                          // Fallback placeholder if marked HTML is not available
+                          <div className="w-full h-full flex items-center justify-center p-8">
+                            <div className="flex flex-col items-center gap-4 text-center max-w-md">
+                              <div className="p-4 bg-amber-100 rounded-full">
+                                <FileText className="h-12 w-12 text-amber-600" />
                               </div>
-                            )}
+                              <div>
+                                <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                                  Marked View
+                                </h4>
+                                <p className="text-sm text-gray-600">
+                                  Marked HTML is being processed. Please wait...
+                                </p>
+                                {viewModel.proofreadingData.issues && viewModel.proofreadingData.issues.length > 0 && (
+                                  <div className="mt-4 flex items-center justify-center gap-2">
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                                      <X className="h-3 w-3" />
+                                      {viewModel.proofreadingData.issues.length} Issue{viewModel.proofreadingData.issues.length !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        );
+                      })()
                     ) : (
                       // Original view - show the actual HTML
                       <iframe
@@ -922,6 +950,41 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                     >
                       <RotateCcw className="h-5 w-5" />
                     </Button>
+                    {/* Toggle between Original and Marked view for image in fullscreen */}
+                    {viewModel.proofreadingData && (
+                      <div className="inline-flex items-center gap-0 border border-gray-300 rounded-lg p-0.5 bg-white shadow-sm h-9 ml-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            viewModel.setShowOriginalFullscreen(true);
+                          }}
+                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
+                            viewModel.showOriginalFullscreen
+                              ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+                              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
+                          }`}
+                        >
+                          Original
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            viewModel.setShowOriginalFullscreen(false);
+                          }}
+                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
+                            !viewModel.showOriginalFullscreen
+                              ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+                              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
+                          }`}
+                        >
+                          Marked
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="ghost"
@@ -952,8 +1015,16 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={creative.previewUrl || creative.url}
-                    alt={creative.name}
+                    src={
+                      viewModel.proofreadingData && !viewModel.showOriginalFullscreen
+                        ? viewModel.getMarkedImageUrl() || creative.previewUrl || creative.url
+                        : creative.previewUrl || creative.url
+                    }
+                    alt={
+                      viewModel.proofreadingData && !viewModel.showOriginalFullscreen
+                        ? `Marked ${creative.name}`
+                        : creative.name
+                    }
                     className="max-w-full max-h-full object-contain select-none pointer-events-none"
                     style={{
                       transform: `scale(${viewModel.imageZoom}) translate(${viewModel.imagePosition.x}px, ${viewModel.imagePosition.y}px)`,
@@ -996,10 +1067,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            viewModel.setShowOriginal(true);
+                            viewModel.setShowOriginalHtmlFullscreen(true);
                           }}
                           className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                            viewModel.showOriginal
+                            viewModel.showOriginalHtmlFullscreen
                               ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
                           }`}
@@ -1011,10 +1082,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            viewModel.setShowOriginal(false);
+                            viewModel.setShowOriginalHtmlFullscreen(false);
                           }}
                           className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                            !viewModel.showOriginal
+                            !viewModel.showOriginalHtmlFullscreen
                               ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
                           }`}
@@ -1036,31 +1107,45 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                 </div>
               </DialogHeader>
               <DialogBody className="flex-1 overflow-hidden p-0 max-w-full! max-h-full!">
-                {viewModel.proofreadingData && !viewModel.showOriginal ? (
-                  // Marked view - show icon placeholder
-                  <div className="w-full h-full flex items-center justify-center p-8 bg-white">
-                    <div className="flex flex-col items-center gap-4 text-center max-w-md">
-                      <div className="p-4 bg-amber-100 rounded-full">
-                        <FileText className="h-12 w-12 text-amber-600" />
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                          Marked View
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          This view will display the HTML with corrections and error markings highlighted.
-                        </p>
-                        {viewModel.proofreadingData.issues && viewModel.proofreadingData.issues.length > 0 && (
-                          <div className="mt-4 flex items-center justify-center gap-2">
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                              <X className="h-3 w-3" />
-                              {viewModel.proofreadingData.issues.length} Issue{viewModel.proofreadingData.issues.length !== 1 ? 's' : ''}
-                            </span>
+                {viewModel.proofreadingData && !viewModel.showOriginalHtmlFullscreen ? (
+                  // Marked view - show the marked HTML from API
+                  (() => {
+                    const markedHtmlContent = viewModel.getMarkedHtmlContent();
+                    return markedHtmlContent ? (
+                      <iframe
+                        key={`fullscreen-marked-${viewModel.previewKey}`}
+                        srcDoc={markedHtmlContent}
+                        title="Marked HTML Preview Fullscreen"
+                        className="w-full h-full border-0"
+                        sandbox="allow-scripts allow-same-origin"
+                      />
+                    ) : (
+                      // Fallback placeholder if marked HTML is not available
+                      <div className="w-full h-full flex items-center justify-center p-8 bg-white">
+                        <div className="flex flex-col items-center gap-4 text-center max-w-md">
+                          <div className="p-4 bg-amber-100 rounded-full">
+                            <FileText className="h-12 w-12 text-amber-600" />
                           </div>
-                        )}
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                              Marked View
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              Marked HTML is being processed. Please wait...
+                            </p>
+                            {viewModel.proofreadingData.issues && viewModel.proofreadingData.issues.length > 0 && (
+                              <div className="mt-4 flex items-center justify-center gap-2">
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                                  <X className="h-3 w-3" />
+                                  {viewModel.proofreadingData.issues.length} Issue{viewModel.proofreadingData.issues.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })()
                 ) : (
                   // Original view - show the actual HTML
                   <iframe

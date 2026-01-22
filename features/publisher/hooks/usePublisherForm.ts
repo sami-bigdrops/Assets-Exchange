@@ -23,18 +23,18 @@ export const usePublisherForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<PublisherFormData>(
     savedState?.formData || {
-      affiliateId: "",
-      companyName: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      telegramId: "",
-      offerId: "",
-      creativeType: "",
-      additionalNotes: "",
-      fromLines: "",
-      subjectLines: "",
-      priority: "medium",
+    affiliateId: "",
+    companyName: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    telegramId: "",
+    offerId: "",
+    creativeType: "",
+    additionalNotes: "",
+    fromLines: "",
+    subjectLines: "",
+    priority: "medium",
     }
   );
 

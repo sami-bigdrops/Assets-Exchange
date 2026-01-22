@@ -77,7 +77,79 @@ export const useSingleCreativeViewModal = ({
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showOriginal, setShowOriginal] = useState(false); // Default to false (show marked/corrections)
+  const [showOriginal, setShowOriginal] = useState(false); // Default to false (show marked/corrections) - for preview
+  const [showOriginalFullscreen, setShowOriginalFullscreen] = useState(false); // Separate state for fullscreen image view
+  const [showOriginalHtmlFullscreen, setShowOriginalHtmlFullscreen] = useState(false); // Separate state for fullscreen HTML view
+
+  // Helper function to extract marked image URL from proofreading result
+  const getMarkedImageUrl = useCallback((): string | null => {
+    if (!proofreadingData?.result || typeof proofreadingData.result !== "object") {
+      return null;
+    }
+    const result = proofreadingData.result as Record<string, unknown>;
+    
+    // Check direct properties
+    if (result.corrected_file_url && typeof result.corrected_file_url === "string") {
+      return result.corrected_file_url;
+    }
+    if (result.annotated_image_url && typeof result.annotated_image_url === "string") {
+      return result.annotated_image_url;
+    }
+    if (result.marked_image_url && typeof result.marked_image_url === "string") {
+      return result.marked_image_url;
+    }
+    
+    // Check nested result structure (result.result.corrected_file_url)
+    if (result.result && typeof result.result === "object") {
+      const nestedResult = result.result as Record<string, unknown>;
+      if (nestedResult.corrected_file_url && typeof nestedResult.corrected_file_url === "string") {
+        return nestedResult.corrected_file_url;
+      }
+      if (nestedResult.annotated_image_url && typeof nestedResult.annotated_image_url === "string") {
+        return nestedResult.annotated_image_url;
+      }
+      if (nestedResult.marked_image_url && typeof nestedResult.marked_image_url === "string") {
+        return nestedResult.marked_image_url;
+      }
+    }
+    
+    return null;
+  }, [proofreadingData]);
+
+  // Helper function to extract marked HTML content from proofreading result
+  const getMarkedHtmlContent = useCallback((): string | null => {
+    if (!proofreadingData?.result || typeof proofreadingData.result !== "object") {
+      return null;
+    }
+    const result = proofreadingData.result as Record<string, unknown>;
+    
+    // Check direct properties
+    if (result.corrected_html && typeof result.corrected_html === "string") {
+      return result.corrected_html;
+    }
+    if (result.annotated_html && typeof result.annotated_html === "string") {
+      return result.annotated_html;
+    }
+    if (result.marked_html && typeof result.marked_html === "string") {
+      return result.marked_html;
+    }
+    
+    // Check nested result structure (result.result.corrected_html)
+    if (result.result && typeof result.result === "object") {
+      const nestedResult = result.result as Record<string, unknown>;
+      if (nestedResult.corrected_html && typeof nestedResult.corrected_html === "string") {
+        return nestedResult.corrected_html;
+      }
+      if (nestedResult.annotated_html && typeof nestedResult.annotated_html === "string") {
+        return nestedResult.annotated_html;
+      }
+      if (nestedResult.marked_html && typeof nestedResult.marked_html === "string") {
+        return nestedResult.marked_html;
+      }
+    }
+    
+    return null;
+  }, [proofreadingData]);
 
   const loadExistingCreativeData = useCallback(async () => {
     try {
@@ -431,6 +503,7 @@ export const useSingleCreativeViewModal = ({
         });
         setProofreadingData(result);
         setShowOriginal(false); // Reset to Marked view when new analysis completes
+        setShowOriginalHtmlFullscreen(false); // Reset HTML fullscreen to Marked view when new analysis completes
       } else if (isImg) {
         let imageUrl = creative.previewUrl || creative.url;
         if (!imageUrl) {
@@ -447,6 +520,7 @@ export const useSingleCreativeViewModal = ({
         });
         setProofreadingData(result);
         setShowOriginal(false); // Reset to Marked view when new analysis completes
+        setShowOriginalFullscreen(false); // Reset image fullscreen to Marked view when new analysis completes
       }
     } catch (error) {
       console.error("Proofreading failed:", error);
@@ -711,6 +785,10 @@ export const useSingleCreativeViewModal = ({
     isDragging,
     showOriginal,
     setShowOriginal,
+    showOriginalFullscreen,
+    setShowOriginalFullscreen,
+    showOriginalHtmlFullscreen,
+    setShowOriginalHtmlFullscreen,
     setIsEditing,
     setEditableFileName,
     setEditableNameOnly,
@@ -742,5 +820,7 @@ export const useSingleCreativeViewModal = ({
     toggleHtmlPreviewFullscreen: () =>
       setIsHtmlPreviewFullscreen(!isHtmlPreviewFullscreen),
     togglePreviewCollapse: () => setIsPreviewCollapsed(!isPreviewCollapsed),
+    getMarkedImageUrl,
+    getMarkedHtmlContent,
   };
 };

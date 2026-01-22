@@ -101,11 +101,35 @@ export const useSingleCreativeViewModal = ({
       !proofreadingData?.result ||
       typeof proofreadingData.result !== "object"
     ) {
+      console.warn("getMarkedImageUrl: No result or not an object", {
+        hasProofreadingData: !!proofreadingData,
+        hasResult: !!proofreadingData?.result,
+        resultType: typeof proofreadingData?.result,
+      });
       return null;
     }
     const result = proofreadingData.result as Record<string, unknown>;
 
+    const keys = Object.keys(result);
+    console.warn("getMarkedImageUrl: Keys in result:", keys);
+
+    // Log each key and its value type/preview
+    for (const key of keys) {
+      const val = result[key];
+      if (typeof val === "string") {
+        console.warn(
+          `  - ${key}: string (${val.length} chars) -> "${val.substring(0, 80)}..."`
+        );
+      } else {
+        console.warn(`  - ${key}: ${typeof val}`);
+      }
+    }
+
     // Check direct properties
+    if (result.marked_image && typeof result.marked_image === "string") {
+      console.warn("getMarkedImageUrl: Found marked_image");
+      return result.marked_image;
+    }
     if (
       result.corrected_file_url &&
       typeof result.corrected_file_url === "string"
@@ -116,18 +140,82 @@ export const useSingleCreativeViewModal = ({
       result.annotated_image_url &&
       typeof result.annotated_image_url === "string"
     ) {
+      console.warn("getMarkedImageUrl: Found annotated_image_url");
       return result.annotated_image_url;
     }
     if (
       result.marked_image_url &&
       typeof result.marked_image_url === "string"
     ) {
+      console.warn("getMarkedImageUrl: Found marked_image_url");
       return result.marked_image_url;
     }
+    // Check for annotated_image (base64 direct)
+    if (result.annotated_image && typeof result.annotated_image === "string") {
+      console.warn("getMarkedImageUrl: Found annotated_image");
+      return result.annotated_image;
+    }
+    // Check for output_image
+    if (result.output_image && typeof result.output_image === "string") {
+      console.warn("getMarkedImageUrl: Found output_image");
+      return result.output_image;
+    }
+    // Check for processed_image
+    if (result.processed_image && typeof result.processed_image === "string") {
+      console.warn("getMarkedImageUrl: Found processed_image");
+      return result.processed_image;
+    }
+    // Check for image (simple key)
+    if (result.image && typeof result.image === "string") {
+      console.warn("getMarkedImageUrl: Found image");
+      return result.image;
+    }
+    // Check for output (simple key)
+    if (result.output && typeof result.output === "string") {
+      console.warn("getMarkedImageUrl: Found output");
+      return result.output;
+    }
+    // Check for image_marked_urls array (from HTML with multiple images)
+    if (
+      Array.isArray(result.image_marked_urls) &&
+      result.image_marked_urls.length > 0
+    ) {
+      const firstMarkedUrl = result.image_marked_urls[0];
+      if (typeof firstMarkedUrl === "string") {
+        console.warn(
+          "getMarkedImageUrl: Found image_marked_urls array, using first"
+        );
+        return firstMarkedUrl;
+      }
+    }
 
-    // Check nested result structure (result.result.corrected_file_url)
+    // Fallback: find any string that looks like an image URL or base64
+    for (const key of keys) {
+      const value = result[key];
+      if (typeof value === "string") {
+        if (
+          value.startsWith("data:image/") ||
+          (value.startsWith("https://") &&
+            (value.includes(".png") ||
+              value.includes(".jpg") ||
+              value.includes(".jpeg") ||
+              value.includes("blob")))
+        ) {
+          console.warn(`getMarkedImageUrl: Found image in key '${key}'`);
+          return value;
+        }
+      }
+    }
+
+    // Check nested result structure (result.result.marked_image)
     if (result.result && typeof result.result === "object") {
       const nestedResult = result.result as Record<string, unknown>;
+      if (
+        nestedResult.marked_image &&
+        typeof nestedResult.marked_image === "string"
+      ) {
+        return nestedResult.marked_image;
+      }
       if (
         nestedResult.corrected_file_url &&
         typeof nestedResult.corrected_file_url === "string"
@@ -146,8 +234,24 @@ export const useSingleCreativeViewModal = ({
       ) {
         return nestedResult.marked_image_url;
       }
+      if (
+        nestedResult.annotated_image &&
+        typeof nestedResult.annotated_image === "string"
+      ) {
+        return nestedResult.annotated_image;
+      }
+      if (
+        nestedResult.output_image &&
+        typeof nestedResult.output_image === "string"
+      ) {
+        return nestedResult.output_image;
+      }
     }
 
+    console.warn(
+      "getMarkedImageUrl: No marked image found in result. Available keys:",
+      keys.join(", ")
+    );
     return null;
   }, [proofreadingData]);
 
@@ -735,18 +839,36 @@ export const useSingleCreativeViewModal = ({
       console.error("Proofreading failed:", error);
       if (pollRef.current) clearInterval(pollRef.current);
       setIsAnalyzing(false);
-      toast.error("Proofreading failed", {
-        description:
-          error instanceof Error ? error.message : "Please try again.",
-      });
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Please try again.";
+      const isServiceUnavailable =
+        errorMessage.includes("temporarily unavailable") ||
+        errorMessage.includes("502") ||
+        errorMessage.includes("503") ||
+        errorMessage.includes("504") ||
+        errorMessage.includes("starting up");
+
+      toast.error(
+        isServiceUnavailable ? "AI Service Unavailable" : "Proofreading failed",
+        {
+          description: isServiceUnavailable
+            ? "The AI service is starting up. Please wait a moment and try again."
+            : errorMessage,
+          duration: isServiceUnavailable ? 8000 : 5000,
+        }
+      );
+
       setProofreadingData({
         success: false,
         issues: [],
         suggestions: [
           {
-            icon: "info",
-            type: "Notice",
-            description: "Proofreading failed. Please try again.",
+            icon: isServiceUnavailable ? "info" : "alert",
+            type: isServiceUnavailable ? "Notice" : "Error",
+            description: isServiceUnavailable
+              ? "The AI service is temporarily unavailable. It may be starting up. Please wait a moment and try again."
+              : "Proofreading failed. Please try again.",
           },
         ],
         qualityScore: {

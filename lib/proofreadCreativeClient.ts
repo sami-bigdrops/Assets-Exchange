@@ -55,8 +55,20 @@ export async function proofreadCreative(
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Proofreading failed");
+      let errorMessage = "Proofreading failed";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch {
+        const errorText = await response.text();
+        try {
+          const parsed = JSON.parse(errorText);
+          errorMessage = parsed.error || parsed.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -80,8 +92,20 @@ export async function checkProofreadStatus(
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Status check failed");
+      let errorMessage = "Status check failed";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch {
+        const errorText = await response.text();
+        try {
+          const parsed = JSON.parse(errorText);
+          errorMessage = parsed.error || parsed.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();

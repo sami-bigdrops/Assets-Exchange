@@ -597,12 +597,6 @@ export const GrammarService = {
               // Save modified HTML content for the result
               modifiedHtmlContent = htmlText;
               console.warn(`HTML updated with marked images`);
-            } else {
-              // Images found but none processed successfully, use original HTML
-              modifiedHtmlContent = originalHtmlText;
-              console.warn(
-                "Images found but none processed, using original HTML"
-              );
             }
 
             console.warn(

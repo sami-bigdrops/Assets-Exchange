@@ -261,54 +261,31 @@ export const useSingleCreativeViewModal = ({
       !proofreadingData?.result ||
       typeof proofreadingData.result !== "object"
     ) {
-      console.warn("getMarkedHtmlContent: No proofreadingData.result");
       return null;
     }
     const result = proofreadingData.result as Record<string, unknown>;
-    const resultKeys = Object.keys(result);
-    console.warn("getMarkedHtmlContent: result keys:", resultKeys.join(", "));
 
     // Check direct properties - including output_content from grammar AI
     if (result.output_content && typeof result.output_content === "string") {
-      console.warn(
-        "getMarkedHtmlContent: Found output_content, length:",
-        result.output_content.length
-      );
       return result.output_content;
     }
     if (result.corrected_html && typeof result.corrected_html === "string") {
-      console.warn("getMarkedHtmlContent: Found corrected_html");
       return result.corrected_html;
     }
     if (result.annotated_html && typeof result.annotated_html === "string") {
-      console.warn("getMarkedHtmlContent: Found annotated_html");
       return result.annotated_html;
     }
     if (result.marked_html && typeof result.marked_html === "string") {
-      console.warn(
-        "getMarkedHtmlContent: Found marked_html, length:",
-        result.marked_html.length
-      );
       return result.marked_html;
     }
 
     // Check nested result structure
     if (result.result && typeof result.result === "object") {
       const nestedResult = result.result as Record<string, unknown>;
-      const nestedKeys = Object.keys(nestedResult);
-      console.warn(
-        "getMarkedHtmlContent: nested result keys:",
-        nestedKeys.join(", ")
-      );
-
       if (
         nestedResult.output_content &&
         typeof nestedResult.output_content === "string"
       ) {
-        console.warn(
-          "getMarkedHtmlContent: Found nested output_content, length:",
-          nestedResult.output_content.length
-        );
         return nestedResult.output_content;
       }
       if (
@@ -327,15 +304,10 @@ export const useSingleCreativeViewModal = ({
         nestedResult.marked_html &&
         typeof nestedResult.marked_html === "string"
       ) {
-        console.warn(
-          "getMarkedHtmlContent: Found nested marked_html, length:",
-          nestedResult.marked_html.length
-        );
         return nestedResult.marked_html;
       }
     }
 
-    console.warn("getMarkedHtmlContent: No HTML content found in result");
     return null;
   }, [proofreadingData]);
 

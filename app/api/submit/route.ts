@@ -1,10 +1,20 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getOffer } from "@/features/admin/services/offer.service";
 import { db } from "@/lib/db";
-import { creativeRequests } from "@/lib/schema";
+import { creativeRequests, creatives } from "@/lib/schema";
+
+const fileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+  size: z.number(),
+  type: z.string(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 
 const submitSchema = z.object({
   affiliateId: z.string().min(1),
@@ -18,6 +28,7 @@ const submitSchema = z.object({
   fromLines: z.string().optional(),
   subjectLines: z.string().optional(),
   priority: z.string().optional(),
+  files: z.array(fileSchema).optional(),
 });
 
 function countLines(text: string | undefined): number {
@@ -58,7 +69,7 @@ export async function POST(req: NextRequest) {
         offerId: data.offerId,
         offerName: offer.offerName,
         creativeType: data.creativeType,
-        creativeCount: 1,
+        creativeCount: data.files?.length || 1,
         fromLinesCount,
         subjectLinesCount,
         publisherId,
@@ -76,6 +87,28 @@ export async function POST(req: NextRequest) {
         adminStatus: "pending",
       })
       .returning({ id: creativeRequests.id });
+
+    if (data.files && data.files.length > 0) {
+      const creativeRecords = data.files.map((file) => ({
+        id: createId(),
+        requestId: request.id,
+        name: file.name,
+        url: file.url,
+        type: file.type,
+        size: file.size,
+        format: file.type.includes("image")
+          ? "image"
+          : file.type.includes("html")
+            ? "html"
+            : "other",
+        status: "pending",
+        metadata: file.metadata || {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+
+      await db.insert(creatives).values(creativeRecords);
+    }
 
     return NextResponse.json(
       { success: true, requestId: request.id },

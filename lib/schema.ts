@@ -1,4 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
+import { relations } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -159,6 +160,13 @@ export const creativeRequests = pgTable(
     submittedAtIdx: index("idx_submitted_at").on(table.submittedAt),
     offerIdIdx: index("idx_offer_id").on(table.offerId),
     advertiserIdIdx: index("idx_advertiser_id").on(table.advertiserId),
+  })
+);
+
+export const creativeRequestsRelations = relations(
+  creativeRequests,
+  ({ many }) => ({
+    creatives: many(creatives),
   })
 );
 
@@ -538,6 +546,52 @@ export const creativeMetadata = pgTable(
     updatedAtIdx: index("idx_creative_metadata_updated_at").on(table.updatedAt),
   })
 );
+
+export const creatives = pgTable(
+  "creatives",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    requestId: text("request_id").references(() => creativeRequests.id, {
+      onDelete: "cascade",
+    }),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    type: text("type").notNull(),
+    size: integer("size").notNull(),
+    format: text("format"),
+    status: text("status").notNull().default("pending"),
+    metadata: jsonb("metadata").$type<{
+      proofreadingData?: {
+        success?: boolean;
+        issues?: Array<unknown>;
+        suggestions?: Array<unknown>;
+        qualityScore?: number;
+        result?: Record<string, unknown>;
+      };
+      lastSaved?: string;
+      lastGenerated?: string;
+      lastProofread?: string;
+      creativeType?: string;
+      fileName?: string;
+    }>(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => ({
+    requestIdIdx: index("idx_creatives_request_id").on(table.requestId),
+    statusIdx: index("idx_creatives_status").on(table.status),
+    createdAtIdx: index("idx_creatives_created_at").on(table.createdAt),
+  })
+);
+
+export const creativesRelations = relations(creatives, ({ one }) => ({
+  request: one(creativeRequests, {
+    fields: [creatives.requestId],
+    references: [creativeRequests.id],
+  }),
+}));
 
 export const externalTasks = pgTable(
   "external_tasks",

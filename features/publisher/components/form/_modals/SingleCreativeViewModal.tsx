@@ -51,6 +51,10 @@ interface SingleCreativeViewModalProps {
     fileId: string,
     metadata: { fromLines?: string; subjectLines?: string }
   ) => void;
+  onFileUpdate?: (updates: {
+    url?: string;
+    metadata?: { fromLines?: string; subjectLines?: string };
+  }) => void;
   showAdditionalNotes?: boolean;
   creativeType?: string;
 }
@@ -72,6 +76,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
   creative,
   onFileNameChange,
   onMetadataChange,
+  onFileUpdate,
   showAdditionalNotes = false,
   creativeType = "email",
 }) => {
@@ -84,6 +89,31 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
     showAdditionalNotes,
     creativeType,
   });
+
+  const { isProofreadComplete, proofreadResult } = viewModel;
+
+  React.useEffect(() => {
+    if (isProofreadComplete && proofreadResult && onFileUpdate) {
+      onFileUpdate({
+        url: proofreadResult.marked_image || creative?.url,
+        metadata: {
+          proofreadingData: {
+            issues: proofreadResult.issues || [],
+            suggestions: proofreadResult.suggestions || [],
+            qualityScore: proofreadResult.qualityScore,
+            success: proofreadResult.success,
+          },
+          ai_issues: proofreadResult.issues || [],
+          ai_score:
+            proofreadResult.qualityScore?.grammar ||
+            (proofreadResult.issues?.length === 0 ? 100 : 80),
+          ai_status:
+            (proofreadResult.issues?.length || 0) === 0 ? "clean" : "flagged",
+          last_checked: new Date().toISOString(),
+        },
+      });
+    }
+  }, [isProofreadComplete, proofreadResult, onFileUpdate, creative?.url]);
 
   if (!isOpen) return null;
 
@@ -369,15 +399,18 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                                   Marked View
                                 </h4>
                                 <p className="text-sm text-gray-600">
-                                  Marked image is being processed. Please wait...
+                                  Marked image is being processed. Please
+                                  wait...
                                 </p>
                                 {viewModel.proofreadingData.issues &&
-                                  viewModel.proofreadingData.issues.length > 0 && (
+                                  viewModel.proofreadingData.issues.length >
+                                    0 && (
                                     <div className="mt-4 flex items-center justify-center gap-2">
                                       <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
                                         <X className="h-3 w-3" />
                                         {
-                                          viewModel.proofreadingData.issues.length
+                                          viewModel.proofreadingData.issues
+                                            .length
                                         }{" "}
                                         Issue
                                         {viewModel.proofreadingData.issues
@@ -407,7 +440,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                     viewModel.proofreadingData && !viewModel.showOriginal ? (
                       // Marked view - show the marked HTML from API
                       (() => {
-                        const markedHtmlContent = viewModel.getMarkedHtmlContent();
+                        const markedHtmlContent =
+                          viewModel.getMarkedHtmlContent();
                         return markedHtmlContent ? (
                           <iframe
                             key={`marked-${viewModel.previewKey}`}
@@ -430,14 +464,24 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                                 <p className="text-sm text-gray-600">
                                   Marked HTML is being processed. Please wait...
                                 </p>
-                                {viewModel.proofreadingData.issues && viewModel.proofreadingData.issues.length > 0 && (
-                                  <div className="mt-4 flex items-center justify-center gap-2">
-                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                                      <X className="h-3 w-3" />
-                                      {viewModel.proofreadingData.issues.length} Issue{viewModel.proofreadingData.issues.length !== 1 ? 's' : ''}
-                                    </span>
-                                  </div>
-                                )}
+                                {viewModel.proofreadingData.issues &&
+                                  viewModel.proofreadingData.issues.length >
+                                    0 && (
+                                    <div className="mt-4 flex items-center justify-center gap-2">
+                                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                                        <X className="h-3 w-3" />
+                                        {
+                                          viewModel.proofreadingData.issues
+                                            .length
+                                        }{" "}
+                                        Issue
+                                        {viewModel.proofreadingData.issues
+                                          .length !== 1
+                                          ? "s"
+                                          : ""}
+                                      </span>
+                                    </div>
+                                  )}
                               </div>
                             </div>
                           </div>
@@ -774,7 +818,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             </h4>
                             <div className="space-y-2">
                               {viewModel.proofreadingData.suggestions &&
-                              viewModel.proofreadingData.suggestions.length > 0 ? (
+                              viewModel.proofreadingData.suggestions.length >
+                                0 ? (
                                 viewModel.proofreadingData.suggestions.map(
                                   (suggestion: unknown, index: number) => {
                                     const suggestionData = suggestion as {
@@ -823,7 +868,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                                   Grammar
                                 </p>
                                 <p className="text-lg font-bold text-purple-800">
-                                  {viewModel.proofreadingData.qualityScore?.grammar ?? 0}
+                                  {viewModel.proofreadingData.qualityScore
+                                    ?.grammar ?? 0}
                                   /100
                                 </p>
                               </div>
@@ -832,7 +878,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                                   Readability
                                 </p>
                                 <p className="text-lg font-bold text-purple-800">
-                                  {viewModel.proofreadingData.qualityScore?.readability ?? 0}
+                                  {viewModel.proofreadingData.qualityScore
+                                    ?.readability ?? 0}
                                   /100
                                 </p>
                               </div>
@@ -841,7 +888,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                                   Conversion
                                 </p>
                                 <p className="text-lg font-bold text-purple-800">
-                                  {viewModel.proofreadingData.qualityScore?.conversion ?? 0}
+                                  {viewModel.proofreadingData.qualityScore
+                                    ?.conversion ?? 0}
                                   /100
                                 </p>
                               </div>
@@ -850,7 +898,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                                   Brand Alignment
                                 </p>
                                 <p className="text-lg font-bold text-purple-800">
-                                  {viewModel.proofreadingData.qualityScore?.brandAlignment ?? 0}
+                                  {viewModel.proofreadingData.qualityScore
+                                    ?.brandAlignment ?? 0}
                                   /100
                                 </p>
                               </div>
@@ -1016,12 +1065,19 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={
-                      viewModel.proofreadingData && !viewModel.showOriginalFullscreen
-                        ? viewModel.getMarkedImageUrl() || creative.previewUrl || creative.url
+                      viewModel.proofreadingData &&
+                      !viewModel.showOriginalFullscreen
+                        ? (() => {
+                            const markedUrl = viewModel.getMarkedImageUrl();
+                            return (
+                              markedUrl || creative.previewUrl || creative.url
+                            );
+                          })()
                         : creative.previewUrl || creative.url
                     }
                     alt={
-                      viewModel.proofreadingData && !viewModel.showOriginalFullscreen
+                      viewModel.proofreadingData &&
+                      !viewModel.showOriginalFullscreen
                         ? `Marked ${creative.name}`
                         : creative.name
                     }
@@ -1054,7 +1110,9 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
           }}
         >
           <DialogContent className="max-w-screen! max-h-screen w-screen h-screen m-0 p-0 rounded-none bg-black/50 backdrop-blur-md">
-            <DialogTitle className="sr-only">Fullscreen HTML Preview - {creative.name}</DialogTitle>
+            <DialogTitle className="sr-only">
+              Fullscreen HTML Preview - {creative.name}
+            </DialogTitle>
             <div className="flex flex-col h-full w-full relative">
               <DialogHeader className="shrink-0 border-b border-gray-700 p-4 bg-black/30 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
@@ -1107,7 +1165,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                 </div>
               </DialogHeader>
               <DialogBody className="flex-1 overflow-hidden p-0 max-w-full! max-h-full!">
-                {viewModel.proofreadingData && !viewModel.showOriginalHtmlFullscreen ? (
+                {viewModel.proofreadingData &&
+                !viewModel.showOriginalHtmlFullscreen ? (
                   // Marked view - show the marked HTML from API
                   (() => {
                     const markedHtmlContent = viewModel.getMarkedHtmlContent();
@@ -1133,14 +1192,22 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             <p className="text-sm text-gray-600">
                               Marked HTML is being processed. Please wait...
                             </p>
-                            {viewModel.proofreadingData.issues && viewModel.proofreadingData.issues.length > 0 && (
-                              <div className="mt-4 flex items-center justify-center gap-2">
-                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                                  <X className="h-3 w-3" />
-                                  {viewModel.proofreadingData.issues.length} Issue{viewModel.proofreadingData.issues.length !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                            )}
+                            {viewModel.proofreadingData.issues &&
+                              viewModel.proofreadingData.issues.length > 0 && (
+                                <div className="mt-4 flex items-center justify-center gap-2">
+                                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                                    <X className="h-3 w-3" />
+                                    {
+                                      viewModel.proofreadingData.issues.length
+                                    }{" "}
+                                    Issue
+                                    {viewModel.proofreadingData.issues
+                                      .length !== 1
+                                      ? "s"
+                                      : ""}
+                                  </span>
+                                </div>
+                              )}
                           </div>
                         </div>
                       </div>
@@ -1176,7 +1243,9 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
           }}
         >
           <DialogContent className="max-w-screen! max-h-screen w-screen h-screen m-0 p-0 rounded-none">
-            <DialogTitle className="sr-only">Fullscreen HTML Editor - {creative.name}</DialogTitle>
+            <DialogTitle className="sr-only">
+              Fullscreen HTML Editor - {creative.name}
+            </DialogTitle>
             <div className="flex flex-col h-full w-full">
               <DialogHeader className="shrink-0 border-b border-gray-200 p-4 bg-white">
                 <div className="flex items-center justify-between">
@@ -1242,7 +1311,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                         }}
                         placeholder="Edit your HTML code here..."
                         className="w-full h-full resize-none text-sm font-mono border-gray-300 focus:border-orange-500 focus:ring-orange-500/20 min-h-full"
-                        style={{ minHeight: '100%' }}
+                        style={{ minHeight: "100%" }}
                       />
                     </div>
                   </div>
@@ -1265,7 +1334,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                           title="HTML Editor Live Preview"
                           className="w-full h-full border-0"
                           sandbox="allow-scripts allow-same-origin"
-                          style={{ minHeight: '100%' }}
+                          style={{ minHeight: "100%" }}
                         />
                       </div>
                     </div>

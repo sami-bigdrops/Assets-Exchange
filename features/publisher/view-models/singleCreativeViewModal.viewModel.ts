@@ -97,55 +97,82 @@ export const useSingleCreativeViewModal = ({
 
   // Helper function to extract marked image URL from proofreading result
   const getMarkedImageUrl = useCallback((): string | null => {
+    if (!proofreadingData) {
+      return null;
+    }
+
+    const originalUrl = creative.url || creative.previewUrl || "";
+
+    // First check if marked_image is at top level of proofreadingData
     if (
-      !proofreadingData?.result ||
+      proofreadingData.marked_image &&
+      typeof proofreadingData.marked_image === "string" &&
+      proofreadingData.marked_image !== originalUrl
+    ) {
+      return proofreadingData.marked_image;
+    }
+
+    // Then check result object
+    if (
+      !proofreadingData.result ||
       typeof proofreadingData.result !== "object"
     ) {
       return null;
     }
     const result = proofreadingData.result as Record<string, unknown>;
 
-    // Check direct properties
-    if (result.marked_image && typeof result.marked_image === "string") {
+    // Check direct properties in result - prioritize marked_image fields
+    if (
+      result.marked_image &&
+      typeof result.marked_image === "string" &&
+      result.marked_image !== originalUrl
+    ) {
       return result.marked_image;
     }
     if (
-      result.corrected_file_url &&
-      typeof result.corrected_file_url === "string"
+      result.marked_image_url &&
+      typeof result.marked_image_url === "string" &&
+      result.marked_image_url !== originalUrl
     ) {
-      return result.corrected_file_url;
+      return result.marked_image_url;
     }
     if (
       result.annotated_image_url &&
-      typeof result.annotated_image_url === "string"
+      typeof result.annotated_image_url === "string" &&
+      result.annotated_image_url !== originalUrl
     ) {
       return result.annotated_image_url;
     }
     if (
-      result.marked_image_url &&
-      typeof result.marked_image_url === "string"
+      result.corrected_file_url &&
+      typeof result.corrected_file_url === "string" &&
+      result.corrected_file_url !== originalUrl
     ) {
-      return result.marked_image_url;
+      return result.corrected_file_url;
     }
     // Check for annotated_image (base64 direct)
-    if (result.annotated_image && typeof result.annotated_image === "string") {
+    if (
+      result.annotated_image &&
+      typeof result.annotated_image === "string" &&
+      result.annotated_image !== originalUrl
+    ) {
       return result.annotated_image;
     }
     // Check for output_image
-    if (result.output_image && typeof result.output_image === "string") {
+    if (
+      result.output_image &&
+      typeof result.output_image === "string" &&
+      result.output_image !== originalUrl
+    ) {
       return result.output_image;
     }
     // Check for processed_image
-    if (result.processed_image && typeof result.processed_image === "string") {
+    if (
+      result.processed_image &&
+      typeof result.processed_image === "string" &&
+      result.processed_image !== originalUrl
+    ) {
       return result.processed_image;
-    }
-    // Check for image (simple key)
-    if (result.image && typeof result.image === "string") {
-      return result.image;
-    }
-    // Check for output (simple key)
-    if (result.output && typeof result.output === "string") {
-      return result.output;
     }
     // Check for image_marked_urls array (from HTML with multiple images)
     if (
@@ -153,26 +180,11 @@ export const useSingleCreativeViewModal = ({
       result.image_marked_urls.length > 0
     ) {
       const firstMarkedUrl = result.image_marked_urls[0];
-      if (typeof firstMarkedUrl === "string") {
+      if (
+        typeof firstMarkedUrl === "string" &&
+        firstMarkedUrl !== originalUrl
+      ) {
         return firstMarkedUrl;
-      }
-    }
-
-    // Fallback: find any string that looks like an image URL or base64
-    const allKeys = Object.keys(result);
-    for (const key of allKeys) {
-      const value = result[key];
-      if (typeof value === "string") {
-        if (
-          value.startsWith("data:image/") ||
-          (value.startsWith("https://") &&
-            (value.includes(".png") ||
-              value.includes(".jpg") ||
-              value.includes(".jpeg") ||
-              value.includes("blob")))
-        ) {
-          return value;
-        }
       }
     }
 
@@ -181,44 +193,70 @@ export const useSingleCreativeViewModal = ({
       const nestedResult = result.result as Record<string, unknown>;
       if (
         nestedResult.marked_image &&
-        typeof nestedResult.marked_image === "string"
+        typeof nestedResult.marked_image === "string" &&
+        nestedResult.marked_image !== originalUrl
       ) {
         return nestedResult.marked_image;
       }
       if (
-        nestedResult.corrected_file_url &&
-        typeof nestedResult.corrected_file_url === "string"
-      ) {
-        return nestedResult.corrected_file_url;
-      }
-      if (
-        nestedResult.annotated_image_url &&
-        typeof nestedResult.annotated_image_url === "string"
-      ) {
-        return nestedResult.annotated_image_url;
-      }
-      if (
         nestedResult.marked_image_url &&
-        typeof nestedResult.marked_image_url === "string"
+        typeof nestedResult.marked_image_url === "string" &&
+        nestedResult.marked_image_url !== originalUrl
       ) {
         return nestedResult.marked_image_url;
       }
       if (
+        nestedResult.annotated_image_url &&
+        typeof nestedResult.annotated_image_url === "string" &&
+        nestedResult.annotated_image_url !== originalUrl
+      ) {
+        return nestedResult.annotated_image_url;
+      }
+      if (
+        nestedResult.corrected_file_url &&
+        typeof nestedResult.corrected_file_url === "string" &&
+        nestedResult.corrected_file_url !== originalUrl
+      ) {
+        return nestedResult.corrected_file_url;
+      }
+      if (
         nestedResult.annotated_image &&
-        typeof nestedResult.annotated_image === "string"
+        typeof nestedResult.annotated_image === "string" &&
+        nestedResult.annotated_image !== originalUrl
       ) {
         return nestedResult.annotated_image;
       }
       if (
         nestedResult.output_image &&
-        typeof nestedResult.output_image === "string"
+        typeof nestedResult.output_image === "string" &&
+        nestedResult.output_image !== originalUrl
       ) {
         return nestedResult.output_image;
       }
     }
 
+    // Fallback: find any string that looks like an image URL or base64
+    // But exclude the original URL
+    const allKeys = Object.keys(result);
+    for (const key of allKeys) {
+      const value = result[key];
+      if (
+        typeof value === "string" &&
+        value !== originalUrl &&
+        (value.startsWith("data:image/") ||
+          (value.startsWith("https://") &&
+            (value.includes(".png") ||
+              value.includes(".jpg") ||
+              value.includes(".jpeg") ||
+              value.includes("blob") ||
+              value.includes("proofread"))))
+      ) {
+        return value;
+      }
+    }
+
     return null;
-  }, [proofreadingData]);
+  }, [proofreadingData, creative.url, creative.previewUrl]);
 
   // Helper function to extract marked HTML content from proofreading result
   const getMarkedHtmlContent = useCallback((): string | null => {
@@ -1206,6 +1244,17 @@ export const useSingleCreativeViewModal = ({
     []
   );
 
+  const isProofreadComplete = !!proofreadingData && !isAnalyzing;
+  const proofreadResult = proofreadingData
+    ? {
+        issues: proofreadingData.issues || [],
+        suggestions: proofreadingData.suggestions || [],
+        qualityScore: proofreadingData.qualityScore,
+        marked_image: getMarkedImageUrl(),
+        success: proofreadingData.success,
+      }
+    : null;
+
   return {
     editableFileName,
     editableNameOnly,
@@ -1265,5 +1314,7 @@ export const useSingleCreativeViewModal = ({
     togglePreviewCollapse: () => setIsPreviewCollapsed(!isPreviewCollapsed),
     getMarkedImageUrl,
     getMarkedHtmlContent,
+    isProofreadComplete,
+    proofreadResult,
   };
 };

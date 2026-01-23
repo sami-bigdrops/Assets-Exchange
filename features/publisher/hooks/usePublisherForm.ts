@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { loadFormState, saveFormState, clearFormState } from "../utils/autoSave";
+
+import {
+  loadFormState,
+  saveFormState,
+  clearFormState,
+} from "../utils/autoSave";
+import { type SavedFileMeta } from "../utils/autoSave";
 
 export interface PublisherFormData {
   affiliateId: string;
@@ -23,18 +29,18 @@ export const usePublisherForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<PublisherFormData>(
     savedState?.formData || {
-    affiliateId: "",
-    companyName: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    telegramId: "",
-    offerId: "",
-    creativeType: "",
-    additionalNotes: "",
-    fromLines: "",
-    subjectLines: "",
-    priority: "medium",
+      affiliateId: "",
+      companyName: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      telegramId: "",
+      offerId: "",
+      creativeType: "",
+      additionalNotes: "",
+      fromLines: "",
+      subjectLines: "",
+      priority: "medium",
     }
   );
 
@@ -68,12 +74,34 @@ export const usePublisherForm = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      const savedFilesState = loadFilesState();
+      const files = savedFilesState?.files || [];
+
+      const payload = {
+        ...formData,
+        ...(files.length > 0
+          ? {
+              files: files.map((f: SavedFileMeta) => ({
+                id: f.id,
+                name: f.name,
+                url: f.url,
+                size: f.size,
+                type: f.type,
+                metadata: {
+                  fromLines: f.fromLines,
+                  subjectLines: f.subjectLines,
+                },
+              })),
+            }
+          : {}),
+      };
+
       const response = await fetch("/api/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -82,10 +110,10 @@ export const usePublisherForm = () => {
       }
 
       const result = await response.json();
-      
+
       // Clear saved state on successful submission
       clearFormState();
-      
+
       return result;
     } catch (error) {
       console.error("Submission error:", error);

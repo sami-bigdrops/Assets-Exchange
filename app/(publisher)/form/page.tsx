@@ -11,7 +11,7 @@ export default function FormPage() {
       className="flex flex-col items-center justify-start min-h-screen gap-2"
       style={{ backgroundColor: variables.colors.background }}
     >
-      <div className="logo flex items-center justify-center my-8 h-auto w-[190px] md:w-[220px] lg:w-[260px] ">
+      <div className="logo flex items-center justify-center my-8 h-auto w-[190px] md:w-[220px] lg:w-[260px]">
         <Image
           src={variables.logo.path}
           alt={variables.logo.alt}

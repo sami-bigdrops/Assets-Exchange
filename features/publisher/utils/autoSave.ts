@@ -24,9 +24,11 @@ export interface SavedFileMeta {
   hasAssets?: boolean;
   fromLines?: string;
   subjectLines?: string;
+  additionalNotes?: string;
   metadata?: {
     fromLines?: string;
     subjectLines?: string;
+    additionalNotes?: string;
     proofreadingData?: {
       issues?: Array<unknown>;
       suggestions?: Array<unknown>;
@@ -152,6 +154,10 @@ const optimizeFileMeta = (file: SavedFileMeta): SavedFileMeta => {
       file.subjectLines && file.subjectLines.length > 1000
         ? file.subjectLines.substring(0, 1000)
         : file.subjectLines,
+    additionalNotes:
+      file.additionalNotes && file.additionalNotes.length > 5000
+        ? file.additionalNotes.substring(0, 5000)
+        : file.additionalNotes,
   };
   return optimized;
 };

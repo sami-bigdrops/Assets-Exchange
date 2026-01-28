@@ -36,7 +36,11 @@ interface UseSingleCreativeViewModalProps {
   onFileNameChange?: (fileId: string, newFileName: string) => void;
   onMetadataChange?: (
     fileId: string,
-    metadata: { fromLines?: string; subjectLines?: string }
+    metadata: {
+      fromLines?: string;
+      subjectLines?: string;
+      additionalNotes?: string;
+    }
   ) => void;
   showAdditionalNotes?: boolean;
   creativeType?: string;
@@ -588,6 +592,7 @@ export const useSingleCreativeViewModal = ({
       onMetadataChange?.(creative.id, {
         fromLines,
         subjectLines,
+        additionalNotes,
       });
       onClose();
     } catch (error) {

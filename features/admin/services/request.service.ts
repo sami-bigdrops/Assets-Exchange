@@ -51,7 +51,6 @@ export async function getAdminRequests({
         creativeType: creativeRequests.creativeType,
         advertiserName: creativeRequests.advertiserName,
         priority: creativeRequests.priority,
-        // Added fields for detailed view
         offerId: offers.everflowOfferId,
         creativeCount: creativeRequests.creativeCount,
         fromLinesCount: creativeRequests.fromLinesCount,
@@ -74,8 +73,25 @@ export async function getAdminRequests({
       .where(and(...where)),
   ]);
 
+  const formattedRows = rows.map((row) => ({
+    ...row,
+    date: row.submittedAt
+      ? new Date(row.submittedAt).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }) +
+        ", " +
+        new Date(row.submittedAt).toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })
+      : "",
+  }));
+
   return {
-    data: rows,
+    data: formattedRows,
     meta: {
       page,
       limit,

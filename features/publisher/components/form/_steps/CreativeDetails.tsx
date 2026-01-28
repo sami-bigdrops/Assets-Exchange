@@ -40,6 +40,7 @@ type UploadedFileMeta = {
   hasAssets?: boolean;
   fromLines?: string;
   subjectLines?: string;
+  additionalNotes?: string;
   metadata?: {
     fromLines?: string;
     subjectLines?: string;
@@ -1106,6 +1107,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                         ...file,
                         fromLines: metadata.fromLines,
                         subjectLines: metadata.subjectLines,
+                        additionalNotes: metadata.additionalNotes,
                       }
                     : file
                 )
@@ -1116,6 +1118,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                   ...selectedCreative,
                   fromLines: metadata.fromLines,
                   subjectLines: metadata.subjectLines,
+                  additionalNotes: metadata.additionalNotes,
                 });
               }
             }}
@@ -1140,7 +1143,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                 });
               }
             }}
-            showAdditionalNotes={false}
+            showAdditionalNotes={true}
             creativeType={formData.creativeType}
           />
         )}

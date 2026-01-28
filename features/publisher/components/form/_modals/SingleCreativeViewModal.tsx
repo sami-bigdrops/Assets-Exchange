@@ -50,7 +50,11 @@ interface SingleCreativeViewModalProps {
   onFileNameChange?: (fileId: string, newFileName: string) => void;
   onMetadataChange?: (
     fileId: string,
-    metadata: { fromLines?: string; subjectLines?: string }
+    metadata: {
+      fromLines?: string;
+      subjectLines?: string;
+      additionalNotes?: string;
+    }
   ) => void;
   onFileUpdate?: (updates: {
     url?: string;
@@ -176,7 +180,6 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   <div className="shrink-0">
                     {isImage ? (
-                       
                       <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
                     ) : isHtml ? (
                       <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
@@ -951,39 +954,41 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                     </div>
 
                     {/* Additional Notes */}
-                    <div className="p-4 sm:p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200 mb-4 gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-indigo-100 rounded-lg">
-                            <FileText className="h-5 w-5 text-indigo-600" />
+                    {showAdditionalNotes && (
+                      <div className="p-4 sm:p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200 mb-4 gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-100 rounded-lg">
+                              <FileText className="h-5 w-5 text-indigo-600" />
+                            </div>
+                            <h3 className="text-sm sm:text-lg font-semibold text-gray-800">
+                              Additional Notes
+                            </h3>
                           </div>
-                          <h3 className="text-sm sm:text-lg font-semibold text-gray-800">
-                            Additional Notes
-                          </h3>
                         </div>
-                      </div>
 
-                      <div className="space-y-4">
-                        <div>
-                          <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block">
-                            Notes & Comments
-                          </Label>
-                          <Textarea
-                            value={viewModel.additionalNotes}
-                            onChange={(e) =>
-                              viewModel.setAdditionalNotes(e.target.value)
-                            }
-                            placeholder="Add any additional notes, comments, or instructions for this creative..."
-                            rows={4}
-                            className="w-full resize-none text-xs sm:text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
-                          />
-                          <p className="text-xs text-gray-500 mt-2">
-                            Use this space to add any specific notes,
-                            instructions, or comments about this creative.
-                          </p>
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block">
+                              Notes & Comments
+                            </Label>
+                            <Textarea
+                              value={viewModel.additionalNotes}
+                              onChange={(e) =>
+                                viewModel.setAdditionalNotes(e.target.value)
+                              }
+                              placeholder="Add any additional notes, comments, or instructions for this creative..."
+                              rows={4}
+                              className="w-full resize-none text-xs sm:text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                              Use this space to add any specific notes,
+                              instructions, or comments about this creative.
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>

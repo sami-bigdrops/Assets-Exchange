@@ -93,6 +93,7 @@ export const usePublisherForm = () => {
                 metadata: f.metadata || {
                   fromLines: f.fromLines,
                   subjectLines: f.subjectLines,
+                  additionalNotes: f.additionalNotes,
                 },
               })),
             }

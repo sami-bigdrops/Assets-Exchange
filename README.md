@@ -20,6 +20,11 @@ A Next.js application for asset exchange management with role-based access contr
 - **Font**: Inter (via Google Fonts)
 - **Build Tool**: Turbopack
 - **Architecture**: MVVM (Model-View-ViewModel)
+- **Server Actions**: Next.js server actions for server-side data access (e.g. admin View Request)
+- **File Storage**: Vercel Blob for uploads; JSZip for ZIP handling
+- **Rate Limiting**: Upstash Redis with @upstash/ratelimit
+- **Notifications**: In-app workflow events; Telegram integration (optional)
+- **Toasts**: Sonner for toast notifications
 - **Testing**: Jest with React Testing Library
 - **Code Quality**: ESLint + Prettier with Husky pre-commit hooks
 - **Security**: CORS, CSP headers, and robots.txt configured
@@ -61,7 +66,7 @@ A Next.js application for asset exchange management with role-based access contr
    pnpm db:migrate
    ```
 
-4. Seed admin user (optional):
+4. Seed admin user (optional; runs `seed-scripts/SeedAdminServer.ts`):
    ```bash
    pnpm seed:admin
    ```
@@ -74,9 +79,13 @@ Run the development server:
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+For Turbopack (faster local builds):
 
-The page auto-updates as you edit files in the `app` directory.
+```bash
+pnpm dev:turbo
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser. The page auto-updates as you edit files in the `app` directory.
 
 ### Build
 
@@ -155,65 +164,90 @@ pnpm seed:advertiser
 assets-exchange/
 ├── app/                          # Next.js App Router
 │   ├── (dashboard)/              # Protected dashboard routes
-│   │   ├── (admin)/              # Admin role routes
+│   │   ├── (administrator)/      # Advertisers, offers, ops
 │   │   ├── (advertiser)/         # Advertiser role routes
-│   │   ├── (administrator)/      # Administrator role routes
-│   │   ├── dashboard/            # Dashboard page
-│   │   └── layout.tsx            # Shared dashboard layout
-│   ├── publisher/                # Public publisher routes (no auth)
-│   ├── auth/                     # Authentication routes
-│   ├── unauthorized/             # Access denied page
-│   ├── globals.css               # Global styles and theme
-│   ├── layout.tsx                # Root layout
+│   │   ├── creatives/            # Manage creatives page
+│   │   ├── dashboard/            # Role-based dashboard
+│   │   ├── publishers/          # Publishers page
+│   │   ├── requests/             # Admin requests page
+│   │   ├── response/             # Advertiser responses page
+│   │   └── layout.tsx
+│   ├── (publisher)/              # Public publisher routes (no auth)
+│   │   ├── form/                 # Creative submission form
+│   │   ├── thankyou/             # Thank you + tracking code
+│   │   └── track/                # Track submission status
+│   ├── admin/                    # Admin-only pages
+│   │   ├── jobs/                 # Background jobs
+│   │   └── requests/             # Request management
+│   ├── api/                      # API routes
+│   │   ├── admin/                # Admin APIs (requests, offers, advertisers, jobs, etc.)
+│   │   ├── auth/                 # BetterAuth
+│   │   ├── submit/               # Creative submission
+│   │   ├── upload/               # File upload (single/ZIP)
+│   │   ├── analyze-zip/          # ZIP analysis
+│   │   ├── proofread-creative/   # Proofreading
+│   │   ├── creative/             # Metadata, rename, update-content
+│   │   ├── cron/                 # Health, cleanup, process-jobs, telegram-poll
+│   │   ├── telegram/             # Webhook, setup, verify
+│   │   ├── track/                # Track submission
+│   │   ├── rpc/                  # oRPC handler
+│   │   └── ...
+│   ├── auth/                     # Login page
+│   ├── disconnected/             # Disconnected state
+│   ├── unauthorized/             # Access denied
+│   ├── globals.css
+│   ├── layout.tsx
 │   ├── page.tsx                  # Home page
-│   └── global-error.tsx          # Global error boundary
-├── features/                     # Feature modules (MVVM architecture)
-│   ├── auth/                     # Authentication feature
-│   │   ├── components/           # LoginForm, SignOutButton
-│   │   ├── view-models/          # useLoginViewModel
-│   │   ├── models/               # Data structures
-│   │   ├── services/             # API calls
-│   │   ├── hooks/                # Custom hooks
-│   │   └── types/                # TypeScript types
+│   └── global-error.tsx
+├── features/
+│   ├── auth/                     # LoginForm, SignOutButton, useLoginViewModel
 │   ├── admin/                    # Admin feature
-│   ├── advertiser/               # Advertiser feature
-│   ├── administrator/            # Administrator feature
-│   └── publisher/                # Publisher feature
+│   │   ├── actions/              # Server actions (e.g. getRequestViewData)
+│   │   ├── components/           # Dashboard, RequestItem, ManageRequestsPage, etc.
+│   │   ├── context/              # GlobalSyncContext
+│   │   ├── services/              # request.service, offer.service, dashboard, etc.
+│   │   ├── view-models/
+│   │   └── types/
+│   ├── dashboard/                # Shared StatsCard, PerformanceChart, sidebar
+│   ├── notifications/            # Workflow notification service
+│   ├── publisher/                # Publisher feature
+│   │   ├── components/form/      # PublisherForm, CreativeDetails, modals
+│   │   │   ├── _modals/          # SingleCreativeViewModal, MultipleCreativesModal, etc.
+│   │   │   └── _steps/           # PersonalDetails, ContactDetails, CreativeDetails
+│   │   ├── hooks/                # usePublisherForm, useFormValidation
+│   │   ├── view-models/
+│   │   └── utils/
+│   ├── advertiser/               # Advertiser response service
+│   └── administrator/
 ├── components/
-│   ├── _variables/               # Application variables (branding, colors, typography)
-│   │   ├── variables.ts          # Variable definitions and defaults
-│   │   └── index.ts              # Variable exports
+│   ├── _variables/               # Branding, colors, typography
 │   └── ui/                       # shadcn/ui components
 ├── lib/
-│   ├── auth.ts                   # BetterAuth server configuration
-│   ├── better-auth-client.ts     # Client-side auth utilities
-│   ├── db.ts                     # Database connection (Drizzle ORM)
-│   ├── schema.ts                 # Database schema definitions
-│   ├── get-user.ts               # Server-side user retrieval
-│   ├── auth-helpers.ts           # Route protection helpers
-│   ├── logger.ts                 # Server-side logging utility
-│   ├── utils.ts                  # Utility functions
-│   └── rpc/                      # oRPC router and client
-│       ├── router.ts             # RPC router definitions
-│       └── client.ts             # RPC client for frontend
-├── app/api/
-│   ├── auth/                     # BetterAuth API routes
-│   │   ├── [...all]/route.ts     # Main auth handler
-│   │   └── get-session/route.ts  # Session retrieval
-│   └── rpc/                      # oRPC API routes
-│       └── [...path]/route.ts    # RPC handler
-├── hooks/                        # Custom React hooks
-├── seed-scripts/                 # Database seeding scripts
-│   ├── SeedAdmin.ts              # Admin user creation
-│   └── SeedAdvertiser.ts         # Advertiser user creation
-├── drizzle/                      # Database migrations
-├── public/                       # Static assets
+│   ├── auth.ts                   # BetterAuth config
+│   ├── db.ts                     # Drizzle connection
+│   ├── schema.ts                 # Database schema
+│   ├── creativeClient.ts         # Creative metadata, rename, update
+│   ├── filesClient.ts            # File upload/delete
+│   ├── fileStorage.ts            # Vercel Blob storage
+│   ├── proofreadCreativeClient.ts
+│   ├── generationClient.ts       # Email content generation
+│   ├── redis.ts                  # Upstash Redis (ratelimit)
+│   ├── ratelimit.ts
+│   ├── rpc/                      # oRPC router and client
+│   ├── services/                  # Everflow, grammar, zip-parser, etc.
+│   └── utils/                    # tracking, etc.
+├── constants/                    # API endpoints, app constants
+├── hooks/                        # use-mobile, useFileUpload
+├── seed-scripts/                 # SeedAdminServer (used by seed:admin), SeedAdvertiser
+├── scripts/                      # Migrations, Telegram webhook, etc.
+├── drizzle/                      # Migrations
+├── public/
 ├── docs/                         # Documentation
-├── components.json                # shadcn/ui configuration
-├── drizzle.config.ts             # Drizzle Kit configuration
-├── env.js                        # Environment variable validation (t3-env)
-├── next.config.ts                # Next.js configuration
-└── package.json                  # Dependencies and scripts
+├── components.json
+├── drizzle.config.ts
+├── env.js                        # Environment validation (t3-env)
+├── next.config.ts
+└── package.json
 ```
 
 ## Key Features
@@ -239,12 +273,22 @@ assets-exchange/
 - **Dashboard Statistics**: 5 real-time statistics cards (Total Assets, New Requests, Approved Assets, Rejected Assets, Pending Approval)
 - **Performance Charts**: Interactive time-series charts with 4 comparison types (Today vs Yesterday, Today vs Last Week, Current Week vs Last Week, Current Month vs Last Month)
 - **Request Management**: Complete publisher request workflow with advanced filtering, sorting, search, and status management
+- **View Request**: Opens SingleCreativeViewModal (one creative) or MultipleCreativesModal (multiple creatives) with data loaded from the database via server action; no separate API route
 - **Unified Workflow Model**: Single-entity approach where one creative submission flows through entire approval process (Publisher → Admin → Advertiser)
 - **Approval System**: Two-stage approval workflow (Admin → Advertiser) with status transitions tracked in one record
 - **Status Indicators**: Visual badges for all workflow states (New, Pending, Approved, Rejected, Sent Back)
 - **Conditional Actions**: Smart button display based on status and approval stage
 - **Intelligent Routing**: Sent-back items automatically appear in correct tabs for workflow management
 - **Data Integrity**: Offer and creative details remain immutable throughout workflow - no duplication or inconsistency
+
+### Publisher Features
+
+- **Creative Submission Form**: Multi-step form (Personal Details, Contact Details, Creative Details) with React Hook Form and Zod validation
+- **File Upload**: Single file (image/HTML) or ZIP with smart detection; uploads stored via Vercel Blob
+- **Single vs Multiple Creatives**: SingleCreativeViewModal for one file; MultipleCreativesModal for ZIP (grid of creatives, each openable in SingleCreativeViewModal)
+- **Proofreading**: Optional proofreading and optimization for creatives (image/HTML)
+- **Thank You Page**: Post-submit page with tracking code and status tracker
+- **Track Page**: Public tracking of submission status by tracking code (no auth)
 
 ### UI & Design
 
@@ -271,18 +315,22 @@ assets-exchange/
 
 - **Comprehensive TODOs**: Production-ready backend implementation guides with SQL queries, API specifications, and data models
 - **Documentation**: Complete backend documentation including database schema, endpoints, caching strategies, and performance optimization
-- **Mock Data**: Development-ready mock data for all features (to be replaced with real APIs)
+- **Implemented Backend**: Creative requests, submit, upload, and View Request use the database and server actions; some areas still use mock data or have TODO: BACKEND for full wiring
 
 ## Application Roles
 
 - **Admin**: Full dashboard access with request/response management, statistics, and analytics
   - Manage publisher requests (approve, reject, send back)
+  - View Request opens SingleCreativeViewModal or MultipleCreativesModal (data from DB via server action)
   - Monitor advertiser responses
   - View real-time statistics and performance charts
   - Two-stage approval workflow management
-- **Advertiser**: Creates and manages advertising campaigns (coming soon)
-- **Administrator**: System-level access and global settings (coming soon)
-- **Publisher**: Public-facing section (no authentication required, coming soon)
+- **Advertiser**: Review and act on forwarded requests (approve, send back); response pages and APIs in place
+- **Administrator**: Advertisers, offers, ops pages; system-level access
+- **Publisher**: Public-facing section (no authentication)
+  - Submit creatives via `/form`
+  - Thank you and tracking code at `/thankyou`
+  - Track submission status at `/track`
 
 ## Git Branching Strategy
 
@@ -312,6 +360,25 @@ main
 - **dev**: Development branch for integration
 - **Feature branches**: Separate branches for each feature (auth, publisher, admin, etc.)
 - **Sub-branches**: Frontend and backend work separated within each feature
+
+## Main Routes
+
+| Route             | Access        | Description                           |
+| ----------------- | ------------- | ------------------------------------- |
+| `/`               | Public        | Landing page                          |
+| `/form`           | Public        | Publisher creative submission form    |
+| `/thankyou`       | Public        | Post-submit thank you + tracking code |
+| `/track`          | Public        | Track submission by tracking code     |
+| `/auth`           | Public        | Login page                            |
+| `/dashboard`      | Authenticated | Role-based dashboard                  |
+| `/requests`       | Admin         | Manage creative requests              |
+| `/creatives`      | Admin         | Manage creatives (approved/rejected)  |
+| `/publishers`     | Admin         | Publishers list                       |
+| `/response`       | Advertiser    | Advertiser responses                  |
+| `/admin/requests` | Admin         | Request management (alternate)        |
+| `/admin/jobs`     | Admin         | Background jobs                       |
+| `/unauthorized`   | Public        | Access denied                         |
+| `/disconnected`   | Public        | Disconnected state                    |
 
 ## Environment Variables
 
@@ -347,6 +414,16 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # CORS Configuration (comma-separated list of allowed origins)
 CORS_ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+
+# Rate limiting (Upstash Redis)
+UPSTASH_REDIS_REST_URL=your_upstash_redis_rest_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token
+
+# File storage (Vercel Blob)
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
+
+# Telegram (optional, for notifications/webhook)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 ```
 
 ### Environment Validation
@@ -411,6 +488,12 @@ The application includes comprehensive security headers configured in `next.conf
 ### robots.txt
 
 A `robots.txt` file is configured in `public/robots.txt` to control search engine crawling.
+
+## Documentation
+
+- **[Development_Docs.md](docs/Development_Docs.md)** - Development guidelines, MVVM structure, admin workflow (including View Request), routing, backend TODOs index
+- **[START_HERE.md](docs/START_HERE.md)** - Onboarding and project overview
+- **docs/** - Additional guides: `UPLOAD_BACKEND_STRUCTURE.md`, `BACKEND_TASKS_SUMMARY.md`, `PHASE_9_IMPLEMENTATION.md`, and others (see docs folder)
 
 ## Backend Implementation
 

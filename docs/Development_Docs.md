@@ -10,7 +10,10 @@ The project currently includes:
 
 - Complete authentication system with BetterAuth
 - Admin dashboard with statistics, charts, and request/response management
+- View Request: admin opens SingleCreativeViewModal or MultipleCreativesModal with data from DB via server action (no API route)
 - Two-stage approval workflow (Admin → Advertiser)
+- Publisher: creative submission form (/form), thank you + tracking (/thankyou), track by code (/track); single/ZIP upload, proofreading
+- Creative submit and upload APIs using database (creative_requests, creatives tables)
 - Comprehensive backend implementation documentation (see [Backend Implementation](#backend-implementation))
 
 ## Architecture
@@ -29,15 +32,13 @@ The project follows the Model-View-ViewModel (MVVM) architecture:
 ```
 assets-exchange/
 ├── app/                          # Next.js App Router
-│   ├── (dashboard)/              # Protected routes
-│   │   ├── (admin)/              # Admin dashboard
-│   │   ├── (advertiser)/         # Advertiser dashboard
-│   │   ├── (administrator)/      # Administrator dashboard
-│   │   ├── dashboard/            # Dashboard page
-│   │   └── layout.tsx            # Shared dashboard layout
-│   ├── publisher/                # Public routes (no auth)
-│   ├── auth/                     # Authentication pages
-│   ├── unauthorized/             # Access denied page
+│   ├── (dashboard)/              # Protected routes (creatives, dashboard, publishers, requests, response, (administrator), (advertiser))
+│   ├── (publisher)/              # Public: form, thankyou, track
+│   ├── admin/                    # Admin-only: jobs, requests
+│   ├── api/                      # submit, upload, auth, admin/*, creative/*, cron, telegram, track, rpc, etc.
+│   ├── auth/                     # Login page
+│   ├── disconnected/             # Disconnected state
+│   ├── unauthorized/             # Access denied
 │   ├── layout.tsx                # Root layout
 │   └── global-error.tsx          # Global error boundary
 │
@@ -50,10 +51,12 @@ assets-exchange/
 │   │   ├── hooks/                 # Custom hooks (e.g., useForm)
 │   │   ├── validation/            # Zod validation schemas
 │   │   └── types/                 # TypeScript types
-│   ├── admin/                    # Admin feature
-│   ├── advertiser/               # Advertiser feature
-│   ├── administrator/             # Administrator feature
-│   └── publisher/                # Publisher feature
+│   ├── admin/                    # Admin (actions/, components/, context/, services/, view-models/, types/)
+│   ├── dashboard/                # Shared StatsCard, PerformanceChart, sidebar
+│   ├── notifications/            # Workflow notification service
+│   ├── publisher/                # Publisher (form, modals, steps, hooks, view-models, utils)
+│   ├── advertiser/               # Advertiser response service
+│   └── administrator/
 │
 ├── components/
 │   ├── _variables/               # Application variables (branding, colors, typography)
@@ -81,17 +84,18 @@ assets-exchange/
 │   └── rpc/                      # oRPC API routes
 │       └── [...path]/route.ts    # RPC handler
 │
-├── seed-scripts/                 # Database seeding scripts
-│   ├── SeedAdmin.ts              # Admin user creation
-│   └── SeedAdvertiser.ts         # Advertiser user creation
-│
-├── hooks/                        # Global hooks
-├── public/                       # Static assets
-├── components.json               # shadcn/ui configuration
-├── drizzle.config.ts             # Drizzle Kit configuration
-├── env.js                        # Environment variable validation
-├── next.config.ts                # Next.js configuration
-└── package.json                  # Dependencies and scripts
+├── seed-scripts/                 # SeedAdminServer (used by seed:admin), SeedAdvertiser
+├── scripts/                      # Migrations, Telegram webhook, etc.
+├── constants/                    # API endpoints, app constants
+├── hooks/                        # use-mobile, useFileUpload
+├── drizzle/                      # Migrations
+├── public/
+├── docs/
+├── components.json
+├── drizzle.config.ts
+├── env.js                        # Environment validation (t3-env)
+├── next.config.ts
+└── package.json
 ```
 
 ## Getting Started
@@ -127,7 +131,7 @@ assets-exchange/
    pnpm db:push
    ```
 
-4. Seed admin user (optional):
+4. Seed admin user (optional; runs `seed-scripts/SeedAdminServer.ts`):
 
    ```bash
    pnpm seed:admin
@@ -143,7 +147,7 @@ assets-exchange/
 
 ## Technology Stack
 
-- **Next.js 15.5.7**: React framework
+- **Next.js 15.5.7**: React framework (with Turbopack via `pnpm dev:turbo`)
 - **React 19.1.0**: UI library
 - **TypeScript**: Type safety
 - **Tailwind CSS v4**: Styling
@@ -152,7 +156,11 @@ assets-exchange/
 - **Neon PostgreSQL**: Serverless database
 - **Drizzle ORM**: Type-safe database queries
 - **oRPC**: Type-safe RPC with OpenAPI support
-- **t3-env**: Type-safe environment variable validation
+- **Server Actions**: Next.js server actions (e.g. admin getRequestViewData)
+- **Vercel Blob**: File storage for uploads
+- **Upstash Redis**: Rate limiting (@upstash/ratelimit)
+- **Sonner**: Toast notifications
+- **t3-env**: Type-safe environment variable validation (env.js)
 - **React Hook Form + Zod**: Form validation
 - **Jest**: Testing framework
 - **React Testing Library**: Component testing utilities
@@ -166,25 +174,30 @@ assets-exchange/
 ### Public Routes
 
 - `/` - Landing page
-- `/publisher/*` - Publisher section (no authentication)
-
-### Authentication Routes
-
+- `/form` - Publisher creative submission form
+- `/thankyou` - Post-submit thank you + tracking code
+- `/track` - Track submission by tracking code
 - `/auth` - Login page with sign-in form
 - `/unauthorized` - Access denied page
+- `/disconnected` - Disconnected state
 
 ### Protected Dashboard Routes
 
 All dashboard routes require authentication and redirect based on user role:
 
 - `/dashboard` - Role-based dashboard (Admin/Advertiser/Administrator)
-- `/dashboard/*` - Role-specific routes
+- `/requests` - Admin: manage creative requests
+- `/creatives` - Admin: manage creatives (approved/rejected)
+- `/publishers` - Admin: publishers list
+- `/response` - Advertiser: responses (approve, send back)
+- `/(administrator)/advertisers` - Administrator: advertisers
+- `/(administrator)/offers` - Administrator: offers
+- `/(administrator)/ops` - Administrator: ops
 
-**Route Groups:**
+### Admin-Only Pages (outside dashboard group)
 
-- `(admin)` - Admin-only routes
-- `(advertiser)` - Advertiser-only routes
-- `(administrator)` - Administrator-only routes
+- `/admin/requests` - Request management
+- `/admin/jobs` - Background jobs
 
 ## Feature Development
 
@@ -782,6 +795,16 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # CORS Configuration (comma-separated list of allowed origins)
 CORS_ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+
+# Rate limiting (Upstash Redis) - validated in env.js
+UPSTASH_REDIS_REST_URL=your_upstash_redis_rest_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token
+
+# File storage (Vercel Blob)
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
+
+# Telegram (optional, for notifications/webhook)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 ```
 
 ### Environment Validation
@@ -1208,12 +1231,22 @@ Publisher Request (approved, completed)
 - **Sent-back responses from advertiser**: Show "Reject and Send Back" only
 - **All other states**: Show "View Request" only
 
+**View Request Behavior:**
+
+- Clicking "View Request" calls the server action `getRequestViewData(requestId)` (no REST API).
+- Data is fetched from the database via `getRequestWithCreatives` in `request.service.ts` (creative_requests + creatives tables).
+- **Single creative** (one row in creatives): opens `SingleCreativeViewModal` with preview, metadata, and proofreading UI (read-only in admin).
+- **Multiple creatives** (multiple rows in creatives): opens `MultipleCreativesModal` with a grid of files; each file can open `SingleCreativeViewModal` via "View Creative" (remove is a no-op in admin).
+- If the request has no creatives, a toast is shown and no modal opens.
+
 ### MVVM Architecture
 
 All admin features follow MVVM pattern:
 
 ```
 features/admin/
+├── actions/             # Server actions (DB access, no API route)
+│   └── request.actions.ts   # getRequestViewData for View Request modals
 ├── components/          # View layer
 │   ├── AdminDashboard.tsx
 │   ├── StatsCard.tsx
@@ -1229,10 +1262,10 @@ features/admin/
 │   ├── usePerformanceChartViewModel.ts
 │   ├── useManageRequestsViewModel.ts
 │   └── useManageResponsesViewModel.ts
-├── services/            # API calls (currently mock, needs backend)
+├── services/            # API calls and DB access
 │   ├── admin.service.ts
 │   ├── performance-chart.service.ts
-│   └── request.service.ts
+│   └── request.service.ts    # getRequestWithCreatives, getAdminRequestById
 ├── models/              # Mock data (to be removed)
 │   ├── admin.model.ts
 │   ├── performance-chart.model.ts
@@ -1366,6 +1399,7 @@ app/(dashboard)/*/page.tsx                              # Authentication
 
 **Recent Additions:**
 
+- **View Request**: Server action `getRequestViewData` fetches request + creatives from DB; opens SingleCreativeViewModal or MultipleCreativesModal based on creative count (no API route)
 - Offers management (CRUD, bulk update, pull from API)
 - Advertisers management (CRUD, pull from API)
 - Publishers management (CRUD)
@@ -1414,23 +1448,18 @@ app/(dashboard)/*/page.tsx                              # Authentication
 
 ### Environment Variables for Backend
 
-Add to `.env.local`:
+Add to `.env.local` as needed (see root `env.js` for full list):
 
 ```env
 # Database
 DATABASE_URL=postgresql://user:password@host/database
 
-# Redis (for caching)
-REDIS_URL=redis://localhost:6379
-REDIS_PASSWORD=your_redis_password
+# Rate limiting (project uses Upstash Redis)
+UPSTASH_REDIS_REST_URL=your_upstash_redis_rest_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token
 
-# JWT
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRATION=24h
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=60000
-RATE_LIMIT_MAX_REQUESTS=100
+# File storage (Vercel Blob)
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
 ```
 
 ## Resources

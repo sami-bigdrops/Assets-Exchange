@@ -153,7 +153,7 @@ function TrackPageContent() {
 
   return (
     <div
-      className="min-h-screen py-8 px-4 flex flex-col items-center"
+      className="min-h-screen py-4 px-4"
       style={{
         backgroundImage: `url(${Constants.background})`,
         backgroundColor: "var(--color-primary-50)",
@@ -162,15 +162,15 @@ function TrackPageContent() {
         backgroundSize: "cover",
       }}
     >
-      <div className="max-w-3xl w-full space-y-8">
+      <div className="max-w-5xl mx-auto">
         {/* Logo */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center justify-center mb-4 md:mb-8">
           <Image
             src={Constants.logo}
             alt="logo"
-            width={200}
-            height={80}
-            className="h-16 w-auto"
+            width={100}
+            height={100}
+            className="w-40 md:w-60 h-10 md:h-20"
           />
         </div>
 

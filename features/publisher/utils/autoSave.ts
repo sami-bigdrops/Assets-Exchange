@@ -19,6 +19,7 @@ export interface SavedFileMeta {
   type: string;
   source?: "single" | "zip";
   html?: boolean;
+  isHidden?: boolean; // Added to persist visibility state
   previewUrl?: string;
   assetCount?: number;
   hasAssets?: boolean;
@@ -136,6 +137,7 @@ const optimizeFileMeta = (file: SavedFileMeta): SavedFileMeta => {
     type: file.type,
     source: file.source,
     html: file.html,
+    isHidden: file.isHidden, // Preserve hidden state
     // Remove previewUrl if it's the same as url to save space
     previewUrl:
       file.previewUrl && file.previewUrl !== file.url
@@ -201,6 +203,7 @@ export const saveFilesState = (
           type: f.type,
           source: f.source,
           html: f.html,
+          isHidden: f.isHidden,
         })),
         uploadedZipFileName,
         timestamp: Date.now(),
@@ -236,6 +239,7 @@ export const saveFilesState = (
             type: f.type,
             source: f.source,
             html: f.html,
+            isHidden: f.isHidden,
           })),
           uploadedZipFileName,
           timestamp: Date.now(),

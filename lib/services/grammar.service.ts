@@ -351,7 +351,8 @@ export const GrammarService = {
   async submitForAnalysis(
     creativeId: string,
     fileUrl: string,
-    userId?: string
+    userId?: string,
+    htmlContent?: string
   ) {
     try {
       if (!AI_BASE_URL) {
@@ -402,24 +403,20 @@ export const GrammarService = {
         `Starting Grammar Analysis for: ${fileUrl.substring(0, 100)}...`
       );
 
-      // Quick health check (24/7 plan - service should always be ready)
-      try {
-        const healthRes = await fetch(`${AI_BASE_URL}/health`, {
-          method: "GET",
-        });
-        console.warn(
-          `Health check: ${healthRes.status} ${healthRes.ok ? "OK" : "FAILED"}`
-        );
-      } catch (healthErr) {
-        console.warn("Health check error (proceeding anyway):", healthErr);
-      }
+      // ... (health check) ...
 
       // Fetch the file and send as FormData (Render doesn't support URL parameter)
       let blob: Blob;
       let filename: string;
 
-      if (fileUrl.startsWith("data:")) {
-        // Handle Base64 data URLs
+      // If custom HTML content is provided (e.g. from client with resolved asset URLs), use it directly
+      if (htmlContent) {
+        console.warn("Using provided HTML content for analysis");
+        blob = new Blob([htmlContent], { type: "text/html" });
+        filename = "creative.html";
+      } else if (fileUrl.startsWith("data:")) {
+        // ...
+
         const matches = fileUrl.match(/^data:([^;]+);base64,(.*)$/);
         if (!matches) {
           throw new Error("Invalid data URL format");

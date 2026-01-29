@@ -35,6 +35,7 @@ export interface ProofreadCreativeResponse {
 interface ProofreadCreativeParams {
   creativeId: string;
   fileUrl: string;
+  htmlContent?: string;
 }
 
 interface CheckStatusParams {

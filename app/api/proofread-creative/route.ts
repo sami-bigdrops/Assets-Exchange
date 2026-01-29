@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { creativeId, fileUrl } = body;
+    const { creativeId, fileUrl, htmlContent } = body;
 
     if (!creativeId || !fileUrl) {
       return NextResponse.json(
@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
     const result = await GrammarService.submitForAnalysis(
       creativeId,
       fileUrl,
-      userId
+      userId,
+      htmlContent
     );
 
     logger.info({
@@ -56,9 +57,9 @@ export async function POST(req: NextRequest) {
     // Return 502/503 for AI service unavailable errors
     const statusCode =
       errorMessage.includes("temporarily unavailable") ||
-      errorMessage.includes("502") ||
-      errorMessage.includes("503") ||
-      errorMessage.includes("504")
+        errorMessage.includes("502") ||
+        errorMessage.includes("503") ||
+        errorMessage.includes("504")
         ? 502
         : 500;
 

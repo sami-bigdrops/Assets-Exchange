@@ -41,6 +41,7 @@ type UploadedFileMeta = {
   fromLines?: string;
   subjectLines?: string;
   additionalNotes?: string;
+  isHidden?: boolean;
   metadata?: {
     fromLines?: string;
     subjectLines?: string;
@@ -423,11 +424,24 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
 
-      const zipItems = data.zipAnalysis?.items || [];
+      let zipItems = (data.zipAnalysis?.items || []).filter(
+        (item: { name: string }) => !item.name.toLowerCase().endsWith(".txt")
+      );
 
       if (zipItems.length === 0) {
-        throw new Error("No files found in ZIP archive");
+        throw new Error(
+          "No valid files found in ZIP archive (txt files are skipped)"
+        );
       }
+
+      // Helper to check if an item is HTML
+      const isHtmlItem = (item: { name: string; type?: string }) =>
+        item.type?.includes("html") ||
+        /\.html?$/i.test(item.name.trim());
+
+      // If any HTML files are present, mark others as hidden
+      // We keep them in the state so they can be passed as siblings for preview logic
+      const hasHtml = zipItems.some(isHtmlItem);
 
       const mapped: UploadedFileMeta[] = zipItems.map(
         (f: {
@@ -439,19 +453,22 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
           isDependency?: boolean;
         }) => {
           const isImageFile = /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name);
+          const isHtml = isHtmlItem(f);
+
           return {
             id: f.id,
             name: f.name,
             url: f.url,
             size: f.size,
-            type: f.type || "application/octet-stream",
+            type: f.type || (isImageFile ? "image/png" : "application/octet-stream"), // Fallback type
             source: "zip",
-            html: /\.html?$/i.test(f.name),
-            previewUrl: isImageFile ? f.url : undefined,
+            html: isHtml,
+            // If there's an HTML file in the batch, hide non-HTML files (images/assets) from the main list
+            isHidden: hasHtml && !isHtml,
+            previewUrl: isImageFile || isHtml ? f.url : undefined, // For ZIP items, url IS the blob url
           };
         }
       );
-
       addFiles(mapped);
       setSelectedCreatives(mapped);
       setUploadedZipFileName(file.name);
@@ -646,7 +663,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                 style={{
                   borderColor:
                     validation.hasFieldError("creativeType") &&
-                    validation.isFieldTouched("creativeType")
+                      validation.isFieldTouched("creativeType")
                       ? variables.colors.inputErrorColor
                       : variables.colors.inputBorderColor,
                 }}
@@ -709,7 +726,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                         {uploadedFiles.length === 1
                           ? uploadedFiles[0].name
                           : uploadedZipFileName ||
-                            `${uploadedFiles.length} Files Uploaded`}
+                          `${uploadedFiles.length} Files Uploaded`}
                       </p>
                       <p className="text-sm text-green-600">
                         {uploadedFiles.length} file
@@ -730,28 +747,28 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                               {" • "}
                               {uploadedFiles[0].fromLines
                                 ? uploadedFiles[0].fromLines
-                                    .split("\n")
-                                    .filter((line) => line.trim()).length
+                                  .split("\n")
+                                  .filter((line) => line.trim()).length
                                 : 0}{" "}
                               from line
                               {(uploadedFiles[0].fromLines
                                 ? uploadedFiles[0].fromLines
-                                    .split("\n")
-                                    .filter((line) => line.trim()).length
+                                  .split("\n")
+                                  .filter((line) => line.trim()).length
                                 : 0) !== 1
                                 ? "s"
                                 : ""}{" "}
                               •{" "}
                               {uploadedFiles[0].subjectLines
                                 ? uploadedFiles[0].subjectLines
-                                    .split("\n")
-                                    .filter((line) => line.trim()).length
+                                  .split("\n")
+                                  .filter((line) => line.trim()).length
                                 : 0}{" "}
                               subject line
                               {(uploadedFiles[0].subjectLines
                                 ? uploadedFiles[0].subjectLines
-                                    .split("\n")
-                                    .filter((line) => line.trim()).length
+                                  .split("\n")
+                                  .filter((line) => line.trim()).length
                                 : 0) !== 1
                                 ? "s"
                                 : ""}
@@ -899,11 +916,10 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
             </div>
           ) : (
             <div
-              className={`grid gap-4 ${
-                formData.creativeType === "email"
-                  ? "grid-cols-1 md:grid-cols-3"
-                  : "grid-cols-1 md:grid-cols-2"
-              }`}
+              className={`grid gap-4 ${formData.creativeType === "email"
+                ? "grid-cols-1 md:grid-cols-3"
+                : "grid-cols-1 md:grid-cols-2"
+                }`}
             >
               <Button
                 variant="outline"
@@ -964,25 +980,25 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
               <div className="space-y-2 mt-2">
                 {(validation.hasFieldError("fromLines") ||
                   validation.hasFieldError("subjectLines")) && (
-                  <div className="space-y-1">
-                    {validation.hasFieldError("fromLines") && (
-                      <p
-                        className="text-xs font-inter"
-                        style={{ color: variables.colors.inputErrorColor }}
-                      >
-                        {validation.getFieldErrorMessage("fromLines")}
-                      </p>
-                    )}
-                    {validation.hasFieldError("subjectLines") && (
-                      <p
-                        className="text-xs font-inter"
-                        style={{ color: variables.colors.inputErrorColor }}
-                      >
-                        {validation.getFieldErrorMessage("subjectLines")}
-                      </p>
-                    )}
-                  </div>
-                )}
+                    <div className="space-y-1">
+                      {validation.hasFieldError("fromLines") && (
+                        <p
+                          className="text-xs font-inter"
+                          style={{ color: variables.colors.inputErrorColor }}
+                        >
+                          {validation.getFieldErrorMessage("fromLines")}
+                        </p>
+                      )}
+                      {validation.hasFieldError("subjectLines") && (
+                        <p
+                          className="text-xs font-inter"
+                          style={{ color: variables.colors.inputErrorColor }}
+                        >
+                          {validation.getFieldErrorMessage("subjectLines")}
+                        </p>
+                      )}
+                    </div>
+                  )}
               </div>
             )}
         </div>
@@ -1104,11 +1120,11 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                 prev.map((file) =>
                   file.id === fileId
                     ? {
-                        ...file,
-                        fromLines: metadata.fromLines,
-                        subjectLines: metadata.subjectLines,
-                        additionalNotes: metadata.additionalNotes,
-                      }
+                      ...file,
+                      fromLines: metadata.fromLines,
+                      subjectLines: metadata.subjectLines,
+                      additionalNotes: metadata.additionalNotes,
+                    }
                     : file
                 )
               );
@@ -1135,7 +1151,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                   const metadataChanged =
                     updates.metadata &&
                     JSON.stringify(prev.metadata) !==
-                      JSON.stringify(updates.metadata);
+                    JSON.stringify(updates.metadata);
                   if (!urlChanged && !metadataChanged) {
                     return prev; // No change, return same reference to prevent re-render
                   }
@@ -1172,6 +1188,18 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                 )
               );
             }}
+            onMetadataChange={(id, meta) =>
+              handleFileUpdate(id, {
+                fromLines: meta.fromLines,
+                subjectLines: meta.subjectLines,
+                additionalNotes: meta.additionalNotes,
+                metadata: {
+                  ...selectedCreatives.find((c) => c.id === id)?.metadata,
+                  fromLines: meta.fromLines,
+                  subjectLines: meta.subjectLines,
+                },
+              })
+            }
             creativeType={formData.creativeType}
           />
         )}

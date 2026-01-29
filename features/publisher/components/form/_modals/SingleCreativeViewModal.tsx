@@ -80,6 +80,7 @@ interface SingleCreativeViewModalProps {
   }) => void;
   showAdditionalNotes?: boolean;
   creativeType?: string;
+  siblingCreatives?: Creative[];
 }
 
 const getFileType = (fileName: string): "image" | "html" | "other" => {
@@ -102,6 +103,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
   onFileUpdate,
   showAdditionalNotes = false,
   creativeType = "email",
+  siblingCreatives = [],
 }) => {
   const viewModel = useSingleCreativeViewModal({
     isOpen,
@@ -111,6 +113,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
     onMetadataChange,
     showAdditionalNotes,
     creativeType,
+    siblingCreatives,
   });
 
   const { isProofreadComplete, proofreadResult, isAnalyzing } = viewModel;
@@ -249,9 +252,9 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             viewModel.setEditableNameOnly(
                               lastDotIndex > 0
                                 ? viewModel.editableFileName.substring(
-                                    0,
-                                    lastDotIndex
-                                  )
+                                  0,
+                                  lastDotIndex
+                                )
                                 : viewModel.editableFileName
                             );
                             viewModel.setIsEditing(true);
@@ -292,9 +295,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
             <DialogBody className="max-h-screen! flex-1 flex flex-col lg:flex-row overflow-hidden p-0">
               {/* Preview Column */}
               <div
-                className={`${
-                  viewModel.isPreviewCollapsed ? "hidden lg:flex" : "flex"
-                } lg:w-1/2 lg:border-r border-gray-200 p-4 sm:p-6 bg-gray-50 flex-col min-h-0`}
+                className={`${viewModel.isPreviewCollapsed ? "hidden lg:flex" : "flex"
+                  } lg:w-1/2 lg:border-r border-gray-200 p-4 sm:p-6 bg-gray-50 flex-col min-h-0`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-gray-200 mb-5 gap-3">
                   <div className="flex items-center gap-3">
@@ -329,11 +331,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                               e.stopPropagation();
                               viewModel.setShowOriginal(true);
                             }}
-                            className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                              viewModel.showOriginal
+                            className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${viewModel.showOriginal
                                 ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
-                            }`}
+                              }`}
                           >
                             Original
                           </button>
@@ -344,11 +345,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                               e.stopPropagation();
                               viewModel.setShowOriginal(false);
                             }}
-                            className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                              !viewModel.showOriginal
+                            className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${!viewModel.showOriginal
                                 ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
-                            }`}
+                              }`}
                           >
                             Marked
                           </button>
@@ -365,11 +365,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             e.stopPropagation();
                             viewModel.setShowOriginal(true);
                           }}
-                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                            viewModel.showOriginal
+                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${viewModel.showOriginal
                               ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
-                          }`}
+                            }`}
                         >
                           Original
                         </button>
@@ -380,11 +379,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             e.stopPropagation();
                             viewModel.setShowOriginal(false);
                           }}
-                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                            !viewModel.showOriginal
+                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${!viewModel.showOriginal
                               ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
-                          }`}
+                            }`}
                         >
                           Marked
                         </button>
@@ -448,7 +446,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                                 </p>
                                 {viewModel.proofreadingData.issues &&
                                   viewModel.proofreadingData.issues.length >
-                                    0 && (
+                                  0 && (
                                     <div className="mt-4 flex items-center justify-center gap-2">
                                       <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
                                         <X className="h-3 w-3" />
@@ -510,7 +508,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                                 </p>
                                 {viewModel.proofreadingData.issues &&
                                   viewModel.proofreadingData.issues.length >
-                                    0 && (
+                                  0 && (
                                     <div className="mt-4 flex items-center justify-center gap-2">
                                       <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
                                         <X className="h-3 w-3" />
@@ -567,9 +565,8 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
 
               {/* Features Column */}
               <div
-                className={`${
-                  viewModel.isPreviewCollapsed ? "w-full" : "lg:w-1/2"
-                } p-4 sm:p-6 overflow-y-auto bg-gray-50 border-t lg:border-t-0 border-gray-200`}
+                className={`${viewModel.isPreviewCollapsed ? "w-full" : "lg:w-1/2"
+                  } p-4 sm:p-6 overflow-y-auto bg-gray-50 border-t lg:border-t-0 border-gray-200`}
               >
                 <div className="space-y-5">
                   <div className="flex items-center justify-between pb-3 border-b border-gray-200">
@@ -788,14 +785,14 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             <span className="w-2 h-2 bg-red-500 rounded-full"></span>
                             Issues Found
                             {viewModel.proofreadingData?.issues &&
-                            viewModel.proofreadingData.issues.length > 0
+                              viewModel.proofreadingData.issues.length > 0
                               ? ` (${viewModel.proofreadingData.issues.length})`
                               : ""}
                           </h4>
 
                           <div className="space-y-2">
                             {viewModel.proofreadingData?.issues &&
-                            viewModel.proofreadingData.issues.length > 0 ? (
+                              viewModel.proofreadingData.issues.length > 0 ? (
                               viewModel.proofreadingData.issues.map(
                                 (issue: unknown, index: number) => {
                                   const issueData = issue as {
@@ -856,13 +853,13 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                               <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                               Suggestions
                               {viewModel.proofreadingData.suggestions &&
-                              viewModel.proofreadingData.suggestions.length > 0
+                                viewModel.proofreadingData.suggestions.length > 0
                                 ? ` (${viewModel.proofreadingData.suggestions.length})`
                                 : ""}
                             </h4>
                             <div className="space-y-2">
                               {viewModel.proofreadingData.suggestions &&
-                              viewModel.proofreadingData.suggestions.length >
+                                viewModel.proofreadingData.suggestions.length >
                                 0 ? (
                                 viewModel.proofreadingData.suggestions.map(
                                   (suggestion: unknown, index: number) => {
@@ -1055,11 +1052,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             e.stopPropagation();
                             viewModel.setShowOriginalFullscreen(true);
                           }}
-                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                            viewModel.showOriginalFullscreen
+                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${viewModel.showOriginalFullscreen
                               ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
-                          }`}
+                            }`}
                         >
                           Original
                         </button>
@@ -1070,11 +1066,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             e.stopPropagation();
                             viewModel.setShowOriginalFullscreen(false);
                           }}
-                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                            !viewModel.showOriginalFullscreen
+                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${!viewModel.showOriginalFullscreen
                               ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
-                          }`}
+                            }`}
                         >
                           Marked
                         </button>
@@ -1112,18 +1107,18 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                   <img
                     src={
                       viewModel.proofreadingData &&
-                      !viewModel.showOriginalFullscreen
+                        !viewModel.showOriginalFullscreen
                         ? (() => {
-                            const markedUrl = viewModel.getMarkedImageUrl();
-                            return (
-                              markedUrl || creative.previewUrl || creative.url
-                            );
-                          })()
+                          const markedUrl = viewModel.getMarkedImageUrl();
+                          return (
+                            markedUrl || creative.previewUrl || creative.url
+                          );
+                        })()
                         : creative.previewUrl || creative.url
                     }
                     alt={
                       viewModel.proofreadingData &&
-                      !viewModel.showOriginalFullscreen
+                        !viewModel.showOriginalFullscreen
                         ? `Marked ${creative.name}`
                         : creative.name
                     }
@@ -1173,11 +1168,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             e.stopPropagation();
                             viewModel.setShowOriginalHtmlFullscreen(true);
                           }}
-                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                            viewModel.showOriginalHtmlFullscreen
+                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${viewModel.showOriginalHtmlFullscreen
                               ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
-                          }`}
+                            }`}
                         >
                           Original
                         </button>
@@ -1188,11 +1182,10 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                             e.stopPropagation();
                             viewModel.setShowOriginalHtmlFullscreen(false);
                           }}
-                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${
-                            !viewModel.showOriginalHtmlFullscreen
+                          className={`h-full px-4 text-xs font-medium transition-all rounded-md border-0 outline-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center ${!viewModel.showOriginalHtmlFullscreen
                               ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
-                          }`}
+                            }`}
                         >
                           Marked
                         </button>
@@ -1212,7 +1205,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
               </DialogHeader>
               <DialogBody className="flex-1 overflow-hidden p-0 max-w-full! max-h-full!">
                 {viewModel.proofreadingData &&
-                !viewModel.showOriginalHtmlFullscreen ? (
+                  !viewModel.showOriginalHtmlFullscreen ? (
                   // Marked view - show the marked HTML from API
                   (() => {
                     const markedHtmlContent = viewModel.getMarkedHtmlContent();

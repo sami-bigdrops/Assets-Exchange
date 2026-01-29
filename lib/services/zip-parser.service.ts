@@ -22,8 +22,28 @@ export const ZipParserService = {
       )
         continue;
 
-      const content = await file.async("nodebuffer");
+      const rawContent = await file.async("nodebuffer");
+      let content = rawContent;
       const type = this.guessType(relativePath);
+
+      // Check for UTF-16 BOM and convert to UTF-8 if detected
+      // UTF-16 LE BOM: 0xFF 0xFE
+      // UTF-16 BE BOM: 0xFE 0xFF
+      if (
+        (type === "text/html" || type.startsWith("text/")) &&
+        content.length >= 2
+      ) {
+        if (content[0] === 0xff && content[1] === 0xfe) {
+          // UTF-16 LE
+          const str = content.toString("utf16le");
+          content = Buffer.from(str, "utf-8");
+        } else if (content[0] === 0xfe && content[1] === 0xff) {
+          // UTF-16 BE
+          content.swap16();
+          const str = content.toString("utf16le");
+          content = Buffer.from(str, "utf-8");
+        }
+      }
 
       entries.push({
         name: relativePath,

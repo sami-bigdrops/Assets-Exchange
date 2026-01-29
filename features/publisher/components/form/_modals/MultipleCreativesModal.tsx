@@ -30,6 +30,14 @@ interface MultipleCreativesModalProps {
   onFileNameChange?: (fileId: string, newFileName: string) => void;
   onZipFileNameChange?: (newZipFileName: string) => void;
   creativeType?: string;
+  onMetadataChange?: (
+    fileId: string,
+    metadata: {
+      fromLines?: string;
+      subjectLines?: string;
+      additionalNotes?: string;
+    }
+  ) => void;
 }
 
 const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
@@ -40,6 +48,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
   uploadedZipFileName,
   onFileNameChange,
   onZipFileNameChange,
+  onMetadataChange,
   creativeType = "email",
 }) => {
   const viewModel = useMultipleCreativesModal({
@@ -55,6 +64,8 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       const scrollY = window.scrollY;
+      // ... (lines 58-378 remain same, only showing relevant context)
+
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = "100%";
@@ -102,15 +113,26 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
 
   if (!isOpen) return null;
 
-  const htmlFiles = creatives.filter((c) => c.html || /\.html?$/i.test(c.name));
-  const imageFiles = creatives.filter((c) =>
-    /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(c.name)
+  console.log('MultipleCreativesModal debug:', {
+    total: creatives.length,
+    hiddenCount: creatives.filter(c => (c as any).isHidden).length,
+    firstHidden: creatives.find(c => (c as any).isHidden),
+    allIsHidden: creatives.map(c => (c as any).isHidden)
+  });
+
+  const htmlFiles = creatives.filter(
+    (c) => (c.html || /\.html?$/i.test(c.name)) && !(c as any).isHidden
+  );
+  const imageFiles = creatives.filter(
+    (c) =>
+      /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(c.name) && !(c as any).isHidden
   );
   const otherFiles = creatives.filter(
     (c) =>
       !c.html &&
       !/\.html?$/i.test(c.name) &&
-      !/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(c.name)
+      !/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(c.name) &&
+      !(c as any).isHidden
   );
 
   return (
@@ -152,8 +174,8 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                           <span className="text-xs sm:text-sm text-gray-700 font-medium px-2 py-2 h-8 sm:h-9 flex items-center whitespace-nowrap">
                             {uploadedZipFileName
                               ? uploadedZipFileName.substring(
-                                  uploadedZipFileName.lastIndexOf(".")
-                                )
+                                uploadedZipFileName.lastIndexOf(".")
+                              )
                               : ".zip"}
                           </span>
                         </div>
@@ -250,107 +272,108 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
 
             {/* Grid Layout */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
-              {creatives.map((creative) => {
-                const fileType = viewModel.getFileType(creative.name);
-                const isImage = fileType === "image";
-                const isHtml = fileType === "html";
+              {creatives
+                .filter((c) => !(c as any).isHidden)
+                .map((creative) => {
+                  const fileType = viewModel.getFileType(creative.name);
+                  const isImage = fileType === "image";
+                  const isHtml = fileType === "html";
 
-                return (
-                  <div
-                    key={creative.id}
-                    className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200 overflow-hidden group"
-                  >
-                    {/* Preview Section */}
-                    <div className="aspect-[4/3] bg-gray-50 overflow-hidden relative">
-                      {isImage && (creative.previewUrl || creative.url) ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={creative.previewUrl || creative.url}
-                          alt={creative.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : isHtml ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-50">
-                          <div className="text-center">
-                            <FileText className="h-10 w-10 text-emerald-600 mx-auto mb-2" />
-                            <p className="text-xs font-medium text-emerald-700">
-                              HTML
-                            </p>
+                  return (
+                    <div
+                      key={creative.id}
+                      className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200 overflow-hidden group"
+                    >
+                      {/* Preview Section */}
+                      <div className="aspect-[4/3] bg-gray-50 overflow-hidden relative">
+                        {isImage && (creative.previewUrl || creative.url) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={creative.previewUrl || creative.url}
+                            alt={creative.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : isHtml ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-50">
+                            <div className="text-center">
+                              <FileText className="h-10 w-10 text-emerald-600 mx-auto mb-2" />
+                              <p className="text-xs font-medium text-emerald-700">
+                                HTML
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-50">
-                          <div className="text-center">
-                            <File className="h-10 w-10 text-slate-500 mx-auto mb-2" />
-                            <p className="text-xs font-medium text-slate-600">
-                              File
-                            </p>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-50">
+                            <div className="text-center">
+                              <File className="h-10 w-10 text-slate-500 mx-auto mb-2" />
+                              <p className="text-xs font-medium text-slate-600">
+                                File
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Action Buttons - Top Right */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            viewModel.handleDeleteCreative(creative);
-                          }}
-                          disabled={viewModel.isDeleting === creative.id}
-                          className="h-9 px-2 bg-white/95 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 text-xs font-medium shadow-sm"
-                        >
-                          {viewModel.isDeleting === creative.id ? (
-                            <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                          )}
-                        </Button>
+                        {/* Action Buttons - Top Right */}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              viewModel.handleDeleteCreative(creative);
+                            }}
+                            disabled={viewModel.isDeleting === creative.id}
+                            className="h-9 px-2 bg-white/95 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 text-xs font-medium shadow-sm"
+                          >
+                            {viewModel.isDeleting === creative.id ? (
+                              <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Content Section */}
-                    <div className="p-3 sm:p-4">
-                      {/* Filename and File Info */}
-                      <div className="mb-3">
-                        <h3
-                          className="font-medium text-gray-900 text-xs sm:text-sm truncate mb-1"
-                          title={creative.name}
-                        >
-                          {creative.name}
-                        </h3>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span
-                            className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full font-medium text-xs ${
-                              isImage
+                      {/* Content Section */}
+                      <div className="p-3 sm:p-4">
+                        {/* Filename and File Info */}
+                        <div className="mb-3">
+                          <h3
+                            className="font-medium text-gray-900 text-xs sm:text-sm truncate mb-1"
+                            title={creative.name}
+                          >
+                            {creative.name}
+                          </h3>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span
+                              className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full font-medium text-xs ${isImage
                                 ? "bg-blue-50 text-blue-600"
                                 : isHtml
                                   ? "bg-emerald-50 text-emerald-600"
                                   : "bg-gray-50 text-gray-600"
-                            }`}
-                          >
-                            {fileType}
-                          </span>
-                          <span className="font-medium text-xs">
-                            {formatFileSize(creative.size)}
-                          </span>
+                                }`}
+                            >
+                              {fileType}
+                            </span>
+                            <span className="font-medium text-xs">
+                              {formatFileSize(creative.size)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* View Button */}
-                      <Button
-                        onClick={() =>
-                          viewModel.openSingleCreativeView(creative)
-                        }
-                        className="w-full h-9 bg-blue-400 hover:bg-blue-600 text-white font-medium px-3 sm:px-4 rounded-md text-xs sm:text-sm transition-colors duration-200"
-                      >
-                        <span>View Creative</span>
-                      </Button>
+                        {/* View Button */}
+                        <Button
+                          onClick={() =>
+                            viewModel.openSingleCreativeView(creative)
+                          }
+                          className="w-full h-9 bg-blue-400 hover:bg-blue-600 text-white font-medium px-3 sm:px-4 rounded-md text-xs sm:text-sm transition-colors duration-200"
+                        >
+                          <span>View Creative</span>
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
 
             {creatives.length === 0 && (
@@ -378,8 +401,18 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
             html: viewModel.selectedCreative.html,
           }}
           onFileNameChange={viewModel.handleFileNameChangeFromSingle}
-          showAdditionalNotes={false}
+          showAdditionalNotes={true}
           creativeType={creativeType}
+          siblingCreatives={creatives.map((c) => ({
+            id: c.id,
+            name: c.name,
+            url: c.url,
+            size: c.size,
+            type: c.type || "application/octet-stream",
+            previewUrl: c.previewUrl,
+            html: c.html,
+            uploadId: c.uploadId,
+          }))}
         />
       )}
     </>

@@ -6,8 +6,8 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const apiUrl = process.env.BETTER_AUTH_URL || appUrl;
 
 const connectSrc = isDevelopment
-  ? `'self' ${apiUrl} ${appUrl} https://vercel.live https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com ws://localhost:* http://localhost:*`
-  : `'self' ${apiUrl} ${appUrl} https://vercel.live https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com`;
+  ? `'self' ${apiUrl} ${appUrl} https://vercel.com https://vercel.live https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com ws://localhost:* http://localhost:*`
+  : `'self' ${apiUrl} ${appUrl} https://vercel.com https://vercel.live https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com`;
 
 const cspDirectives = [
   "default-src 'self'",

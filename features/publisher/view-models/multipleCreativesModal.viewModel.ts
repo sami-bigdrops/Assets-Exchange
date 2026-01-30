@@ -1,5 +1,6 @@
 import type React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+
 import { bulkDeleteByIds, parseIdsFromUrl } from "@/lib/filesClient";
 
 export interface CreativeFile {
@@ -30,16 +31,21 @@ export const useMultipleCreativesModal = ({
   onRemoveCreative,
   onFileNameChange,
   onZipFileNameChange,
-  creativeType = "email",
+  creativeType: _creativeType = "email",
 }: UseMultipleCreativesModalProps) => {
-  const [selectedCreative, setSelectedCreative] = useState<CreativeFile | null>(null);
-  const [isSingleCreativeViewOpen, setIsSingleCreativeViewOpen] = useState(false);
+  const [selectedCreative, setSelectedCreative] = useState<CreativeFile | null>(
+    null
+  );
+  const [isSingleCreativeViewOpen, setIsSingleCreativeViewOpen] =
+    useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [htmlContent, setHtmlContent] = useState<Record<string, string>>({});
   const [isHtmlEditorFullscreen, setIsHtmlEditorFullscreen] = useState(false);
-  const [isImagePreviewFullscreen, setIsImagePreviewFullscreen] = useState(false);
-  const [currentEditingCreative, setCurrentEditingCreative] = useState<CreativeFile | null>(null);
-  
+  const [isImagePreviewFullscreen, setIsImagePreviewFullscreen] =
+    useState(false);
+  const [currentEditingCreative, setCurrentEditingCreative] =
+    useState<CreativeFile | null>(null);
+
   // ZIP file name editing state
   const [isEditingZipFileName, setIsEditingZipFileName] = useState(false);
   const [editableZipFileName, setEditableZipFileName] = useState("");
@@ -59,7 +65,8 @@ export const useMultipleCreativesModal = ({
       try {
         // Check for embedded HTML first
         if ((creative as { embeddedHtml?: string }).embeddedHtml) {
-          const embedded = (creative as { embeddedHtml?: string }).embeddedHtml!;
+          const embedded = (creative as { embeddedHtml?: string })
+            .embeddedHtml!;
           if (embedded && embedded.length > 0) {
             setHtmlContent((prev) => ({ ...prev, [creative.id]: embedded }));
             return;
@@ -77,7 +84,8 @@ export const useMultipleCreativesModal = ({
           const apiResponse = await fetch(apiUrl, {
             method: "GET",
             headers: {
-              Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              Accept:
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             },
           });
 
@@ -90,14 +98,15 @@ export const useMultipleCreativesModal = ({
           }
         } catch (apiError) {
           // API fetch failed, try fallback
-          console.debug("API fetch failed for creative:", creative.id, apiError);
+          console.warn("API fetch failed for creative:", creative.id, apiError);
         }
 
         // Fallback to direct fetch - only for absolute URLs (not relative paths)
         // Skip relative paths as they won't work with CORS
         if (
           creative.url &&
-          (creative.url.startsWith("http://") || creative.url.startsWith("https://"))
+          (creative.url.startsWith("http://") ||
+            creative.url.startsWith("https://"))
         ) {
           try {
             // Use AbortController for timeout compatibility
@@ -107,7 +116,8 @@ export const useMultipleCreativesModal = ({
             const directResponse = await fetch(creative.url, {
               method: "GET",
               headers: {
-                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                Accept:
+                  "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
               },
               mode: "cors",
               signal: controller.signal,
@@ -118,7 +128,10 @@ export const useMultipleCreativesModal = ({
             if (directResponse.ok) {
               const htmlText = await directResponse.text();
               if (htmlText) {
-                setHtmlContent((prev) => ({ ...prev, [creative.id]: htmlText }));
+                setHtmlContent((prev) => ({
+                  ...prev,
+                  [creative.id]: htmlText,
+                }));
                 return;
               }
             }
@@ -130,14 +143,22 @@ export const useMultipleCreativesModal = ({
               fetchError.name !== "AbortError" &&
               !fetchError.message.includes("aborted")
             ) {
-              console.debug("Direct fetch failed for creative:", creative.id, fetchError.message);
+              console.warn(
+                "Direct fetch failed for creative:",
+                creative.id,
+                fetchError.message
+              );
             }
           }
         }
       } catch (error) {
         // Catch any unexpected errors
         if (error instanceof Error) {
-          console.debug("Failed to load HTML content for creative:", creative.id, error.message);
+          console.warn(
+            "Failed to load HTML content for creative:",
+            creative.id,
+            error.message
+          );
         }
       }
     };
@@ -146,7 +167,11 @@ export const useMultipleCreativesModal = ({
     creatives.forEach((creative) => {
       loadHtmlContent(creative).catch((error) => {
         // Ensure no unhandled promise rejections
-        console.debug("Unhandled error loading HTML for creative:", creative.id, error);
+        console.warn(
+          "Unhandled error loading HTML for creative:",
+          creative.id,
+          error
+        );
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -180,6 +205,10 @@ export const useMultipleCreativesModal = ({
 
         const ids = new Set<string>();
         ids.add(creative.id);
+
+        if (creative.url) {
+          ids.add(creative.url);
+        }
 
         if (creative.previewUrl) {
           const previewId = parseIdsFromUrl(creative.previewUrl).id;
@@ -254,17 +283,19 @@ export const useMultipleCreativesModal = ({
     setIsImagePreviewFullscreen((prev) => !prev);
   }, []);
 
-  const getFileType = useCallback((fileName: string): "image" | "html" | "other" => {
-    const lowerName = fileName.toLowerCase();
-    if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(lowerName)) {
-      return "image";
-    }
-    if (/\.(html|htm)$/i.test(lowerName)) {
-      return "html";
-    }
-    return "other";
-  }, []);
-
+  const getFileType = useCallback(
+    (fileName: string): "image" | "html" | "other" => {
+      const lowerName = fileName.toLowerCase();
+      if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(lowerName)) {
+        return "image";
+      }
+      if (/\.(html|htm)$/i.test(lowerName)) {
+        return "html";
+      }
+      return "other";
+    },
+    []
+  );
 
   const handleZipFileNameEdit = useCallback((currentZipFileName: string) => {
     const lastDotIndex = currentZipFileName.lastIndexOf(".");
@@ -321,10 +352,7 @@ export const useMultipleCreativesModal = ({
   }, []);
 
   const handleZipFileNameKeyDown = useCallback(
-    (
-      e: React.KeyboardEvent<HTMLInputElement>,
-      currentZipFileName: string
-    ) => {
+    (e: React.KeyboardEvent<HTMLInputElement>, currentZipFileName: string) => {
       if (e.key === "Enter") {
         handleZipFileNameSave(currentZipFileName);
       } else if (e.key === "Escape") {

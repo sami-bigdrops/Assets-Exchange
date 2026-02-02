@@ -1,16 +1,18 @@
 /**
  * Verification script for grammar_feedback migration
- * 
+ *
  * Run this after migration to verify:
  * 1. Column exists and is nullable
  * 2. Inserts without grammar_feedback work
  * 3. Updates with grammar_feedback work
  * 4. Old rows remain readable
  */
+/* eslint-disable no-console -- CLI script; console output is intended */
+
+import { eq, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { externalTasks } from "@/lib/schema";
-import { eq } from "drizzle-orm";
 
 async function verifyMigration() {
   console.log("🔍 Verifying grammar_feedback migration...\n");
@@ -25,7 +27,7 @@ async function verifyMigration() {
       })
       .from(externalTasks)
       .limit(1);
-    
+
     console.log("✅ Column exists and is queryable\n");
 
     // Test 2: Insert without grammar_feedback
@@ -45,7 +47,11 @@ async function verifyMigration() {
     if (inserted && inserted.grammarFeedback === null) {
       console.log("✅ Insert without grammar_feedback succeeded\n");
     } else {
-      console.log("⚠️  Insert succeeded but grammar_feedback is not null:", inserted?.grammarFeedback, "\n");
+      console.log(
+        "⚠️  Insert succeeded but grammar_feedback is not null:",
+        inserted?.grammarFeedback,
+        "\n"
+      );
     }
 
     // Test 3: Update with grammar_feedback
@@ -74,10 +80,18 @@ async function verifyMigration() {
       .where(eq(externalTasks.id, testId))
       .limit(1);
 
-    if (updated && Array.isArray(updated.grammarFeedback) && updated.grammarFeedback.length === 1) {
+    if (
+      updated &&
+      Array.isArray(updated.grammarFeedback) &&
+      updated.grammarFeedback.length === 1
+    ) {
       console.log("✅ Update with grammar_feedback succeeded\n");
     } else {
-      console.log("⚠️  Update succeeded but grammar_feedback is incorrect:", updated?.grammarFeedback, "\n");
+      console.log(
+        "⚠️  Update succeeded but grammar_feedback is incorrect:",
+        updated?.grammarFeedback,
+        "\n"
+      );
     }
 
     // Test 4: Verify old rows are readable
@@ -90,10 +104,12 @@ async function verifyMigration() {
         grammarFeedback: externalTasks.grammarFeedback,
       })
       .from(externalTasks)
-      .where(eq(externalTasks.grammarFeedback, null))
+      .where(isNull(externalTasks.grammarFeedback))
       .limit(5);
 
-    console.log(`✅ Found ${oldRows.length} old rows with grammar_feedback = null`);
+    console.log(
+      `✅ Found ${oldRows.length} old rows with grammar_feedback = null`
+    );
     console.log("✅ Old rows are readable\n");
 
     // Cleanup

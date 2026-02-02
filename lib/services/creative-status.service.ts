@@ -1,4 +1,5 @@
 import { eq, sql, inArray } from "drizzle-orm";
+
 import { db } from "@/lib/db";
 import { creatives } from "@/lib/schema";
 
@@ -12,8 +13,12 @@ export async function updateCreativeStatus(
   update: CreativeStatusUpdate
 ): Promise<void> {
   const now = new Date();
-  const isScanning = update.status === "SCANNING" || update.status === "scanning";
-  const isScanFailure = update.status === "failed" || update.status === "FAILED" || update.scanError != null;
+  const isScanning =
+    update.status === "SCANNING" || update.status === "scanning";
+  const isScanFailure =
+    update.status === "failed" ||
+    update.status === "FAILED" ||
+    update.scanError != null;
 
   const updateData: {
     status: string;
@@ -58,8 +63,12 @@ export async function updateCreativeStatuses(
   if (creativeIds.length === 0) return;
 
   const now = new Date();
-  const isScanning = update.status === "SCANNING" || update.status === "scanning";
-  const isScanFailure = update.status === "failed" || update.status === "FAILED" || update.scanError != null;
+  const isScanning =
+    update.status === "SCANNING" || update.status === "scanning";
+  const isScanFailure =
+    update.status === "failed" ||
+    update.status === "FAILED" ||
+    update.scanError != null;
 
   const updateData: {
     status: string;

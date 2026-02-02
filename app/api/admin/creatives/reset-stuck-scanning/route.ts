@@ -4,17 +4,17 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { creatives } from "@/lib/schema";
 import { logger } from "@/lib/logger";
+import { creatives } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
 const STUCK_THRESHOLD_MINUTES = 15;
 
 export async function POST(_req: Request) {
-  console.log("=".repeat(80));
-  console.log("RESET STUCK JOB ENDPOINT HIT");
-  console.log("=".repeat(80));
+  logger.info("=".repeat(80));
+  logger.info("RESET STUCK JOB ENDPOINT HIT");
+  logger.info("=".repeat(80));
 
   try {
     const session = await auth.api.getSession({
@@ -22,31 +22,35 @@ export async function POST(_req: Request) {
     });
 
     if (!session || session.user.role !== "admin") {
-      console.log("❌ UNAUTHORIZED - Admin check failed");
+      logger.info("❌ UNAUTHORIZED - Admin check failed");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Admin authenticated:", {
+    logger.info({
+      message: "✅ Admin authenticated",
       userId: session.user.id,
       role: session.user.role,
     });
 
-    console.log("📊 Query Parameters:", {
+    logger.info({
+      message: "📊 Query Parameters",
       thresholdMinutes: STUCK_THRESHOLD_MINUTES,
       statusFilter: "SCANNING",
       timeCondition: `status_updated_at < now() - (${STUCK_THRESHOLD_MINUTES} * interval '1 minute')`,
       note: "Using database-native time logic with parameterized interval multiplication",
     });
 
-    console.log("🔍 EXECUTING STUCK JOB RESET QUERY (SELECT)");
-    console.log("Query Details:", {
+    logger.info("🔍 EXECUTING STUCK JOB RESET QUERY (SELECT)");
+    logger.info({
+      message: "Query Details",
       table: "creatives",
       whereConditions: [
         "status = 'SCANNING'",
         `status_updated_at < now() - (${STUCK_THRESHOLD_MINUTES} * interval '1 minute')`,
       ],
       selectFields: ["id", "status", "status_updated_at", "scan_attempts"],
-      sqlLogic: "Database-native time comparison with parameterized interval (PostgreSQL-safe)",
+      sqlLogic:
+        "Database-native time comparison with parameterized interval (PostgreSQL-safe)",
     });
 
     let stuckCreatives;
@@ -68,13 +72,17 @@ export async function POST(_req: Request) {
     } catch (selectError) {
       console.error("❌ SELECT QUERY ERROR:", selectError);
       console.error("Error details:", {
-        message: selectError instanceof Error ? selectError.message : String(selectError),
+        message:
+          selectError instanceof Error
+            ? selectError.message
+            : String(selectError),
         stack: selectError instanceof Error ? selectError.stack : undefined,
       });
       throw selectError;
     }
 
-    console.log("📋 SELECT Query Result:", {
+    logger.info({
+      message: "📋 SELECT Query Result",
       rowsFound: stuckCreatives.length,
       creativeIds: stuckCreatives.map((c) => c.id),
       details: stuckCreatives.map((c) => ({
@@ -86,7 +94,7 @@ export async function POST(_req: Request) {
     });
 
     if (stuckCreatives.length === 0) {
-      console.log("ℹ️  No stuck creatives found - returning early");
+      logger.info("ℹ️  No stuck creatives found - returning early");
       logger.info({
         action: "creatives.reset_stuck_scanning",
         actorId: session.user.id,
@@ -101,8 +109,9 @@ export async function POST(_req: Request) {
 
     const creativeIds = stuckCreatives.map((c) => c.id);
 
-    console.log("🔧 EXECUTING STUCK JOB RESET QUERY (UPDATE)");
-    console.log("Update Query Details:", {
+    logger.info("🔧 EXECUTING STUCK JOB RESET QUERY (UPDATE)");
+    logger.info({
+      message: "Update Query Details",
       table: "creatives",
       whereConditions: [
         "status = 'SCANNING'",
@@ -141,7 +150,10 @@ export async function POST(_req: Request) {
     } catch (updateError) {
       console.error("❌ UPDATE QUERY ERROR:", updateError);
       console.error("Error details:", {
-        message: updateError instanceof Error ? updateError.message : String(updateError),
+        message:
+          updateError instanceof Error
+            ? updateError.message
+            : String(updateError),
         stack: updateError instanceof Error ? updateError.stack : undefined,
         name: updateError instanceof Error ? updateError.name : undefined,
       });
@@ -150,16 +162,18 @@ export async function POST(_req: Request) {
 
     const actualRowsUpdated = updateResult.length;
 
-    console.log("✅ ROWS UPDATED:", actualRowsUpdated);
-    console.log("Update Result:", {
+    logger.info({ message: "✅ ROWS UPDATED", count: actualRowsUpdated });
+    logger.info({
+      message: "Update Result",
       rowsAffected: actualRowsUpdated,
       expectedRows: creativeIds.length,
-      match: actualRowsUpdated === creativeIds.length ? "✅ MATCH" : "⚠️ MISMATCH",
+      match:
+        actualRowsUpdated === creativeIds.length ? "✅ MATCH" : "⚠️ MISMATCH",
       updatedCreativeIds: updateResult.map((r) => r.id),
       newStatus: "pending",
       timestampSource: "Database now() function",
     });
-    console.log("=".repeat(80));
+    logger.info("=".repeat(80));
 
     logger.info({
       action: "creatives.reset_stuck_scanning",
@@ -174,14 +188,14 @@ export async function POST(_req: Request) {
       ids: updateResult.map((r) => r.id),
     });
   } catch (error) {
-    console.error("❌ ERROR in reset stuck job endpoint:", error);
+    console.error("ERROR in reset stuck job endpoint:", error);
     console.error("Full error object:", {
       name: error instanceof Error ? error.name : "Unknown",
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       cause: error instanceof Error ? error.cause : undefined,
     });
-    console.log("=".repeat(80));
+    logger.info("=".repeat(80));
 
     logger.error({
       action: "creatives.reset_stuck_scanning",
@@ -190,7 +204,7 @@ export async function POST(_req: Request) {
     });
 
     return NextResponse.json(
-      { 
+      {
         error: "Failed to reset stuck SCANNING creatives",
         details: error instanceof Error ? error.message : String(error),
       },

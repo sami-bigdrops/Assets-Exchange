@@ -521,8 +521,7 @@ function extractGrammarFeedback(
 
     return feedback;
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
 
     console.error(
@@ -1230,7 +1229,7 @@ Focus on marketing impact, NOT grammar (that's handled separately).`;
                 externalTaskId: data.task_id || `sync-${Date.now()}`,
                 status: "completed",
                 result: resultData,
-                grammarFeedback: grammarFeedback,
+                grammarFeedback,
                 startedAt: new Date(),
                 finishedAt: new Date(),
               })
@@ -1354,7 +1353,7 @@ Focus on marketing impact, NOT grammar (that's handled separately).`;
           .set({
             status: "completed",
             result: data.result,
-            grammarFeedback: grammarFeedback,
+            grammarFeedback,
             finishedAt: new Date(),
           })
           .where(eq(externalTasks.externalTaskId, externalTaskId));

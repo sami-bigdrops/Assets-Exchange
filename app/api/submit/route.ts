@@ -1,37 +1,13 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { getOffer } from "@/features/admin/services/offer.service";
 import { db } from "@/lib/db";
+import { validateRequest } from "@/lib/middleware/validateRequest";
 import { creativeRequests, creatives } from "@/lib/schema";
 import { generateTrackingCode } from "@/lib/utils/tracking";
-
-const fileSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  url: z.string(),
-  size: z.number(),
-  type: z.string(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-});
-
-const submitSchema = z.object({
-  affiliateId: z.string().min(1),
-  companyName: z.string().min(1),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email(),
-  telegramId: z.string().optional(),
-  offerId: z.string().min(1),
-  creativeType: z.string().min(1),
-  fromLines: z.string().optional(),
-  subjectLines: z.string().optional(),
-  additionalNotes: z.string().optional(),
-  priority: z.string().optional(),
-  files: z.array(fileSchema).optional(),
-});
+import { submitSchema } from "@/lib/validations/publisher";
 
 function countLines(text: string | undefined): number {
   if (!text || text.trim() === "") return 0;
@@ -40,28 +16,13 @@ function countLines(text: string | undefined): number {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const parsed = submitSchema.safeParse(body);
+    //  Zod validation via generic helper
+    const validation = await validateRequest(req, submitSchema);
+    if ("response" in validation) return validation.response;
 
-    if (!parsed.success) {
-      console.error(
-        "Validation error:",
-        JSON.stringify(parsed.error.flatten(), null, 2)
-      );
-      return NextResponse.json(
-        {
-          error: "Invalid input",
-          details: parsed.error.flatten(),
-          fieldErrors: parsed.error.flatten().fieldErrors,
-        },
-        { status: 400 }
-      );
-    }
-
-    const data = parsed.data;
+    const data = validation.data;
 
     const offer = await getOffer(data.offerId);
-
     if (!offer) {
       return NextResponse.json({ error: "Offer not found" }, { status: 404 });
     }
@@ -72,7 +33,7 @@ export async function POST(req: NextRequest) {
     let fromLinesCount = countLines(data.fromLines);
     let subjectLinesCount = countLines(data.subjectLines);
 
-    if (data.files && data.files.length > 0) {
+    if (data.files?.length) {
       data.files.forEach((file) => {
         if (file.metadata) {
           const metadata = file.metadata as Record<string, unknown>;
@@ -88,7 +49,8 @@ export async function POST(req: NextRequest) {
 
     const priority =
       data.priority === "high" ? "High Priority" : "Medium Priority";
-    const trackingCode = generateTrackingCode(); // Used correctly
+
+    const trackingCode = generateTrackingCode();
 
     const [request] = await db
       .insert(creativeRequests)
@@ -109,7 +71,7 @@ export async function POST(req: NextRequest) {
         clientId: data.affiliateId,
         clientName: data.companyName,
         priority,
-        trackingCode, // Added trackingCode
+        trackingCode,
         status: "new",
         approvalStage: "admin",
         adminStatus: "pending",
@@ -119,7 +81,7 @@ export async function POST(req: NextRequest) {
       })
       .returning({ id: creativeRequests.id });
 
-    if (data.files && data.files.length > 0) {
+    if (data.files?.length) {
       const creativeRecords = data.files.map((file) => ({
         id: createId(),
         requestId: request.id,

@@ -1,137 +1,138 @@
 import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
-import { attachBrandGuidelines, attachOfferBrandGuidelines, detachBrandGuidelines, getOfferBrandGuidelines } from "@/features/admin/services/brandGuidelines.service";
+import {
+  attachOfferBrandGuidelines,
+  attachBrandGuidelines,
+  detachBrandGuidelines,
+  getOfferBrandGuidelines,
+} from "@/features/admin/services/brandGuidelines.service";
 import { auth } from "@/lib/auth";
 import { getRateLimitKey } from "@/lib/getRateLimitKey";
+import { validateRequest } from "@/lib/middleware/validateRequest";
 import { ratelimit } from "@/lib/ratelimit";
+import { brandGuidelinesSchema } from "@/lib/validations/admin";
 
+// ---------- Rate Limit & Admin Helpers ----------
 async function enforceRateLimit() {
-    const key = await getRateLimitKey();
-    const { success } = await ratelimit.limit(key);
-    if (!success) {
-        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    }
+  const key = await getRateLimitKey();
+  const { success } = await ratelimit.limit(key);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 }
 
 async function requireAdmin() {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || session.user.role !== "admin") {
-        throw new Error("Unauthorized");
-    }
-    return session;
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session || session.user.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+  return session;
 }
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        await requireAdmin();
-        const { id } = await params;
-        
-        const brandGuidelines = await getOfferBrandGuidelines(id);
-        
-        return NextResponse.json({
-            success: true,
-            data: brandGuidelines,
-        });
-    } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : "Internal server error";
-        if (message === "Unauthorized") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        return NextResponse.json({ error: message }, { status: 500 });
+// ---------- GET ----------
+export async function GET(
+  _: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requireAdmin();
+    const { id } = await params;
+
+    const brandGuidelines = await getOfferBrandGuidelines(id);
+
+    return NextResponse.json({ success: true, data: brandGuidelines });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Internal server error";
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const rl = await enforceRateLimit();
-        if (rl) return rl;
+// ---------- POST ----------
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const rl = await enforceRateLimit();
+    if (rl) return rl;
 
-        const { id } = await params;
-        const session = await requireAdmin();
-        const { fileId } = await req.json();
+    const { id } = await params;
+    const session = await requireAdmin();
 
-        if (!fileId) return NextResponse.json({ error: "Missing fileId" }, { status: 400 });
+    const body = await req.json();
 
-        await attachBrandGuidelines(id, fileId, session.user.id);
-        return new NextResponse(null, { status: 204 });
-    } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : "Internal server error";
-        if (message === "Unauthorized") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        return NextResponse.json({ error: message }, { status: 400 });
+    if (!body.fileId) {
+      return NextResponse.json({ error: "Missing fileId" }, { status: 400 });
     }
+
+    await attachBrandGuidelines(id, body.fileId, session.user.id);
+
+    return new NextResponse(null, { status: 204 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Internal server error";
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const rl = await enforceRateLimit();
-        if (rl) return rl;
+// ---------- PUT ----------
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const rl = await enforceRateLimit();
+    if (rl) return rl;
 
-        const { id } = await params;
-        const session = await requireAdmin();
-        
-        const body = await req.json();
+    const { id } = await params;
+    const session = await requireAdmin();
 
-        if (!body.type) {
-            return NextResponse.json({ error: "Missing type" }, { status: 400 });
-        }
+    // Validate body using generic helper
+    const validation = await validateRequest(req, brandGuidelinesSchema);
+    if ("response" in validation) return validation.response;
 
-        if (body.type === "url" && !body.url) {
-            return NextResponse.json({ error: "URL is required for type 'url'" }, { status: 400 });
-        }
+    const data = validation.data;
 
-        if (body.type === "text" && !body.text) {
-            return NextResponse.json({ error: "Text is required for type 'text'" }, { status: 400 });
-        }
-
-        if (body.type === "file") {
-            return NextResponse.json({ error: "File uploads are not yet supported. Please use URL or text type." }, { status: 400 });
-        }
-
-        const brandGuidelines: {
-            type: "url" | "file" | "text";
-            url?: string;
-            fileUrl?: string;
-            fileName?: string;
-            fileSize?: number;
-            mimeType?: string;
-            text?: string;
-            notes?: string;
-        } = {
-            type: body.type,
-        };
-
-        if (body.type === "url") {
-            brandGuidelines.url = body.url;
-            if (body.notes) {
-                brandGuidelines.notes = body.notes;
-            }
-        } else if (body.type === "text") {
-            brandGuidelines.text = body.text;
-            if (body.notes) {
-                brandGuidelines.notes = body.notes;
-            }
-        }
-
-        await attachOfferBrandGuidelines(id, brandGuidelines, session.user.id);
-        return new NextResponse(null, { status: 204 });
-    } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : "Internal server error";
-        if (message === "Unauthorized") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        return NextResponse.json({ error: message }, { status: 400 });
+    await attachOfferBrandGuidelines(
+      id,
+      { ...data, type: data.type ?? "text" },
+      session.user.id
+    );
+    return new NextResponse(null, { status: 204 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Internal server error";
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        const rl = await enforceRateLimit();
-        if (rl) return rl;
+// ---------- DELETE ----------
+export async function DELETE(
+  _: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const rl = await enforceRateLimit();
+    if (rl) return rl;
 
-        const { id } = await params;
-        await requireAdmin();
-        await detachBrandGuidelines(id);
-        return new NextResponse(null, { status: 204 });
-    } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : "Internal server error";
-        if (message === "Unauthorized") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        return NextResponse.json({ error: message }, { status: 500 });
+    const { id } = await params;
+    await requireAdmin();
+    await detachBrandGuidelines(id);
+
+    return new NextResponse(null, { status: 204 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Internal server error";
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

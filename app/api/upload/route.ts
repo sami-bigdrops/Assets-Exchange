@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
 import { saveBuffer } from "@/lib/fileStorage";
+import { scanFileByUrl } from "@/lib/services/malware-scan.service";
 import { ZipParserService } from "@/lib/services/zip-parser.service";
 
 export const runtime = "nodejs";
@@ -67,6 +68,8 @@ export async function POST(req: NextRequest) {
         size: number;
         type: string;
         isDependency: boolean;
+        scanStatus?: "clean" | "infected" | "error" | "skipped";
+        scanInfo?: string;
       }> = [];
       let imagesCount = 0;
       let htmlCount = 0;
@@ -91,6 +94,21 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      if (process.env.PYTHON_SERVICE_URL) {
+        const scanResults = await Promise.all(
+          items.map((item) => scanFileByUrl(item.url))
+        );
+        items.forEach((item, i) => {
+          const scan = scanResults[i];
+          item.scanStatus = scan.status;
+          if (scan.status !== "clean") item.scanInfo = scan.info;
+        });
+      } else {
+        items.forEach((item) => {
+          item.scanStatus = "skipped";
+        });
+      }
+
       return NextResponse.json({
         success: true,
         zipAnalysis: {
@@ -104,19 +122,13 @@ export async function POST(req: NextRequest) {
 
     const saved = await saveBuffer(fileBuffer, fileName);
 
-    /* 🚧 SECURITY TODO: 
-       The Python Malware Service integration is disabled for now.
-       Uncomment the block below when the Checking Model is ready.
-    */
-    /*
+    let scanStatus: "clean" | "infected" | "error" | "skipped" = "skipped";
+    let scanInfo: string | undefined;
     if (process.env.PYTHON_SERVICE_URL) {
-        fetch(`${process.env.PYTHON_SERVICE_URL}/scan`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ file_url: saved.url }),
-        }).catch(err => console.error("Scan trigger error:", err));
+      const scan = await scanFileByUrl(saved.url);
+      scanStatus = scan.status;
+      scanInfo = scan.status !== "clean" ? scan.info : undefined;
     }
-    */
 
     return NextResponse.json({
       success: true,
@@ -127,6 +139,8 @@ export async function POST(req: NextRequest) {
         fileSize: saved.size,
         fileType: fileType || "application/octet-stream",
         uploadDate: new Date().toISOString(),
+        scanStatus,
+        scanInfo,
       },
     });
   } catch (error) {

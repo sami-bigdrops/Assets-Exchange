@@ -345,10 +345,25 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         // Handle ZIP analysis (same logic as before)
         if (data.zipAnalysis) {
           if (data.zipAnalysis.isSingleCreative) {
-            // Convert single creative to array format for MultipleCreativesModal
-            const mainFile = data.zipAnalysis.mainCreative;
+            const mainFile = data.zipAnalysis.mainCreative as
+              | {
+                  id: string;
+                  name: string;
+                  url: string;
+                  size: number;
+                  type?: string;
+                  scanStatus?: string;
+                  scanInfo?: string;
+                }
+              | undefined;
             if (!mainFile)
               throw new Error("Single creative ZIP missing main file");
+            if (mainFile.scanStatus === "infected") {
+              alert(
+                `ZIP was not added: main file failed security scan. ${mainFile.scanInfo ?? ""}`
+              );
+              return;
+            }
 
             const mapped: UploadedFileMeta[] = [
               {
@@ -387,9 +402,25 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         handleUploadUrl: "/api/upload/token",
       });
 
+      const scanRes = await fetch("/api/upload/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileUrl: newBlob.url }),
+      });
+      const scanData = (await scanRes.json()) as {
+        scanStatus?: "clean" | "infected" | "error" | "skipped";
+        scanInfo?: string;
+      };
+      if (scanData.scanStatus === "infected") {
+        alert(
+          `File was not added: security scan detected a threat. ${scanData.scanInfo ?? ""}`
+        );
+        return;
+      }
+
       const previewUrl = await makeThumb(file);
       const uploadedFile: UploadedFileMeta = {
-        id: newBlob.url, // Use URL as ID for consistency or keep using blob url
+        id: newBlob.url,
         name: file.name,
         url: newBlob.url,
         size: file.size,
@@ -423,11 +454,23 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       size: number;
       type?: string;
       isDependency?: boolean;
+      scanStatus?: string;
+      scanInfo?: string;
     }>,
     zipName: string
   ) => {
+    const infectedCount = (items || []).filter(
+      (i: { scanStatus?: string }) => i.scanStatus === "infected"
+    ).length;
+    if (infectedCount > 0) {
+      alert(
+        `${infectedCount} file(s) were not added because the security scan detected a threat.`
+      );
+    }
     const zipFiles = (items || []).filter(
-      (item: { name: string }) => !item.name.toLowerCase().endsWith(".txt")
+      (item: { name: string; scanStatus?: string }) =>
+        !item.name.toLowerCase().endsWith(".txt") &&
+        item.scanStatus !== "infected"
     );
 
     if (zipFiles.length === 0) {

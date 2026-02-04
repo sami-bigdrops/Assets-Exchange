@@ -490,7 +490,7 @@ async function processEverflowAdvertiserSync(
           );
         }
 
-        await logEvent({
+        await logJobEvent({
           jobId: job.id,
           type: event.type,
           message: event.message,

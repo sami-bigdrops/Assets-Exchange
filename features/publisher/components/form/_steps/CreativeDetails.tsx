@@ -352,18 +352,10 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                   url: string;
                   size: number;
                   type?: string;
-                  scanStatus?: string;
-                  scanInfo?: string;
                 }
               | undefined;
             if (!mainFile)
               throw new Error("Single creative ZIP missing main file");
-            if (mainFile.scanStatus === "infected") {
-              alert(
-                `ZIP was not added: main file failed security scan. ${mainFile.scanInfo ?? ""}`
-              );
-              return;
-            }
 
             const mapped: UploadedFileMeta[] = [
               {
@@ -402,38 +394,14 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         handleUploadUrl: "/api/upload/token",
       });
 
-      const scanRes = await fetch("/api/upload/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileUrl: newBlob.url }),
-      });
-      let scanData: {
-        scanStatus?: "clean" | "infected" | "error" | "skipped";
-        scanInfo?: string;
-      };
+      let previewUrl: string | undefined;
       try {
-        scanData = (await scanRes.json()) as typeof scanData;
+        previewUrl = await makeThumb(file);
       } catch {
-        alert("Security scan failed (invalid response). Please try again.");
-        return;
+        previewUrl = /\.(png|jpe?g|gif|webp)$/i.test(file.name)
+          ? newBlob.url
+          : undefined;
       }
-      if (!scanRes.ok) {
-        alert(scanData.scanInfo ?? "Security scan failed. Please try again.");
-        return;
-      }
-      if (scanData.scanStatus === "infected") {
-        alert(
-          `File was not added: security scan detected a threat. ${scanData.scanInfo ?? ""}`
-        );
-        return;
-      }
-      if (scanData.scanStatus === "error") {
-        alert(
-          `Security scan could not complete (${scanData.scanInfo ?? "scanner unavailable"}). File was added anyway; you can re-upload later to scan again.`
-        );
-      }
-
-      const previewUrl = await makeThumb(file);
       const uploadedFile: UploadedFileMeta = {
         id: newBlob.url,
         name: file.name,
@@ -469,23 +437,11 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       size: number;
       type?: string;
       isDependency?: boolean;
-      scanStatus?: string;
-      scanInfo?: string;
     }>,
     zipName: string
   ) => {
-    const infectedCount = (items || []).filter(
-      (i: { scanStatus?: string }) => i.scanStatus === "infected"
-    ).length;
-    if (infectedCount > 0) {
-      alert(
-        `${infectedCount} file(s) were not added because the security scan detected a threat.`
-      );
-    }
     const zipFiles = (items || []).filter(
-      (item: { name: string; scanStatus?: string }) =>
-        !item.name.toLowerCase().endsWith(".txt") &&
-        item.scanStatus !== "infected"
+      (item: { name: string }) => !item.name.toLowerCase().endsWith(".txt")
     );
 
     if (zipFiles.length === 0) {

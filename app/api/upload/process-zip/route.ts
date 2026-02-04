@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
 import { saveBuffer } from "@/lib/fileStorage";
-import { scanFileByUrl } from "@/lib/services/malware-scan.service";
 import { ZipParserService } from "@/lib/services/zip-parser.service";
 
 export const runtime = "nodejs";
@@ -42,8 +41,6 @@ export async function POST(req: NextRequest) {
       size: number;
       type: string;
       isDependency: boolean;
-      scanStatus?: "clean" | "infected" | "error" | "skipped";
-      scanInfo?: string;
     }> = [];
     let imagesCount = 0;
     let htmlCount = 0;
@@ -65,21 +62,6 @@ export async function POST(req: NextRequest) {
         size: entry.content.length,
         type: entry.type,
         isDependency: entry.isDependency,
-      });
-    }
-
-    if (process.env.PYTHON_SERVICE_URL) {
-      const scanResults = await Promise.all(
-        items.map((item) => scanFileByUrl(item.url))
-      );
-      items.forEach((item, i) => {
-        const scan = scanResults[i];
-        item.scanStatus = scan.status;
-        if (scan.status !== "clean") item.scanInfo = scan.info;
-      });
-    } else {
-      items.forEach((item) => {
-        item.scanStatus = "skipped";
       });
     }
 

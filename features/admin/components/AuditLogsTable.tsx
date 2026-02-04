@@ -137,14 +137,18 @@ export function AuditLogsTable() {
       return;
     }
 
-    // Validate adminID if provided
-    if (adminID.trim() && isNaN(Number(adminID.trim()))) {
-      toast.error("Invalid Admin ID", {
-        description: "Admin ID must be a valid number",
-      });
-      return;
-    }
+    // Admin ID validation removed - accepts any string (UUID, CUID, or other formats)
+    // Backend will validate the format
 
+    setPage(1);
+    fetchAuditLogs(1);
+  };
+
+  const handleClearFilters = () => {
+    setAdminID("");
+    setActionType("All");
+    setDateFrom(undefined);
+    setDateTo(undefined);
     setPage(1);
     fetchAuditLogs(1);
   };
@@ -253,26 +257,36 @@ export function AuditLogsTable() {
             </Popover>
           </div>
 
-          {/* Search Button */}
+          {/* Search and Clear Buttons */}
           <div className="space-y-2">
             <Label>&nbsp;</Label>
-            <Button
-              onClick={handleSearch}
-              disabled={isLoading}
-              className="w-full"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-2 h-4 w-4" />
-                  Search
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSearch}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Search
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleClearFilters}
+                disabled={isLoading}
+                variant="outline"
+                className="flex-1"
+              >
+                Clear
+              </Button>
+            </div>
           </div>
         </div>
       </div>

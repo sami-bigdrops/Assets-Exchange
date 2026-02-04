@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { creatives } from "@/lib/schema";
+import { auditLogs, creatives } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,10 @@ export async function POST(_req: Request) {
       headers: await headers(),
     });
 
-    if (!session || session.user.role !== "admin") {
+    if (
+      !session ||
+      (session.user.role !== "admin" && session.user.role !== "administrator")
+    ) {
       logger.info("❌ UNAUTHORIZED - Admin check failed");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -100,6 +103,47 @@ export async function POST(_req: Request) {
         actorId: session.user.id,
         message: "No stuck SCANNING creatives found",
       });
+
+      const requestHeaders = await headers();
+      const ipAddress =
+        requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+        requestHeaders.get("x-real-ip") ??
+        null;
+      const userAgent = requestHeaders.get("user-agent") ?? null;
+
+      try {
+        await db.insert(auditLogs).values({
+          userId: session.user.id,
+          action: "RESET_STUCK_SCANNING_ASSETS",
+          entityType: "creatives",
+          entityId: null,
+          details: {
+            triggeringUser: {
+              userId: session.user.id,
+              userEmail: session.user.email,
+              userName: session.user.name,
+            },
+            timestamp: new Date().toISOString(),
+            affectedAssetCount: 0,
+            affectedAssetIds: [],
+            thresholdMinutes: STUCK_THRESHOLD_MINUTES,
+            message: "No stuck assets found",
+          },
+          ipAddress,
+          userAgent,
+          createdAt: new Date(),
+        });
+      } catch (auditError) {
+        logger.error({
+          action: "creatives.reset_stuck_scanning",
+          actorId: session.user.id,
+          error:
+            auditError instanceof Error
+              ? auditError.message
+              : String(auditError),
+          message: "Failed to create audit log entry",
+        });
+      }
 
       return NextResponse.json({
         reset: 0,
@@ -182,6 +226,54 @@ export async function POST(_req: Request) {
       expectedCount: creativeIds.length,
       creativeIds: updateResult.map((r) => r.id),
     });
+
+    const requestHeaders = await headers();
+    const ipAddress =
+      requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      requestHeaders.get("x-real-ip") ??
+      null;
+    const userAgent = requestHeaders.get("user-agent") ?? null;
+    const executionTimestamp = new Date();
+
+    try {
+      await db.insert(auditLogs).values({
+        userId: session.user.id,
+        action: "RESET_STUCK_SCANNING_ASSETS",
+        entityType: "creatives",
+        entityId: null,
+        details: {
+          triggeringUser: {
+            userId: session.user.id,
+            userEmail: session.user.email,
+            userName: session.user.name,
+          },
+          timestamp: executionTimestamp.toISOString(),
+          affectedAssetCount: actualRowsUpdated,
+          affectedAssetIds: updateResult.map((r) => r.id),
+          thresholdMinutes: STUCK_THRESHOLD_MINUTES,
+          previousStatus: "SCANNING",
+          newStatus: "PENDING",
+        },
+        ipAddress,
+        userAgent,
+        createdAt: executionTimestamp,
+      });
+
+      logger.info({
+        action: "creatives.reset_stuck_scanning",
+        actorId: session.user.id,
+        message: "Audit log entry created successfully",
+        auditLogCreated: true,
+      });
+    } catch (auditError) {
+      logger.error({
+        action: "creatives.reset_stuck_scanning",
+        actorId: session.user.id,
+        error:
+          auditError instanceof Error ? auditError.message : String(auditError),
+        message: "Failed to create audit log entry (operation still succeeded)",
+      });
+    }
 
     return NextResponse.json({
       reset: actualRowsUpdated,

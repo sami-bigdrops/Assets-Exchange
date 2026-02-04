@@ -5,6 +5,10 @@
       "schedule": "*/1 * * * *"
     },
     {
+      "path": "/api/cron/discover-pending-creatives",
+      "schedule": "*/3 * * * *"
+    },
+    {
       "path": "/api/cron/health-check",
       "schedule": "0 */6 * * *"
     },

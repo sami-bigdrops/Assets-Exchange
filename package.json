@@ -20,6 +20,7 @@
     "db:studio": "drizzle-kit studio",
     "seed:admin": "tsx seed-scripts/SeedAdminServer.ts",
     "seed:advertiser": "tsx seed-scripts/SeedAdvertiser.ts",
+    "verify:reset-stuck-jobs": "tsx scripts/verify-reset-stuck-jobs.ts",
     "prepare": "husky"
   },
   "dependencies": {

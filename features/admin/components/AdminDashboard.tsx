@@ -8,8 +8,10 @@ import { StatsCard } from "@/features/dashboard";
 
 import { useAdminDashboardViewModel } from "../view-models/useAdminDashboardViewModel";
 
+import { ResetStuckJobsButton } from "./ResetStuckJobsButton";
+
 export function AdminDashboard() {
-  const { data, isLoading, error } = useAdminDashboardViewModel();
+  const { data, isLoading, error, refresh } = useAdminDashboardViewModel();
 
   return (
     <div className="space-y-6">
@@ -30,11 +32,23 @@ export function AdminDashboard() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {data.stats.map((stat) => (
-            <StatsCard key={stat.title} {...stat} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {data.stats.map((stat) => (
+              <StatsCard key={stat.title} {...stat} />
+            ))}
+          </div>
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold">System Operations</h3>
+              <p className="text-xs text-muted-foreground">
+                Reset creatives stuck in SCANNING status for more than 15
+                minutes
+              </p>
+            </div>
+            <ResetStuckJobsButton onSuccess={refresh} />
+          </div>
+        </>
       )}
       {!isLoading && <AdminPerformanceChart />}
       {!isLoading && <Request />}

@@ -3,8 +3,15 @@ import Image from "next/image";
 import { getVariables } from "@/components/_variables";
 import PublisherForm from "@/features/publisher/components/form/PublisherForm";
 
-export default function FormPage() {
+export default async function FormPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ requestId?: string }>;
+}) {
   const variables = getVariables();
+  const params = await searchParams;
+  const requestId =
+    typeof params?.requestId === "string" ? params.requestId : undefined;
 
   return (
     <div
@@ -21,7 +28,7 @@ export default function FormPage() {
           style={{ width: "auto", height: "auto" }}
         />
       </div>
-      <PublisherForm />
+      <PublisherForm requestId={requestId} />
     </div>
   );
 }

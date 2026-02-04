@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { rejectRequest } from "@/features/admin/services/request.service";
+import { sendBackRequest } from "@/features/admin/services/request.service";
 import { auth } from "@/lib/auth";
 
 export async function POST(
@@ -19,14 +19,15 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
-    const reason = typeof body?.reason === "string" ? body.reason : "";
+    const feedback =
+      typeof body?.feedback === "string" ? body.feedback.trim() : "";
 
-    await rejectRequest(id, session.user.id, reason);
+    await sendBackRequest(id, session.user.id, feedback);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";
-    console.error("Reject request error:", error);
+    console.error("Return request error:", error);
     if (message === "Request not found") {
       return NextResponse.json({ error: message }, { status: 404 });
     }

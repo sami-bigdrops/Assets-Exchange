@@ -11,6 +11,7 @@ interface RequestSectionProps {
   startIndex?: number;
   viewButtonText?: string;
   showDownloadButton?: boolean;
+  onRefresh?: () => void;
 }
 
 export function RequestSection({
@@ -18,6 +19,7 @@ export function RequestSection({
   startIndex = 0,
   viewButtonText,
   showDownloadButton,
+  onRefresh,
 }: RequestSectionProps) {
   return (
     <Accordion.Root type="single" collapsible className="space-y-4">
@@ -31,6 +33,7 @@ export function RequestSection({
             colorVariant={globalIndex % 2 === 0 ? "purple" : "blue"}
             viewButtonText={viewButtonText}
             showDownloadButton={showDownloadButton}
+            onRefresh={onRefresh}
           />
         );
       })}

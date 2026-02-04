@@ -1,11 +1,11 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { rejectRequest } from "@/features/admin/services/request.service";
+import { forwardRequest } from "@/features/admin/services/request.service";
 import { auth } from "@/lib/auth";
 
 export async function POST(
-  req: Request,
+  _: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth.api.getSession({
@@ -18,15 +18,12 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const body = await req.json().catch(() => ({}));
-    const reason = typeof body?.reason === "string" ? body.reason : "";
-
-    await rejectRequest(id, session.user.id, reason);
+    await forwardRequest(id, session.user.id);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";
-    console.error("Reject request error:", error);
+    console.error("Forward request error:", error);
     if (message === "Request not found") {
       return NextResponse.json({ error: message }, { status: 404 });
     }

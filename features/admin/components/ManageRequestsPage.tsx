@@ -81,7 +81,7 @@ type PriorityFilter = "all" | "high" | "medium";
 
 export function ManageRequestsPage() {
   const variables = getVariables();
-  const { requests, isLoading, error } = useManageRequestsViewModel();
+  const { requests, isLoading, error, refresh } = useManageRequestsViewModel();
   const [activeTab, setActiveTab] = useState<TabValue>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -158,7 +158,6 @@ export function ManageRequestsPage() {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
 
-
         filtered = filtered.filter((request) => {
           if (
             request.status !== "pending" ||
@@ -183,7 +182,6 @@ export function ManageRequestsPage() {
             request.approvalStage?.toLowerCase() === "admin"
         );
       } else if (activeTab === "sent-back") {
-
         filtered = filtered.filter(
           (request) =>
             request.status === "sent-back" &&
@@ -262,7 +260,10 @@ export function ManageRequestsPage() {
           if (bPriority !== aPriority) {
             return bPriority - aPriority;
           }
-          return parseDate(b.date || "").getTime() - parseDate(a.date || "").getTime();
+          return (
+            parseDate(b.date || "").getTime() -
+            parseDate(a.date || "").getTime()
+          );
         }
         case "priority-low": {
           const aPriority = getPriorityValue(a.priority || "");
@@ -270,7 +271,10 @@ export function ManageRequestsPage() {
           if (aPriority !== bPriority) {
             return aPriority - bPriority;
           }
-          return parseDate(b.date || "").getTime() - parseDate(a.date || "").getTime();
+          return (
+            parseDate(b.date || "").getTime() -
+            parseDate(a.date || "").getTime()
+          );
         }
         case "advertiser-asc": {
           return (a.advertiserName || "").localeCompare(
@@ -417,10 +421,11 @@ export function ManageRequestsPage() {
                   >
                     <button
                       onClick={() => setActiveCategory("sortBy")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "sortBy"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
+                        activeCategory === "sortBy"
+                          ? "bg-gray-100 text-gray-900 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
                     >
                       <span>Sort By</span>
                       <div className="flex items-center gap-2">
@@ -450,10 +455,11 @@ export function ManageRequestsPage() {
                     </button>
                     <button
                       onClick={() => setActiveCategory("priority")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "priority"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
+                        activeCategory === "priority"
+                          ? "bg-gray-100 text-gray-900 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
                     >
                       <span>Priority</span>
                       <div className="flex items-center gap-2">
@@ -526,10 +532,11 @@ export function ManageRequestsPage() {
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors flex items-center gap-2 ${sortBy === option.value
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                                }`}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors flex items-center gap-2 ${
+                                sortBy === option.value
+                                  ? "bg-gray-100 text-gray-900 font-medium"
+                                  : "text-gray-600 hover:bg-gray-50"
+                              }`}
                             >
                               <option.icon className="h-4 w-4" />
                               <span>{option.label}</span>
@@ -548,10 +555,11 @@ export function ManageRequestsPage() {
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${priorityFilter === priority
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                                }`}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
+                                priorityFilter === priority
+                                  ? "bg-gray-100 text-gray-900 font-medium"
+                                  : "text-gray-600 hover:bg-gray-50"
+                              }`}
                             >
                               {priority === "all"
                                 ? "All Priorities"
@@ -794,6 +802,7 @@ export function ManageRequestsPage() {
               <RequestSection
                 requests={paginatedRequests}
                 startIndex={startIndex}
+                onRefresh={refresh}
               />
               {totalPages > 1 && (
                 <div
@@ -837,10 +846,11 @@ export function ManageRequestsPage() {
                               setCurrentPage((prev) => prev - 1);
                             }
                           }}
-                          className={`transition-all duration-200 ${currentPage === 1
-                            ? "pointer-events-none opacity-40 cursor-not-allowed"
-                            : "cursor-pointer hover:bg-gray-100"
-                            }`}
+                          className={`transition-all duration-200 ${
+                            currentPage === 1
+                              ? "pointer-events-none opacity-40 cursor-not-allowed"
+                              : "cursor-pointer hover:bg-gray-100"
+                          }`}
                           style={{
                             color:
                               currentPage === 1
@@ -860,15 +870,16 @@ export function ManageRequestsPage() {
                                 setCurrentPage(page);
                               }}
                               isActive={currentPage === page}
-                              className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${currentPage === page
-                                ? "cursor-default"
-                                : "cursor-pointer hover:bg-gray-100"
-                                }`}
+                              className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${
+                                currentPage === page
+                                  ? "cursor-default"
+                                  : "cursor-pointer hover:bg-gray-100"
+                              }`}
                               style={{
                                 backgroundColor:
                                   currentPage === page
                                     ? variables.colors
-                                      .buttonDefaultBackgroundColor
+                                        .buttonDefaultBackgroundColor
                                     : "transparent",
                                 color:
                                   currentPage === page
@@ -877,7 +888,7 @@ export function ManageRequestsPage() {
                                 borderColor:
                                   currentPage === page
                                     ? variables.colors
-                                      .buttonDefaultBackgroundColor
+                                        .buttonDefaultBackgroundColor
                                     : variables.colors.inputBorderColor,
                               }}
                             >
@@ -894,10 +905,11 @@ export function ManageRequestsPage() {
                               setCurrentPage((prev) => prev + 1);
                             }
                           }}
-                          className={`transition-all duration-200 ${currentPage === totalPages
-                            ? "pointer-events-none opacity-40 cursor-not-allowed"
-                            : "cursor-pointer hover:bg-gray-100"
-                            }`}
+                          className={`transition-all duration-200 ${
+                            currentPage === totalPages
+                              ? "pointer-events-none opacity-40 cursor-not-allowed"
+                              : "cursor-pointer hover:bg-gray-100"
+                          }`}
                           style={{
                             color:
                               currentPage === totalPages

@@ -1,6 +1,7 @@
 "use client";
 
 import { getVariables } from "@/components/_variables/variables";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,7 +20,11 @@ import {
   getButtonText,
 } from "@/features/publisher/view-models/publisherForm.viewModel";
 
-export default function PublisherForm() {
+interface PublisherFormProps {
+  requestId?: string | null;
+}
+
+export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
   const variables = getVariables();
   const {
     currentStep,
@@ -29,9 +34,9 @@ export default function PublisherForm() {
     previousStep,
     isSubmitting,
     handleSubmit,
-  } = usePublisherForm();
+    editData,
+  } = usePublisherForm(requestId ?? null);
 
-  // validation is already memoized in the hook itself, but let's ensure it's not re-created here unnecessarily
   const validation = useFormValidation(formData);
   const inputRingColor = variables.colors.inputRingColor;
 
@@ -93,6 +98,17 @@ export default function PublisherForm() {
               Step {currentStep} of 3 : {getStepLabel(currentStep)}
             </p>
             <Separator />
+            {editData?.adminComments && (
+              <Alert
+                variant="destructive"
+                className="mt-2 border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-100"
+              >
+                <AlertTitle>Feedback from reviewer</AlertTitle>
+                <AlertDescription className="whitespace-pre-wrap mt-1">
+                  {editData.adminComments}
+                </AlertDescription>
+              </Alert>
+            )}
           </CardHeader>
           <CardContent>
             {renderStep({
@@ -100,6 +116,7 @@ export default function PublisherForm() {
               formData,
               onDataChange,
               validation,
+              editData,
             })}
           </CardContent>
           <CardFooter className="flex flex-col justify-between gap-4 w-full">
@@ -115,7 +132,7 @@ export default function PublisherForm() {
                   color: variables.colors.buttonOutlineTextColor,
                 }}
               >
-                {getButtonText(currentStep).prev}
+                {getButtonText(currentStep, !!editData).prev}
               </Button>
             )}
             <Button
@@ -164,7 +181,9 @@ export default function PublisherForm() {
                 color: variables.colors.buttonDefaultTextColor,
               }}
             >
-              {isSubmitting ? "Submitting..." : getButtonText(currentStep).next}
+              {isSubmitting
+                ? "Submitting..."
+                : getButtonText(currentStep, !!editData).next}
             </Button>
           </CardFooter>
         </Card>

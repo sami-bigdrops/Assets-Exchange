@@ -90,6 +90,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   formData,
   onDataChange,
   validation,
+  initialFiles,
 }) => {
   const variables = getVariables();
   const [offerSearchTerm, setOfferSearchTerm] = useState("");
@@ -153,7 +154,6 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     UploadedFileMeta[]
   >([]);
 
-  // Load and restore saved files state on mount
   useEffect(() => {
     const savedFilesState = loadFilesState();
     if (savedFilesState && savedFilesState.files.length > 0) {
@@ -162,13 +162,38 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       setHasUploadedFiles(true);
       validation.updateFileUploadState(true);
     }
-    // Mark initial mount as complete after a brief delay to allow state to settle
-    const timer = setTimeout(() => {
-      setIsInitialMount(false);
-    }, 200);
+    const timer = setTimeout(() => setIsInitialMount(false), 200);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, []);
+
+  const appliedInitialFilesRef = useRef(false);
+  useEffect(() => {
+    if (!initialFiles || initialFiles.length === 0) {
+      appliedInitialFilesRef.current = false;
+      return;
+    }
+    if (appliedInitialFilesRef.current) return;
+    appliedInitialFilesRef.current = true;
+    const mapped: UploadedFileMeta[] = initialFiles.map((f) => ({
+      id: f.id,
+      name: f.name,
+      url: f.url,
+      size: f.size,
+      type: f.type,
+      source: "single",
+      html: /\.html?$/i.test(f.name),
+      previewUrl: /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name)
+        ? f.url
+        : undefined,
+      metadata: f.metadata,
+    }));
+    setUploadedFiles(mapped);
+    setHasUploadedFiles(true);
+    validation.updateFileUploadState(true);
+    saveFilesState(mapped, "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFiles]);
 
   // Fetch metadata for uploaded HTML creatives
   const fetchedMetadataRef = useRef<Set<string>>(new Set());

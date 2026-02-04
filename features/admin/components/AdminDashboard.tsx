@@ -8,6 +8,7 @@ import { StatsCard } from "@/features/dashboard";
 
 import { useAdminDashboardViewModel } from "../view-models/useAdminDashboardViewModel";
 
+import { AuditLogsTable } from "./AuditLogsTable";
 import { ResetStuckJobsButton } from "./ResetStuckJobsButton";
 
 export function AdminDashboard() {
@@ -53,6 +54,7 @@ export function AdminDashboard() {
       {!isLoading && <AdminPerformanceChart />}
       {!isLoading && <Request />}
       {!isLoading && <Response />}
+      {!isLoading && <AuditLogsTable />}
     </div>
   );
 }

@@ -74,20 +74,21 @@ export function AuditLogsTable() {
       try {
         const params = new URLSearchParams();
 
+        // Ignore empty or "All" filters
         if (adminID.trim()) {
-          params.append("adminID", adminID.trim());
+          params.append("adminId", adminID.trim());
         }
 
         if (actionType !== "All") {
-          params.append("actionType", actionType);
+          params.append("action", actionType);
         }
 
         if (dateFrom) {
-          params.append("dateFrom", format(dateFrom, "yyyy-MM-dd"));
+          params.append("from", format(dateFrom, "yyyy-MM-dd"));
         }
 
         if (dateTo) {
-          params.append("dateTo", format(dateTo, "yyyy-MM-dd"));
+          params.append("to", format(dateTo, "yyyy-MM-dd"));
         }
 
         params.append("page", String(currentPage));
@@ -160,10 +161,11 @@ export function AuditLogsTable() {
     }
   };
 
-  // Load initial data
+  // Load initial data on mount (with no filters)
   useEffect(() => {
     fetchAuditLogs(1);
-  }, [fetchAuditLogs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-4">

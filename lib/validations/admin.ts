@@ -73,8 +73,15 @@ export const auditLogsQuerySchema = z
         message: "actionType must be APPROVE or REJECT",
       })
       .optional(),
+    action: z
+      .enum(["APPROVE", "REJECT"], {
+        message: "action must be APPROVE or REJECT",
+      })
+      .optional(),
     startDate: isoDateStringSchema.optional(),
     endDate: isoDateStringSchema.optional(),
+    from: isoDateStringSchema.optional(),
+    to: isoDateStringSchema.optional(),
     page: z.coerce.number().int().min(1, "Page must be at least 1").default(1),
     limit: z.coerce
       .number()
@@ -85,15 +92,17 @@ export const auditLogsQuerySchema = z
   })
   .refine(
     (data) => {
-      if (data.startDate && data.endDate) {
-        const start = new Date(data.startDate);
-        const end = new Date(data.endDate);
-        return start <= end;
+      const start = data.startDate || data.from;
+      const end = data.endDate || data.to;
+      if (start && end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        return startDate <= endDate;
       }
       return true;
     },
     {
-      message: "startDate must be less than or equal to endDate",
+      message: "startDate/from must be less than or equal to endDate/to",
       path: ["startDate"],
     }
   );

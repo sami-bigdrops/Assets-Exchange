@@ -35,21 +35,32 @@ function parseAndValidateQueryParams(searchParams: URLSearchParams):
       rawParams.adminId = adminId.trim();
     }
 
-    const actionType = searchParams.get("actionType");
+    // Support both actionType and action for backward compatibility
+    const actionType =
+      searchParams.get("actionType") || searchParams.get("action");
     if (actionType !== null) {
       rawParams.actionType = actionType.trim().toUpperCase();
+      rawParams.action = actionType.trim().toUpperCase();
     }
 
-    // Support both startDate/dateFrom and endDate/dateTo for backward compatibility
+    // Support startDate/dateFrom/from for backward compatibility
     const startDate =
-      searchParams.get("startDate") || searchParams.get("dateFrom");
+      searchParams.get("startDate") ||
+      searchParams.get("dateFrom") ||
+      searchParams.get("from");
     if (startDate !== null) {
       rawParams.startDate = startDate.trim();
+      rawParams.from = startDate.trim();
     }
 
-    const endDate = searchParams.get("endDate") || searchParams.get("dateTo");
+    // Support endDate/dateTo/to for backward compatibility
+    const endDate =
+      searchParams.get("endDate") ||
+      searchParams.get("dateTo") ||
+      searchParams.get("to");
     if (endDate !== null) {
       rawParams.endDate = endDate.trim();
+      rawParams.to = endDate.trim();
     }
 
     const page = searchParams.get("page");
@@ -87,18 +98,23 @@ function parseAndValidateQueryParams(searchParams: URLSearchParams):
       normalized.adminId = validated.adminId.trim();
     }
 
-    if (validated.actionType) {
-      normalized.actionType = validated.actionType as "APPROVE" | "REJECT";
+    // Support both actionType and action
+    const actionValue = validated.actionType || validated.action;
+    if (actionValue) {
+      normalized.actionType = actionValue as "APPROVE" | "REJECT";
     }
 
-    if (validated.startDate) {
-      const startDateStr = validated.startDate.trim();
+    // Support startDate/from
+    const startDateValue = validated.startDate || validated.from;
+    if (startDateValue) {
+      const startDateStr = startDateValue.trim();
       const startDate = new Date(startDateStr);
 
       if (isNaN(startDate.getTime())) {
         return {
           success: false,
-          error: "Invalid startDate format. Expected ISO 8601 date string.",
+          error:
+            "Invalid startDate/from format. Expected ISO 8601 date string.",
           status: 400,
         };
       }
@@ -110,14 +126,16 @@ function parseAndValidateQueryParams(searchParams: URLSearchParams):
       normalized.startDate = startDate;
     }
 
-    if (validated.endDate) {
-      const endDateStr = validated.endDate.trim();
+    // Support endDate/to
+    const endDateValue = validated.endDate || validated.to;
+    if (endDateValue) {
+      const endDateStr = endDateValue.trim();
       const endDate = new Date(endDateStr);
 
       if (isNaN(endDate.getTime())) {
         return {
           success: false,
-          error: "Invalid endDate format. Expected ISO 8601 date string.",
+          error: "Invalid endDate/to format. Expected ISO 8601 date string.",
           status: 400,
         };
       }

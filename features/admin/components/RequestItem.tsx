@@ -683,9 +683,9 @@ export function RequestItem({
                             });
                             // Wait a moment for database to update before refreshing
                             await new Promise((resolve) =>
-                              setTimeout(resolve, 300)
+                              setTimeout(resolve, 500)
                             );
-                            onRefresh?.();
+                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -733,9 +733,9 @@ export function RequestItem({
                             });
                             // Wait a moment for database to update before refreshing
                             await new Promise((resolve) =>
-                              setTimeout(resolve, 300)
+                              setTimeout(resolve, 500)
                             );
-                            onRefresh?.();
+                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -877,9 +877,9 @@ export function RequestItem({
                             setRejectComments("");
                             // Wait a moment for database to update before refreshing
                             await new Promise((resolve) =>
-                              setTimeout(resolve, 300)
+                              setTimeout(resolve, 500)
                             );
-                            onRefresh?.();
+                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -924,9 +924,9 @@ export function RequestItem({
                             setRejectComments("");
                             // Wait a moment for database to update before refreshing
                             await new Promise((resolve) =>
-                              setTimeout(resolve, 300)
+                              setTimeout(resolve, 500)
                             );
-                            onRefresh?.();
+                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -1190,9 +1190,9 @@ export function RequestItem({
                             setSendBackComments("");
                             // Wait a moment for database to update before refreshing
                             await new Promise((resolve) =>
-                              setTimeout(resolve, 300)
+                              setTimeout(resolve, 500)
                             );
-                            onRefresh?.();
+                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -1238,9 +1238,9 @@ export function RequestItem({
                             setSendBackComments("");
                             // Wait a moment for database to update before refreshing
                             await new Promise((resolve) =>
-                              setTimeout(resolve, 300)
+                              setTimeout(resolve, 500)
                             );
-                            onRefresh?.();
+                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error

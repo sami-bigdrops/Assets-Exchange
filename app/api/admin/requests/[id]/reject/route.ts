@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { rejectRequest } from "@/features/admin/services/request.service";
 import { auth } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }

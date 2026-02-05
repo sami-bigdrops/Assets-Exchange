@@ -30,6 +30,10 @@ export async function fetchRequests(
   const res = await fetch(`/api/admin/requests?${params.toString()}`, {
     credentials: "include",
     cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+    },
   });
 
   if (!res.ok) {

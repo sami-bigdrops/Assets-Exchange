@@ -22,6 +22,10 @@ export async function fetchAdminRequests(params: {
 
   const res = await fetch(url, {
     cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+    },
   });
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));

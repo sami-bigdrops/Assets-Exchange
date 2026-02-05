@@ -705,6 +705,7 @@ function TrackPageContent() {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
+                        timeZone: "America/Los_Angeles",
                       })}
                     </p>
                   </div>
@@ -1139,10 +1140,18 @@ function mapStatusToTracker(
       title: "Decision Made",
       description: "Admin decided",
       icon: MessageSquare,
-      status: (isApproved || isRejected || isSentBack || isRevised || isForwardedToAdvertiser
+      status: (isApproved ||
+      isRejected ||
+      isSentBack ||
+      isRevised ||
+      isForwardedToAdvertiser
         ? "active"
         : "pending") as "active" | "pending",
-      color: (isApproved || isRejected || isSentBack || isRevised || isForwardedToAdvertiser
+      color: (isApproved ||
+      isRejected ||
+      isSentBack ||
+      isRevised ||
+      isForwardedToAdvertiser
         ? "blue"
         : "gray") as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
     },
@@ -1206,7 +1215,10 @@ function mapStatusToTracker(
       {
         id: 4,
         title: "Rejected",
-        description: normalizedStage === "admin" ? "Rejected by admin" : "Rejected by advertiser",
+        description:
+          normalizedStage === "admin"
+            ? "Rejected by admin"
+            : "Rejected by advertiser",
         icon: MessageSquare,
         status: "active" as "active" | "pending",
         color: "red" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
@@ -1265,7 +1277,11 @@ function mapStatusToTracker(
   }
 
   // Add remaining statuses only if not rejected, not approved by admin, and not forwarded to advertiser
-  if (!isRejected && !(isApproved && normalizedStage === "admin") && !isForwardedToAdvertiser) {
+  if (
+    !isRejected &&
+    !(isApproved && normalizedStage === "admin") &&
+    !isForwardedToAdvertiser
+  ) {
     const nextId = isRevised ? 7 : isSentBack ? 5 : 4;
 
     // Show completed if fully approved
@@ -1295,7 +1311,13 @@ function mapStatusToTracker(
           description: "Case closed",
           icon: CheckCircle2,
           status: "active" as "active" | "pending",
-          color: "green" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+          color: "green" as
+            | "blue"
+            | "gray"
+            | "amber"
+            | "cyan"
+            | "green"
+            | "red",
         }
       );
     } else if (!isApproved) {

@@ -90,12 +90,14 @@ export async function getAdminRequests({
           month: "short",
           day: "numeric",
           year: "numeric",
+          timeZone: "America/Los_Angeles",
         }) +
         ", " +
         new Date(row.submittedAt).toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
           hour12: false,
+          timeZone: "America/Los_Angeles",
         })
       : "",
   }));

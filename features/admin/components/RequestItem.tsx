@@ -104,7 +104,7 @@ const getStatusLabel = (status: string, approvalStage: string) => {
   }
 
   if (normalizedStatus === "pending" && normalizedStage === "advertiser") {
-    return "Pending";
+    return "Forwarded to Advertiser";
   }
 
   if (normalizedStatus === "rejected" && normalizedStage === "admin") {

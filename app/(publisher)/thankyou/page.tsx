@@ -54,7 +54,7 @@ function ThankYouPageContent() {
             </CardDescription>
 
             {/* Enhanced confirmation message */}
-            <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-3 max-w-3xl mx-auto shadow-sm">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-3 max-w-3xl mx-auto shadow-sm">
               <div className="flex flex-col items-center justify-center space-y-2">
                 <div className="flex items-center space-x-2">
                   <Mail className="w-4 h-4 text-blue-600" />
@@ -77,7 +77,7 @@ function ThankYouPageContent() {
             </div>
           </CardHeader>
 
-          <Separator className="mx-auto mb-6 md:mb-8 w-4/5 max-w-2xl bg-linear-to-r from-transparent via-gray-300 to-transparent" />
+          <Separator className="mx-auto mb-6 md:mb-8 w-4/5 max-w-2xl bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
 
           <CardContent className="px-4 md:px-6 pb-6 md:pb-8">
             {/* Status Tracker Section */}
@@ -97,7 +97,7 @@ function ThankYouPageContent() {
             {/* Important Notes and Actions */}
             <div className="space-y-6">
               {/* Enhanced Important Notes */}
-              <div className="bg-linear-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 p-4 md:p-6 shadow-sm">
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 p-4 md:p-6 shadow-sm">
                 <div className="flex items-center mb-3 md:mb-4">
                   <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-2">
                     <File className="w-3 h-3 text-blue-600" />

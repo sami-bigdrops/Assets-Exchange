@@ -760,7 +760,7 @@ function TrackPageContent() {
                           >
                             <div className="p-5">
                               <div className="flex items-start gap-4 mb-4">
-                                <div className="shrink-0 w-12 h-12 rounded-lg bg-linear-to-br from-blue-50 to-blue-100 flex items-center justify-center border border-blue-200">
+                                <div className="shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center border border-blue-200">
                                   {fileType === "image" ? (
                                     <ImageIcon className="h-6 w-6 text-blue-600" />
                                   ) : fileType === "html" ? (
@@ -829,7 +829,7 @@ function TrackPageContent() {
 
                               <div className="border-t border-gray-100 pt-4">
                                 <dl className="grid grid-cols-3 gap-3">
-                                  <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-lg px-3 py-3 border border-blue-200">
+                                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg px-3 py-3 border border-blue-200">
                                     <dt className="text-xs font-medium text-blue-700 mb-1.5 font-inter uppercase tracking-wide">
                                       Creative Type
                                     </dt>
@@ -837,7 +837,7 @@ function TrackPageContent() {
                                       {data.creativeType ?? "—"}
                                     </dd>
                                   </div>
-                                  <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-lg px-3 py-3 border border-purple-200">
+                                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg px-3 py-3 border border-purple-200">
                                     <dt className="text-xs font-medium text-purple-700 mb-1.5 font-inter uppercase tracking-wide">
                                       From Lines
                                     </dt>
@@ -845,7 +845,7 @@ function TrackPageContent() {
                                       {data.fromLinesCount ?? "—"}
                                     </dd>
                                   </div>
-                                  <div className="bg-linear-to-br from-green-50 to-green-100 rounded-lg px-3 py-3 border border-green-200">
+                                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg px-3 py-3 border border-green-200">
                                     <dt className="text-xs font-medium text-green-700 mb-1.5 font-inter uppercase tracking-wide">
                                       Subject Lines
                                     </dt>
@@ -1103,12 +1103,15 @@ export default function TrackPage() {
 
 function mapStatusToTracker(
   status: string,
-  _approvalStage: string,
+  approvalStage: string,
   _adminStatus: string
 ) {
   const normalizedStatus = status.toLowerCase();
+  const normalizedStage = approvalStage.toLowerCase();
   const isSentBack = normalizedStatus === "sent-back";
   const isRevised = normalizedStatus === "revised";
+  const isApproved = normalizedStatus === "approved";
+  const isRejected = normalizedStatus === "rejected";
 
   // Base statuses
   const baseStatuses = [
@@ -1118,37 +1121,55 @@ function mapStatusToTracker(
       description: "Case opened",
       icon: ArrowUpCircle,
       status: "active" as "active" | "pending",
-      color: "blue" as "blue" | "gray" | "amber" | "cyan",
+      color: "blue" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
     },
     {
       id: 2,
       title: "Under Review",
       description: "Admin reviewing",
       icon: Eye,
-      status: (isSentBack || isRevised ? "active" : "active") as
-        | "active"
-        | "pending",
-      color: (isSentBack || isRevised ? "blue" : "blue") as
-        | "blue"
-        | "gray"
-        | "amber"
-        | "cyan",
+      status: "active" as "active" | "pending",
+      color: (isApproved || isRejected || isSentBack || isRevised
+        ? "blue"
+        : "blue") as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
     },
     {
       id: 3,
       title: "Decision Made",
       description: "Admin decided",
       icon: MessageSquare,
-      status: (isSentBack || isRevised ? "active" : "pending") as
-        | "active"
-        | "pending",
-      color: (isSentBack || isRevised ? "blue" : "gray") as
-        | "blue"
-        | "gray"
-        | "amber"
-        | "cyan",
+      status: (isApproved || isRejected || isSentBack || isRevised
+        ? "active"
+        : "pending") as "active" | "pending",
+      color: (isApproved || isRejected || isSentBack || isRevised
+        ? "blue"
+        : "gray") as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
     },
   ];
+
+  // If approved by admin, show the approval flow
+  if (isApproved && normalizedStage === "admin") {
+    baseStatuses.push({
+      id: 4,
+      title: "Approved by Admin",
+      description: "Admin approved",
+      icon: FileCheck,
+      status: "active" as "active" | "pending",
+      color: "green" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+    });
+  }
+
+  // If rejected, show rejection status
+  if (isRejected) {
+    baseStatuses.push({
+      id: 4,
+      title: "Rejected",
+      description: normalizedStage === "admin" ? "Rejected by admin" : "Rejected by advertiser",
+      icon: MessageSquare,
+      status: "active" as "active" | "pending",
+      color: "red" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+    });
+  }
 
   // If sent back, insert "Sent Back" status after "Decision Made"
   if (isSentBack) {
@@ -1158,7 +1179,7 @@ function mapStatusToTracker(
       description: "Revision required",
       icon: Undo2,
       status: "active" as "active" | "pending",
-      color: "amber" as "blue" | "gray" | "amber" | "cyan",
+      color: "amber" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
     });
   }
 
@@ -1171,7 +1192,7 @@ function mapStatusToTracker(
         description: "Revision requested",
         icon: Undo2,
         status: "active" as "active" | "pending",
-        color: "blue" as "blue" | "gray" | "amber" | "cyan",
+        color: "blue" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
       },
       {
         id: 5,
@@ -1179,7 +1200,7 @@ function mapStatusToTracker(
         description: "Resubmitted",
         icon: RefreshCw,
         status: "active" as "active" | "pending",
-        color: "cyan" as "blue" | "gray" | "amber" | "cyan",
+        color: "cyan" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
       },
       {
         id: 6,
@@ -1187,31 +1208,78 @@ function mapStatusToTracker(
         description: "Admin reviewing revision",
         icon: Eye,
         status: "active" as "active" | "pending",
-        color: "cyan" as "blue" | "gray" | "amber" | "cyan",
+        color: "cyan" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
       }
     );
   }
 
-  // Add remaining statuses
-  const nextId = isRevised ? 7 : isSentBack ? 5 : 4;
-  baseStatuses.push(
-    {
-      id: nextId,
-      title: "Final Review",
-      description: "Advertiser review",
-      icon: UserCheck,
-      status: "pending" as "active" | "pending",
-      color: "gray" as "blue" | "gray" | "amber" | "cyan",
-    },
-    {
-      id: nextId + 1,
-      title: "Completed",
-      description: "Case closed",
-      icon: FileCheck,
-      status: "pending" as "active" | "pending",
-      color: "gray" as "blue" | "gray" | "amber" | "cyan",
+  // Add remaining statuses only if not rejected
+  if (!isRejected) {
+    const nextId = isRevised ? 7 : isSentBack ? 5 : isApproved ? 5 : 4;
+    
+    // Only show Final Review if approved by admin (going to advertiser) or fully approved
+    if (isApproved && normalizedStage === "admin") {
+      baseStatuses.push({
+        id: nextId,
+        title: "Final Review",
+        description: "Advertiser review",
+        icon: UserCheck,
+        status: "pending" as "active" | "pending",
+        color: "gray" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+      });
     }
-  );
+
+    // Show completed if fully approved
+    if (isApproved && normalizedStage === "completed") {
+      baseStatuses[2].status = "active";
+      baseStatuses[2].color = "blue";
+      baseStatuses.push(
+        {
+          id: 4,
+          title: "Approved by Admin",
+          description: "Admin approved",
+          icon: FileCheck,
+          status: "active" as "active" | "pending",
+          color: "blue" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+        },
+        {
+          id: 5,
+          title: "Final Review",
+          description: "Advertiser review",
+          icon: UserCheck,
+          status: "active" as "active" | "pending",
+          color: "blue" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+        },
+        {
+          id: 6,
+          title: "Completed",
+          description: "Case closed",
+          icon: FileCheck,
+          status: "active" as "active" | "pending",
+          color: "green" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+        }
+      );
+    } else if (!isApproved) {
+      baseStatuses.push(
+        {
+          id: nextId,
+          title: "Final Review",
+          description: "Advertiser review",
+          icon: UserCheck,
+          status: "pending" as "active" | "pending",
+          color: "gray" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+        },
+        {
+          id: nextId + 1,
+          title: "Completed",
+          description: "Case closed",
+          icon: FileCheck,
+          status: "pending" as "active" | "pending",
+          color: "gray" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+        }
+      );
+    }
+  }
 
   return baseStatuses;
 }

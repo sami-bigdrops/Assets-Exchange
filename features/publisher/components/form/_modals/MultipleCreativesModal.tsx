@@ -150,7 +150,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
           <DialogDescription className="sr-only">
             Multiple creatives view
           </DialogDescription>
-          <DialogHeader className="p-4 sm:p-6 border-b border-gray-200 bg-linear-to-r from-purple-50 to-blue-50">
+          <DialogHeader className="p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
             <div className="flex items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
                 <div className="p-2 sm:p-3 bg-purple-100 rounded-xl shadow-sm shrink-0">
@@ -302,7 +302,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                             className="w-full h-full object-cover"
                           />
                         ) : isHtml ? (
-                          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-emerald-50 to-green-50">
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-50">
                             <div className="text-center">
                               <FileText className="h-10 w-10 text-emerald-600 mx-auto mb-2" />
                               <p className="text-xs font-medium text-emerald-700">
@@ -311,7 +311,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-slate-50 to-gray-50">
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-50">
                             <div className="text-center">
                               <File className="h-10 w-10 text-slate-500 mx-auto mb-2" />
                               <p className="text-xs font-medium text-slate-600">

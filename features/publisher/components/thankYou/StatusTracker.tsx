@@ -34,11 +34,13 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
         : (activeIndex / (statuses.length - 1)) * 100 
       : 0;
 
-  // Check if the current active status is amber or cyan colored
+  // Check if the current active status is amber, cyan, green, or red colored
   const currentActiveColor =
     currentActiveIndex >= 0 ? statuses[currentActiveIndex]?.color : "blue";
   const isAmberActive = currentActiveColor === "amber";
   const isCyanActive = currentActiveColor === "cyan";
+  const isGreenActive = currentActiveColor === "green";
+  const isRedActive = currentActiveColor === "red";
 
   return (
     <div className="w-full">
@@ -52,10 +54,14 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
               <div
                 className={`h-full rounded-full transition-all duration-1000 shadow-sm origin-left ${
                   isAmberActive
-                    ? "bg-linear-to-r from-blue-500 via-blue-600 to-amber-500"
+                    ? "bg-gradient-to-r from-blue-500 via-blue-600 to-amber-500"
                     : isCyanActive
-                      ? "bg-linear-to-r from-blue-500 via-blue-600 to-cyan-500"
-                      : "bg-linear-to-r from-blue-500 to-blue-600"
+                      ? "bg-gradient-to-r from-blue-500 via-blue-600 to-cyan-500"
+                      : isGreenActive
+                        ? "bg-gradient-to-r from-blue-500 via-blue-600 to-green-500"
+                        : isRedActive
+                          ? "bg-gradient-to-r from-blue-500 via-blue-600 to-red-500"
+                          : "bg-gradient-to-r from-blue-500 to-blue-600"
                 }`}
                 style={{
                   width:
@@ -83,12 +89,16 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 border-3 border-white shadow-lg ${
                           isActive && status.color === "amber"
-                            ? "bg-linear-to-br from-amber-500 to-amber-600 text-white"
+                            ? "bg-gradient-to-br from-amber-500 to-amber-600 text-white"
                             : isActive && status.color === "cyan"
-                              ? "bg-linear-to-br from-cyan-500 to-cyan-600 text-white"
-                              : isActive
-                                ? "bg-linear-to-br from-blue-500 to-blue-600 text-white"
-                                : "bg-gray-200 text-gray-500"
+                              ? "bg-gradient-to-br from-cyan-500 to-cyan-600 text-white"
+                              : isActive && status.color === "green"
+                                ? "bg-gradient-to-br from-green-500 to-green-600 text-white"
+                                : isActive && status.color === "red"
+                                  ? "bg-gradient-to-br from-red-500 to-red-600 text-white"
+                                  : isActive
+                                    ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                                    : "bg-gray-200 text-gray-500"
                         }`}
                       >
                         <IconComponent className="w-6 h-6" />
@@ -97,7 +107,7 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                       {/* Pulse effect for current active status only - background only */}
                       {isCurrentActive && (
                         <div
-                          className={`absolute inset-0 w-12 h-12 rounded-full ${status.color === "amber" ? "bg-amber-500" : status.color === "cyan" ? "bg-cyan-500" : "bg-blue-500"} animate-ping opacity-20 -z-10`}
+                          className={`absolute inset-0 w-12 h-12 rounded-full ${status.color === "amber" ? "bg-amber-500" : status.color === "cyan" ? "bg-cyan-500" : status.color === "green" ? "bg-green-500" : status.color === "red" ? "bg-red-500" : "bg-blue-500"} animate-ping opacity-20 -z-10`}
                         ></div>
                       )}
                     </div>
@@ -123,9 +133,13 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                             ? "text-amber-600"
                             : isActive && status.color === "cyan"
                               ? "text-cyan-600"
-                              : isActive
-                                ? "text-blue-600"
-                                : "text-gray-500"
+                              : isActive && status.color === "green"
+                                ? "text-green-600"
+                                : isActive && status.color === "red"
+                                  ? "text-red-600"
+                                  : isActive
+                                    ? "text-blue-600"
+                                    : "text-gray-500"
                         }`}
                       >
                         {status.description}
@@ -151,12 +165,16 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
               <div
                 className={`flex items-center space-x-4 p-4 rounded-xl transition-all duration-300 shadow-sm ${
                   isActive && status.color === "amber"
-                    ? "bg-linear-to-r from-amber-50 to-orange-50 border-2 border-amber-200"
+                    ? "bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200"
                     : isActive && status.color === "cyan"
-                      ? "bg-linear-to-r from-cyan-50 to-teal-50 border-2 border-cyan-200"
-                      : isActive
-                        ? "bg-linear-to-r from-blue-50 to-indigo-50 border-2 border-blue-200"
-                        : "bg-gray-50 border border-gray-200"
+                      ? "bg-gradient-to-r from-cyan-50 to-teal-50 border-2 border-cyan-200"
+                      : isActive && status.color === "green"
+                        ? "bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200"
+                        : isActive && status.color === "red"
+                          ? "bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-200"
+                          : isActive
+                            ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200"
+                            : "bg-gray-50 border border-gray-200"
                 }`}
               >
                 {/* Icon */}
@@ -164,12 +182,16 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                   <div
                     className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 border-2 border-white shadow-lg ${
                       isActive && status.color === "amber"
-                        ? "bg-linear-to-br from-amber-500 to-amber-600 text-white"
+                        ? "bg-gradient-to-br from-amber-500 to-amber-600 text-white"
                         : isActive && status.color === "cyan"
-                          ? "bg-linear-to-br from-cyan-500 to-cyan-600 text-white"
-                          : isActive
-                            ? "bg-linear-to-br from-blue-500 to-blue-600 text-white"
-                            : "bg-gray-300 text-gray-600"
+                          ? "bg-gradient-to-br from-cyan-500 to-cyan-600 text-white"
+                          : isActive && status.color === "green"
+                            ? "bg-gradient-to-br from-green-500 to-green-600 text-white"
+                            : isActive && status.color === "red"
+                              ? "bg-gradient-to-br from-red-500 to-red-600 text-white"
+                              : isActive
+                                ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                                : "bg-gray-300 text-gray-600"
                     }`}
                   >
                     <IconComponent className="w-6 h-6" />
@@ -178,7 +200,7 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                   {/* Pulse effect for current active status only - background only */}
                   {isCurrentActive && (
                     <div
-                      className={`absolute inset-0 w-12 h-12 rounded-full ${status.color === "amber" ? "bg-amber-500" : status.color === "cyan" ? "bg-cyan-500" : "bg-blue-500"} animate-ping opacity-20 -z-10`}
+                      className={`absolute inset-0 w-12 h-12 rounded-full ${status.color === "amber" ? "bg-amber-500" : status.color === "cyan" ? "bg-cyan-500" : status.color === "green" ? "bg-green-500" : status.color === "red" ? "bg-red-500" : "bg-blue-500"} animate-ping opacity-20 -z-10`}
                     ></div>
                   )}
                 </div>
@@ -191,9 +213,13 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                         ? "text-amber-900"
                         : isActive && status.color === "cyan"
                           ? "text-cyan-900"
-                          : isActive
-                            ? "text-blue-900"
-                            : "text-gray-700"
+                          : isActive && status.color === "green"
+                            ? "text-green-900"
+                            : isActive && status.color === "red"
+                              ? "text-red-900"
+                              : isActive
+                                ? "text-blue-900"
+                                : "text-gray-700"
                     }`}
                   >
                     {status.title}
@@ -204,9 +230,13 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                         ? "text-amber-600"
                         : isActive && status.color === "cyan"
                           ? "text-cyan-600"
-                          : isActive
-                            ? "text-blue-600"
-                            : "text-gray-500"
+                          : isActive && status.color === "green"
+                            ? "text-green-600"
+                            : isActive && status.color === "red"
+                              ? "text-red-600"
+                              : isActive
+                                ? "text-blue-600"
+                                : "text-gray-500"
                     }`}
                   >
                     {status.description}
@@ -217,11 +247,11 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                 <div className="shrink-0">
                   {isCurrentActive ? (
                     <div
-                      className={`w-3 h-3 ${status.color === "amber" ? "bg-amber-500" : status.color === "cyan" ? "bg-cyan-500" : "bg-blue-500"} rounded-full animate-pulse shadow-sm`}
+                      className={`w-3 h-3 ${status.color === "amber" ? "bg-amber-500" : status.color === "cyan" ? "bg-cyan-500" : status.color === "green" ? "bg-green-500" : status.color === "red" ? "bg-red-500" : "bg-blue-500"} rounded-full animate-pulse shadow-sm`}
                     ></div>
                   ) : isActive ? (
                     <div
-                      className={`w-3 h-3 ${status.color === "amber" ? "bg-amber-500" : status.color === "cyan" ? "bg-cyan-500" : "bg-blue-500"} rounded-full shadow-sm`}
+                      className={`w-3 h-3 ${status.color === "amber" ? "bg-amber-500" : status.color === "cyan" ? "bg-cyan-500" : status.color === "green" ? "bg-green-500" : status.color === "red" ? "bg-red-500" : "bg-blue-500"} rounded-full shadow-sm`}
                     ></div>
                   ) : (
                     <div className="w-3 h-3 bg-gray-300 rounded-full"></div>

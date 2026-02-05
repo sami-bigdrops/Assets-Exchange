@@ -20,14 +20,18 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { fetchRequests } from "../services/requests.client";
-import type { CreativeRequest } from "../types/request.types";
+import type {
+  ApprovalStage,
+  CreativeRequest,
+  RequestStatus,
+} from "../types/request.types";
 
 import { RequestSection } from "./RequestSection";
 
@@ -44,7 +48,7 @@ export function Response() {
           page: 1,
           limit: 3,
           approvalStage: "advertiser",
-          sort: "submittedAt:desc"
+          sort: "submittedAt:desc",
         });
         setResponses(res.data || []);
       } catch (error) {
@@ -56,6 +60,26 @@ export function Response() {
 
     load();
   }, []);
+
+  const updateRequestStatus = useCallback(
+    (
+      requestId: string,
+      newStatus: RequestStatus,
+      newApprovalStage: ApprovalStage
+    ) => {
+      setResponses((prev) => {
+        if (newApprovalStage !== "advertiser") {
+          return prev.filter((req) => req.id !== requestId);
+        }
+        return prev.map((req) =>
+          req.id === requestId
+            ? { ...req, status: newStatus, approvalStage: newApprovalStage }
+            : req
+        );
+      });
+    },
+    []
+  );
 
   if (isLoading) {
     return (
@@ -139,7 +163,11 @@ export function Response() {
         </div>
       </CardHeader>
       <CardContent>
-        <RequestSection requests={responses} viewButtonText="View Response" />
+        <RequestSection
+          requests={responses}
+          viewButtonText="View Response"
+          onStatusUpdate={updateRequestStatus}
+        />
       </CardContent>
     </Card>
   );

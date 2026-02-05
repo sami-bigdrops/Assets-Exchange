@@ -12,14 +12,18 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { fetchRequests } from "../services/requests.client";
-import type { CreativeRequest } from "../types/request.types";
+import type {
+  ApprovalStage,
+  CreativeRequest,
+  RequestStatus,
+} from "../types/request.types";
 
 import { RequestSection } from "./RequestSection";
 
@@ -32,7 +36,11 @@ export function Request() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetchRequests({ page: 1, limit: 3, sort: "submittedAt:desc" });
+        const res = await fetchRequests({
+          page: 1,
+          limit: 3,
+          sort: "submittedAt:desc",
+        });
         setRequests(res.data || []);
       } catch (error) {
         console.error("Failed to fetch recent requests:", error);
@@ -43,6 +51,23 @@ export function Request() {
 
     load();
   }, []);
+
+  const updateRequestStatus = useCallback(
+    (
+      requestId: string,
+      newStatus: RequestStatus,
+      newApprovalStage: ApprovalStage
+    ) => {
+      setRequests((prev) =>
+        prev.map((req) =>
+          req.id === requestId
+            ? { ...req, status: newStatus, approvalStage: newApprovalStage }
+            : req
+        )
+      );
+    },
+    []
+  );
 
   if (isLoading) {
     return (
@@ -126,7 +151,10 @@ export function Request() {
         </div>
       </CardHeader>
       <CardContent>
-        <RequestSection requests={requests} />
+        <RequestSection
+          requests={requests}
+          onStatusUpdate={updateRequestStatus}
+        />
       </CardContent>
     </Card>
   );

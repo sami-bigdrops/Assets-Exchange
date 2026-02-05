@@ -642,74 +642,66 @@ const dashboardPerformance = os
         [];
       let xAxisLabel = "Time";
 
-      // Helper to format date in local timezone (YYYY-MM-DD)
-      const formatLocalDate = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
+      // Use PST timezone (America/Los_Angeles handles PST/PDT automatically)
+      const TZ = "America/Los_Angeles";
+
+      // Helper to format date in PST timezone (YYYY-MM-DD)
+      const formatDateInPST = (date: Date): string => {
+        return date.toLocaleDateString("en-CA", { timeZone: TZ });
       };
 
-      // Get timezone offset in format '+HH:MM' or '-HH:MM' for SQL
-      const getTimezoneOffset = (): string => {
-        const offsetMinutes = now.getTimezoneOffset();
-        const sign = offsetMinutes <= 0 ? "+" : "-";
-        const absOffset = Math.abs(offsetMinutes);
-        const hours = String(Math.floor(absOffset / 60)).padStart(2, "0");
-        const minutes = String(absOffset % 60).padStart(2, "0");
-        return `${sign}${hours}:${minutes}`;
+      // Get current time in PST for date calculations
+      const getNowInPST = (): Date => {
+        const pstString = now.toLocaleString("en-US", { timeZone: TZ });
+        return new Date(pstString);
       };
 
-      const tzOffset = getTimezoneOffset();
+      const nowPST = getNowInPST();
 
       if (
         comparisonType === "Today vs Yesterday" ||
         comparisonType === "Today vs Last Week"
       ) {
-        const todayStart = new Date(now);
-        todayStart.setHours(0, 0, 0, 0);
+        // Calculate today start in PST
+        const todayStartPST = new Date(nowPST);
+        todayStartPST.setHours(0, 0, 0, 0);
 
-        const comparisonStart = new Date(todayStart);
+        // Calculate comparison date start in PST
+        const comparisonStartPST = new Date(todayStartPST);
         if (comparisonType === "Today vs Yesterday") {
-          comparisonStart.setDate(comparisonStart.getDate() - 1);
+          comparisonStartPST.setDate(comparisonStartPST.getDate() - 1);
         } else {
-          comparisonStart.setDate(comparisonStart.getDate() - 7);
+          comparisonStartPST.setDate(comparisonStartPST.getDate() - 7);
         }
 
-        const comparisonEnd = new Date(comparisonStart);
-        comparisonEnd.setHours(23, 59, 59, 999);
+        // Get date keys in PST format
+        const todayKey = formatDateInPST(now);
+        const comparisonKey = formatDateInPST(
+          new Date(
+            now.getTime() -
+              (comparisonType === "Today vs Yesterday"
+                ? 24 * 60 * 60 * 1000
+                : 7 * 24 * 60 * 60 * 1000)
+          )
+        );
 
-        const todayEnd = new Date(now);
-
-        const whereConditions = [
-          gte(dateField, comparisonStart),
-          lte(dateField, todayEnd),
-        ];
-        if (metricWhereClause) {
-          whereConditions.push(metricWhereClause);
-        }
-
-        // Use timezone-aware date/hour extraction to match local JavaScript dates
+        // Query with PST timezone conversion using raw SQL for timezone literal
         const query = await db
           .select({
-            hour: sql<number>`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset}))::int`,
-            date: sql<string>`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})::text`,
+            hour: sql<number>`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
+            date: sql<string>`DATE(${dateField} AT TIME ZONE 'America/Los_Angeles')::text`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(and(...whereConditions))
+          .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
           .groupBy(
-            sql`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})`,
-            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset}))`
+            sql`DATE(${dateField} AT TIME ZONE 'America/Los_Angeles')`,
+            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
           )
           .orderBy(
-            sql`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})`,
-            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset}))`
+            sql`DATE(${dateField} AT TIME ZONE 'America/Los_Angeles')`,
+            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
           );
-
-        // Use local date formatting to match the SQL timezone-adjusted dates
-        const todayKey = formatLocalDate(todayStart);
-        const comparisonKey = formatLocalDate(comparisonStart);
 
         const hourlyData: Record<string, Record<number, number>> = {};
 
@@ -730,56 +722,37 @@ const dashboardPerformance = os
 
         xAxisLabel = "Time";
       } else if (comparisonType === "Current Week vs Last Week") {
-        const currentWeekStart = new Date(now);
-        currentWeekStart.setDate(
-          currentWeekStart.getDate() - currentWeekStart.getDay()
+        // Use PST-adjusted dates for week calculations
+        const currentWeekStartPST = new Date(nowPST);
+        currentWeekStartPST.setDate(
+          currentWeekStartPST.getDate() - currentWeekStartPST.getDay()
         );
-        currentWeekStart.setHours(0, 0, 0, 0);
+        currentWeekStartPST.setHours(0, 0, 0, 0);
 
-        const lastWeekStart = new Date(currentWeekStart);
-        lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+        const currentWeek = getWeekNumber(nowPST);
+        const lastWeek = currentWeek - 1;
+        const currentYear = nowPST.getFullYear();
 
-        const lastWeekEnd = new Date(currentWeekStart);
-        lastWeekEnd.setMilliseconds(-1);
-
-        const weekWhereConditions = [
-          gte(dateField, lastWeekStart),
-          lte(dateField, now),
-        ];
-        if (metricWhereClause) {
-          weekWhereConditions.push(metricWhereClause);
-        }
-
-        // Use timezone-aware extraction to match local JavaScript dates
-        const localDateField = sql`(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})`;
-
+        // Query with PST timezone
         const query = await db
           .select({
-            dayOfWeek: sql<number>`EXTRACT(DOW FROM ${localDateField})::int`,
-            week: sql<number>`EXTRACT(WEEK FROM ${localDateField})::int`,
-            year: sql<number>`EXTRACT(YEAR FROM ${localDateField})::int`,
+            dayOfWeek: sql<number>`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
+            week: sql<number>`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
+            year: sql<number>`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(and(...weekWhereConditions))
+          .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
           .groupBy(
-            sql`EXTRACT(YEAR FROM ${localDateField})`,
-            sql`EXTRACT(WEEK FROM ${localDateField})`,
-            sql`EXTRACT(DOW FROM ${localDateField})`
+            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
           )
           .orderBy(
-            sql`EXTRACT(YEAR FROM ${localDateField})`,
-            sql`EXTRACT(WEEK FROM ${localDateField})`,
-            sql`EXTRACT(DOW FROM ${localDateField})`
+            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
           );
-
-        const currentWeek = getWeekNumber(now);
-        const lastWeek = currentWeek - 1;
-        const currentYear = now.getFullYear();
-        const _lastYear =
-          lastWeekStart.getFullYear() !== currentYear
-            ? lastWeekStart.getFullYear()
-            : currentYear;
 
         const weeklyData: Record<number, Record<number, number>> = {};
 
@@ -800,64 +773,38 @@ const dashboardPerformance = os
 
         xAxisLabel = "Day";
       } else if (comparisonType === "Current Month vs Last Month") {
-        const _currentMonthStart = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          1
-        );
-        const lastMonthStart = new Date(
-          now.getFullYear(),
-          now.getMonth() - 1,
-          1
-        );
-        const _lastMonthEnd = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          0,
-          23,
-          59,
-          59,
-          999
-        );
+        // Use PST-adjusted dates for month calculations
+        const currentMonthKey = `${nowPST.getFullYear()}-${nowPST.getMonth() + 1}`;
+        const lastMonthPST = new Date(nowPST);
+        lastMonthPST.setMonth(lastMonthPST.getMonth() - 1);
+        const lastMonthKey = `${lastMonthPST.getFullYear()}-${lastMonthPST.getMonth() + 1}`;
 
-        const monthWhereConditions = [
-          gte(dateField, lastMonthStart),
-          lte(dateField, now),
-        ];
-        if (metricWhereClause) {
-          monthWhereConditions.push(metricWhereClause);
-        }
+        const daysInCurrentMonth = new Date(
+          nowPST.getFullYear(),
+          nowPST.getMonth() + 1,
+          0
+        ).getDate();
 
-        // Use timezone-aware extraction to match local JavaScript dates
-        const localDateFieldMonth = sql`(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})`;
-
+        // Query with PST timezone
         const query = await db
           .select({
-            dayOfMonth: sql<number>`EXTRACT(DAY FROM ${localDateFieldMonth})::int`,
-            month: sql<number>`EXTRACT(MONTH FROM ${localDateFieldMonth})::int`,
-            year: sql<number>`EXTRACT(YEAR FROM ${localDateFieldMonth})::int`,
+            dayOfMonth: sql<number>`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
+            month: sql<number>`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
+            year: sql<number>`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(and(...monthWhereConditions))
+          .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
           .groupBy(
-            sql`EXTRACT(YEAR FROM ${localDateFieldMonth})`,
-            sql`EXTRACT(MONTH FROM ${localDateFieldMonth})`,
-            sql`EXTRACT(DAY FROM ${localDateFieldMonth})`
+            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
           )
           .orderBy(
-            sql`EXTRACT(YEAR FROM ${localDateFieldMonth})`,
-            sql`EXTRACT(MONTH FROM ${localDateFieldMonth})`,
-            sql`EXTRACT(DAY FROM ${localDateFieldMonth})`
+            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
           );
-
-        const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
-        const lastMonthKey = `${lastMonthStart.getFullYear()}-${lastMonthStart.getMonth() + 1}`;
-        const daysInCurrentMonth = new Date(
-          now.getFullYear(),
-          now.getMonth() + 1,
-          0
-        ).getDate();
 
         const monthlyData: Record<string, Record<number, number>> = {};
 

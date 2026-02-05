@@ -10,7 +10,6 @@ import {
   Minimize2,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
   FileText,
   Image as ImageIcon,
   File,
@@ -48,8 +47,8 @@ import FileUploadModal from "@/features/publisher/components/form/_modals/FileUp
 import MultipleCreativesModal from "@/features/publisher/components/form/_modals/MultipleCreativesModal";
 import SingleCreativeViewModal from "@/features/publisher/components/form/_modals/SingleCreativeViewModal";
 import { StatusTracker } from "@/features/publisher/components/thankYou/StatusTracker";
-import type { Creative as SingleCreative } from "@/features/publisher/view-models/singleCreativeViewModal.viewModel";
 import type { CreativeFile } from "@/features/publisher/view-models/multipleCreativesModal.viewModel";
+import type { Creative as SingleCreative } from "@/features/publisher/view-models/singleCreativeViewModal.viewModel";
 
 interface Creative {
   id: string;
@@ -370,7 +369,7 @@ function TrackPageContent() {
     });
   };
 
-  const handleResetZoom = () => {
+  const _handleResetZoom = () => {
     setImageZoom(1);
     setImagePosition({ x: 0, y: 0 });
   };
@@ -602,34 +601,30 @@ function TrackPageContent() {
     }
   };
 
-  const handleRemoveCreative = (id: string) => {
+  const handleRemoveCreative = (_id: string) => {
     // For read-only view in track page
-    console.log("Remove creative:", id);
   };
 
-  const handleFileNameChange = (fileId: string, newFileName: string) => {
+  const handleFileNameChange = (_fileId: string, _newFileName: string) => {
     // For sent-back, allow file name changes
-    console.log("File name changed:", fileId, newFileName);
   };
 
   const handleMetadataChange = (
-    fileId: string,
-    metadata: {
+    _fileId: string,
+    _metadata: {
       fromLines?: string;
       subjectLines?: string;
       additionalNotes?: string;
     }
   ) => {
     // For sent-back, allow metadata changes
-    console.log("Metadata changed:", fileId, metadata);
   };
 
-  const handleFileUpdate = (updates: {
+  const handleFileUpdate = (_updates: {
     url?: string;
     metadata?: Record<string, unknown>;
   }) => {
     // Handle file updates after proofreading or edits
-    console.log("File updated:", updates);
   };
 
   return (
@@ -1108,8 +1103,8 @@ export default function TrackPage() {
 
 function mapStatusToTracker(
   status: string,
-  approvalStage: string,
-  adminStatus: string
+  _approvalStage: string,
+  _adminStatus: string
 ) {
   const normalizedStatus = status.toLowerCase();
   const isSentBack = normalizedStatus === "sent-back";

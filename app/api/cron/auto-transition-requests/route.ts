@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       )
       .returning({ id: creativeRequests.id });
 
-    console.log(
+    console.warn(
       `Auto-transitioned ${result.length} requests from 'new' to 'pending'`
     );
 

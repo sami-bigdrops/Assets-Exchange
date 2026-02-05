@@ -1113,6 +1113,8 @@ function mapStatusToTracker(
   const isRevised = normalizedStatus === "revised";
   const isApproved = normalizedStatus === "approved";
   const isRejected = normalizedStatus === "rejected";
+  const isPending = normalizedStatus === "pending";
+  const isForwardedToAdvertiser = isPending && normalizedStage === "advertiser";
 
   // Base statuses
   const baseStatuses = [
@@ -1130,19 +1132,17 @@ function mapStatusToTracker(
       description: "Admin reviewing",
       icon: Eye,
       status: "active" as "active" | "pending",
-      color: (isApproved || isRejected || isSentBack || isRevised
-        ? "blue"
-        : "blue") as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+      color: "blue" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
     },
     {
       id: 3,
       title: "Decision Made",
       description: "Admin decided",
       icon: MessageSquare,
-      status: (isApproved || isRejected || isSentBack || isRevised
+      status: (isApproved || isRejected || isSentBack || isRevised || isForwardedToAdvertiser
         ? "active"
         : "pending") as "active" | "pending",
-      color: (isApproved || isRejected || isSentBack || isRevised
+      color: (isApproved || isRejected || isSentBack || isRevised || isForwardedToAdvertiser
         ? "blue"
         : "gray") as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
     },
@@ -1166,6 +1166,36 @@ function mapStatusToTracker(
         icon: CheckCircle2,
         status: "active" as "active" | "pending",
         color: "green" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+      }
+    );
+  }
+
+  // If forwarded to advertiser, show the forwarding flow
+  if (isForwardedToAdvertiser) {
+    baseStatuses.push(
+      {
+        id: 4,
+        title: "Forwarded to Advertiser",
+        description: "Admin approved, sent to advertiser",
+        icon: FileCheck,
+        status: "active" as "active" | "pending",
+        color: "blue" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+      },
+      {
+        id: 5,
+        title: "Final Review",
+        description: "Advertiser reviewing",
+        icon: UserCheck,
+        status: "active" as "active" | "pending",
+        color: "blue" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+      },
+      {
+        id: 6,
+        title: "Completed",
+        description: "Case closed",
+        icon: CheckCircle2,
+        status: "pending" as "active" | "pending",
+        color: "gray" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
       }
     );
   }
@@ -1234,8 +1264,8 @@ function mapStatusToTracker(
     );
   }
 
-  // Add remaining statuses only if not rejected or approved by admin
-  if (!isRejected && !(isApproved && normalizedStage === "admin")) {
+  // Add remaining statuses only if not rejected, not approved by admin, and not forwarded to advertiser
+  if (!isRejected && !(isApproved && normalizedStage === "admin") && !isForwardedToAdvertiser) {
     const nextId = isRevised ? 7 : isSentBack ? 5 : 4;
 
     // Show completed if fully approved

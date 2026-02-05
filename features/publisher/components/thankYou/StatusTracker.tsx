@@ -34,14 +34,6 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
         : (activeIndex / (statuses.length - 1)) * 100
       : 0;
 
-  // Check if the current active status is amber, cyan, green, or red colored
-  const currentActiveColor =
-    currentActiveIndex >= 0 ? statuses[currentActiveIndex]?.color : "blue";
-  const isAmberActive = currentActiveColor === "amber";
-  const isCyanActive = currentActiveColor === "cyan";
-  const isGreenActive = currentActiveColor === "green";
-  const isRedActive = currentActiveColor === "red";
-
   return (
     <div className="w-full">
       {/* Desktop Horizontal Layout */}
@@ -52,17 +44,7 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
             {/* Progress line background */}
             <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 rounded-full mx-6">
               <div
-                className={`h-full rounded-full transition-all duration-1000 shadow-sm origin-left ${
-                  isAmberActive
-                    ? "bg-amber-500"
-                    : isCyanActive
-                      ? "bg-cyan-500"
-                      : isGreenActive
-                        ? "bg-emerald-500"
-                        : isRedActive
-                          ? "bg-red-500"
-                          : "bg-blue-500"
-                }`}
+                className="h-full rounded-full transition-all duration-1000 shadow-sm origin-left bg-blue-500"
                 style={{
                   width:
                     progressWidth > 0 ? `calc(${progressWidth}% + 24px)` : "0%",

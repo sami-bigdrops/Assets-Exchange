@@ -88,7 +88,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select({ count: sql<number>`count(*)` })
       .from(creativeRequests)
       .where(
-        sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+        sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
       ),
 
     // New requests (all time, status=new, stage=admin)
@@ -128,7 +128,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         and(
           eq(creativeRequests.status, "new"),
           eq(creativeRequests.approvalStage, "admin"),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
         )
       ),
 
@@ -140,7 +140,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         and(
           eq(creativeRequests.status, "new"),
           eq(creativeRequests.approvalStage, "admin"),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
         )
       ),
 
@@ -152,7 +152,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         and(
           eq(creativeRequests.status, "new"),
           eq(creativeRequests.approvalStage, "admin"),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
         )
       ),
 
@@ -164,8 +164,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         and(
           eq(creativeRequests.status, "new"),
           eq(creativeRequests.approvalStage, "admin"),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
         )
       ),
 
@@ -176,7 +176,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           eq(creativeRequests.status, "approved"),
-          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
         )
       ),
 
@@ -187,7 +187,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           eq(creativeRequests.status, "approved"),
-          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
         )
       ),
 
@@ -198,7 +198,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           eq(creativeRequests.status, "approved"),
-          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
         )
       ),
 
@@ -209,8 +209,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           eq(creativeRequests.status, "approved"),
-          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+          sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
         )
       ),
 
@@ -221,7 +221,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           eq(creativeRequests.status, "rejected"),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
         )
       ),
 
@@ -232,7 +232,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           eq(creativeRequests.status, "rejected"),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
         )
       ),
 
@@ -243,7 +243,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           eq(creativeRequests.status, "rejected"),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
         )
       ),
 
@@ -254,8 +254,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           eq(creativeRequests.status, "rejected"),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
         )
       ),
 
@@ -266,7 +266,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           inArray(creativeRequests.status, ["new", "pending"]),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
         )
       ),
 
@@ -277,7 +277,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           inArray(creativeRequests.status, ["new", "pending"]),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
         )
       ),
 
@@ -288,7 +288,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           inArray(creativeRequests.status, ["new", "pending"]),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
         )
       ),
 
@@ -299,8 +299,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .where(
         and(
           inArray(creativeRequests.status, ["new", "pending"]),
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
         )
       ),
 
@@ -309,7 +309,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select({ count: sql<number>`count(*)` })
       .from(creativeRequests)
       .where(
-        sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+        sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
       ),
 
     // Total assets current month (PST)
@@ -317,7 +317,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select({ count: sql<number>`count(*)` })
       .from(creativeRequests)
       .where(
-        sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+        sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
       ),
 
     // Total assets last month (PST)
@@ -326,8 +326,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .from(creativeRequests)
       .where(
         and(
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
         )
       ),
   ]);

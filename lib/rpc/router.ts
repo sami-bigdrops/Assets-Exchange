@@ -229,26 +229,26 @@ const dashboardStats = os
       const currentMonthStartPST = getCurrentMonthStartPST();
       const lastMonthRange = getLastMonthRangePST();
 
-      // Total Assets queries with PST timezone
+      // Total Assets queries with PST timezone (double AT TIME ZONE for timestamp without timezone)
       const totalAssetsToday = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(creativeRequests)
         .where(
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
         );
 
       const totalAssetsYesterday = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(creativeRequests)
         .where(
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
         );
 
       const totalAssetsCurrentMonth = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(creativeRequests)
         .where(
-          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+          sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
         );
 
       const totalAssetsLastMonth = await db
@@ -256,8 +256,8 @@ const dashboardStats = os
         .from(creativeRequests)
         .where(
           and(
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
           )
         );
 
@@ -269,7 +269,7 @@ const dashboardStats = os
           and(
             eq(creativeRequests.status, "new"),
             eq(creativeRequests.approvalStage, "admin"),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
           )
         );
 
@@ -280,7 +280,7 @@ const dashboardStats = os
           and(
             eq(creativeRequests.status, "new"),
             eq(creativeRequests.approvalStage, "admin"),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
           )
         );
 
@@ -291,7 +291,7 @@ const dashboardStats = os
           and(
             eq(creativeRequests.status, "new"),
             eq(creativeRequests.approvalStage, "admin"),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
           )
         );
 
@@ -302,8 +302,8 @@ const dashboardStats = os
           and(
             eq(creativeRequests.status, "new"),
             eq(creativeRequests.approvalStage, "admin"),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
           )
         );
 
@@ -314,7 +314,7 @@ const dashboardStats = os
         .where(
           and(
             eq(creativeRequests.status, "approved"),
-            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
           )
         );
 
@@ -324,7 +324,7 @@ const dashboardStats = os
         .where(
           and(
             eq(creativeRequests.status, "approved"),
-            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
           )
         );
 
@@ -334,7 +334,7 @@ const dashboardStats = os
         .where(
           and(
             eq(creativeRequests.status, "approved"),
-            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
           )
         );
 
@@ -344,8 +344,8 @@ const dashboardStats = os
         .where(
           and(
             eq(creativeRequests.status, "approved"),
-            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+            sql`DATE(${creativeRequests.adminApprovedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
           )
         );
 
@@ -356,7 +356,7 @@ const dashboardStats = os
         .where(
           and(
             eq(creativeRequests.status, "rejected"),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
           )
         );
 
@@ -366,7 +366,7 @@ const dashboardStats = os
         .where(
           and(
             eq(creativeRequests.status, "rejected"),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
           )
         );
 
@@ -376,7 +376,7 @@ const dashboardStats = os
         .where(
           and(
             eq(creativeRequests.status, "rejected"),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
           )
         );
 
@@ -386,8 +386,8 @@ const dashboardStats = os
         .where(
           and(
             eq(creativeRequests.status, "rejected"),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
           )
         );
 
@@ -398,7 +398,7 @@ const dashboardStats = os
         .where(
           and(
             inArray(creativeRequests.status, ["new", "pending"]),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${todayPST}`
           )
         );
 
@@ -408,7 +408,7 @@ const dashboardStats = os
         .where(
           and(
             inArray(creativeRequests.status, ["new", "pending"]),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') = ${yesterdayPST}`
           )
         );
 
@@ -418,7 +418,7 @@ const dashboardStats = os
         .where(
           and(
             inArray(creativeRequests.status, ["new", "pending"]),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${currentMonthStartPST}`
           )
         );
 
@@ -428,8 +428,8 @@ const dashboardStats = os
         .where(
           and(
             inArray(creativeRequests.status, ["new", "pending"]),
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
-            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') >= ${lastMonthRange.start}`,
+            sql`DATE(${creativeRequests.submittedAt} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles') <= ${lastMonthRange.end}`
           )
         );
 
@@ -706,21 +706,22 @@ const dashboardPerformance = os
         );
 
         // Query with PST timezone conversion using raw SQL for timezone literal
+        // Use double AT TIME ZONE because submittedAt is timestamp without timezone (stored as UTC)
         const query = await db
           .select({
-            hour: sql<number>`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
-            date: sql<string>`DATE(${dateField} AT TIME ZONE 'America/Los_Angeles')::text`,
+            hour: sql<number>`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))::int`,
+            date: sql<string>`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles')::text`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
           .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
           .groupBy(
-            sql`DATE(${dateField} AT TIME ZONE 'America/Los_Angeles')`,
-            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
+            sql`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles')`,
+            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`
           )
           .orderBy(
-            sql`DATE(${dateField} AT TIME ZONE 'America/Los_Angeles')`,
-            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
+            sql`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles')`,
+            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`
           );
 
         const hourlyData: Record<string, Record<number, number>> = {};
@@ -753,25 +754,25 @@ const dashboardPerformance = os
         const lastWeek = currentWeek - 1;
         const currentYear = nowPST.getFullYear();
 
-        // Query with PST timezone
+        // Query with PST timezone (double AT TIME ZONE for timestamp without timezone)
         const query = await db
           .select({
-            dayOfWeek: sql<number>`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
-            week: sql<number>`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
-            year: sql<number>`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
+            dayOfWeek: sql<number>`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))::int`,
+            week: sql<number>`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))::int`,
+            year: sql<number>`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))::int`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
           .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
           .groupBy(
-            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
-            sql`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
-            sql`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
+            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`
           )
           .orderBy(
-            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
-            sql`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
-            sql`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
+            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(DOW FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`
           );
 
         const weeklyData: Record<number, Record<number, number>> = {};
@@ -805,25 +806,25 @@ const dashboardPerformance = os
           0
         ).getDate();
 
-        // Query with PST timezone
+        // Query with PST timezone (double AT TIME ZONE for timestamp without timezone)
         const query = await db
           .select({
-            dayOfMonth: sql<number>`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
-            month: sql<number>`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
-            year: sql<number>`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))::int`,
+            dayOfMonth: sql<number>`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))::int`,
+            month: sql<number>`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))::int`,
+            year: sql<number>`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))::int`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
           .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
           .groupBy(
-            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
-            sql`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
-            sql`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
+            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`
           )
           .orderBy(
-            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
-            sql`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`,
-            sql`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'America/Los_Angeles'))`
+            sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
+            sql`EXTRACT(DAY FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`
           );
 
         const monthlyData: Record<string, Record<number, number>> = {};

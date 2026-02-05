@@ -642,6 +642,26 @@ const dashboardPerformance = os
         [];
       let xAxisLabel = "Time";
 
+      // Helper to format date in local timezone (YYYY-MM-DD)
+      const formatLocalDate = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      // Get timezone offset in format '+HH:MM' or '-HH:MM' for SQL
+      const getTimezoneOffset = (): string => {
+        const offsetMinutes = now.getTimezoneOffset();
+        const sign = offsetMinutes <= 0 ? "+" : "-";
+        const absOffset = Math.abs(offsetMinutes);
+        const hours = String(Math.floor(absOffset / 60)).padStart(2, "0");
+        const minutes = String(absOffset % 60).padStart(2, "0");
+        return `${sign}${hours}:${minutes}`;
+      };
+
+      const tzOffset = getTimezoneOffset();
+
       if (
         comparisonType === "Today vs Yesterday" ||
         comparisonType === "Today vs Last Week"
@@ -669,26 +689,27 @@ const dashboardPerformance = os
           whereConditions.push(metricWhereClause);
         }
 
-        // Optimize query by using indexed column and limiting date range
+        // Use timezone-aware date/hour extraction to match local JavaScript dates
         const query = await db
           .select({
-            hour: sql<number>`EXTRACT(HOUR FROM ${dateField})::int`,
-            date: sql<string>`DATE(${dateField})::text`,
+            hour: sql<number>`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset}))::int`,
+            date: sql<string>`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})::text`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
           .where(and(...whereConditions))
           .groupBy(
-            sql`DATE(${dateField})`,
-            sql`EXTRACT(HOUR FROM ${dateField})`
+            sql`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})`,
+            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset}))`
           )
           .orderBy(
-            sql`DATE(${dateField})`,
-            sql`EXTRACT(HOUR FROM ${dateField})`
+            sql`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})`,
+            sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset}))`
           );
 
-        const todayKey = todayStart.toISOString().split("T")[0];
-        const comparisonKey = comparisonStart.toISOString().split("T")[0];
+        // Use local date formatting to match the SQL timezone-adjusted dates
+        const todayKey = formatLocalDate(todayStart);
+        const comparisonKey = formatLocalDate(comparisonStart);
 
         const hourlyData: Record<string, Record<number, number>> = {};
 
@@ -729,24 +750,27 @@ const dashboardPerformance = os
           weekWhereConditions.push(metricWhereClause);
         }
 
+        // Use timezone-aware extraction to match local JavaScript dates
+        const localDateField = sql`(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})`;
+
         const query = await db
           .select({
-            dayOfWeek: sql<number>`EXTRACT(DOW FROM ${dateField})::int`,
-            week: sql<number>`EXTRACT(WEEK FROM ${dateField})::int`,
-            year: sql<number>`EXTRACT(YEAR FROM ${dateField})::int`,
+            dayOfWeek: sql<number>`EXTRACT(DOW FROM ${localDateField})::int`,
+            week: sql<number>`EXTRACT(WEEK FROM ${localDateField})::int`,
+            year: sql<number>`EXTRACT(YEAR FROM ${localDateField})::int`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
           .where(and(...weekWhereConditions))
           .groupBy(
-            sql`EXTRACT(YEAR FROM ${dateField})`,
-            sql`EXTRACT(WEEK FROM ${dateField})`,
-            sql`EXTRACT(DOW FROM ${dateField})`
+            sql`EXTRACT(YEAR FROM ${localDateField})`,
+            sql`EXTRACT(WEEK FROM ${localDateField})`,
+            sql`EXTRACT(DOW FROM ${localDateField})`
           )
           .orderBy(
-            sql`EXTRACT(YEAR FROM ${dateField})`,
-            sql`EXTRACT(WEEK FROM ${dateField})`,
-            sql`EXTRACT(DOW FROM ${dateField})`
+            sql`EXTRACT(YEAR FROM ${localDateField})`,
+            sql`EXTRACT(WEEK FROM ${localDateField})`,
+            sql`EXTRACT(DOW FROM ${localDateField})`
           );
 
         const currentWeek = getWeekNumber(now);
@@ -804,24 +828,27 @@ const dashboardPerformance = os
           monthWhereConditions.push(metricWhereClause);
         }
 
+        // Use timezone-aware extraction to match local JavaScript dates
+        const localDateFieldMonth = sql`(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE ${tzOffset})`;
+
         const query = await db
           .select({
-            dayOfMonth: sql<number>`EXTRACT(DAY FROM ${dateField})::int`,
-            month: sql<number>`EXTRACT(MONTH FROM ${dateField})::int`,
-            year: sql<number>`EXTRACT(YEAR FROM ${dateField})::int`,
+            dayOfMonth: sql<number>`EXTRACT(DAY FROM ${localDateFieldMonth})::int`,
+            month: sql<number>`EXTRACT(MONTH FROM ${localDateFieldMonth})::int`,
+            year: sql<number>`EXTRACT(YEAR FROM ${localDateFieldMonth})::int`,
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
           .where(and(...monthWhereConditions))
           .groupBy(
-            sql`EXTRACT(YEAR FROM ${dateField})`,
-            sql`EXTRACT(MONTH FROM ${dateField})`,
-            sql`EXTRACT(DAY FROM ${dateField})`
+            sql`EXTRACT(YEAR FROM ${localDateFieldMonth})`,
+            sql`EXTRACT(MONTH FROM ${localDateFieldMonth})`,
+            sql`EXTRACT(DAY FROM ${localDateFieldMonth})`
           )
           .orderBy(
-            sql`EXTRACT(YEAR FROM ${dateField})`,
-            sql`EXTRACT(MONTH FROM ${dateField})`,
-            sql`EXTRACT(DAY FROM ${dateField})`
+            sql`EXTRACT(YEAR FROM ${localDateFieldMonth})`,
+            sql`EXTRACT(MONTH FROM ${localDateFieldMonth})`,
+            sql`EXTRACT(DAY FROM ${localDateFieldMonth})`
           );
 
         const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 
 import { fetchRequests } from "../services/requests.client";
-import type { CreativeRequest } from "../types/request.types";
+import type { CreativeRequest, RequestStatus } from "../types/request.types";
 
 export function useManageRequestsViewModel() {
   const [requests, setRequests] = useState<CreativeRequest[]>([]);
@@ -15,7 +15,6 @@ export function useManageRequestsViewModel() {
     try {
       setError(null);
       const res = await fetchRequests({ page: 1, limit: 1000 });
-      // Force new array reference to trigger re-render
       setRequests([...(res.data || [])]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load requests");
@@ -30,6 +29,23 @@ export function useManageRequestsViewModel() {
     await load();
   }, [load]);
 
+  const updateRequestStatus = useCallback(
+    (
+      requestId: string,
+      newStatus: RequestStatus,
+      newApprovalStage: "admin" | "advertiser" | "completed"
+    ) => {
+      setRequests((prev) =>
+        prev.map((req) =>
+          req.id === requestId
+            ? { ...req, status: newStatus, approvalStage: newApprovalStage }
+            : req
+        )
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     setIsLoading(true);
     load();
@@ -40,5 +56,6 @@ export function useManageRequestsViewModel() {
     isLoading,
     error,
     refresh,
+    updateRequestStatus,
   };
 }

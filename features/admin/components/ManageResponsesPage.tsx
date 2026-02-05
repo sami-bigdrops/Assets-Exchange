@@ -85,7 +85,7 @@ type PriorityFilter = "all" | "high" | "medium";
 
 export function ManageResponsesPage() {
   const variables = getVariables();
-  const { responses, isLoading, error, refresh } =
+  const { responses, isLoading, error, refresh, updateRequestStatus } =
     useManageResponsesViewModel();
 
   const [activeTab, setActiveTab] = useState<TabValue>("all");
@@ -773,6 +773,7 @@ export function ManageResponsesPage() {
                 viewButtonText="View Response"
                 isAdvertiserView={true}
                 onRefresh={refresh}
+                onStatusUpdate={updateRequestStatus}
               />
               {totalPages > 1 && (
                 <div

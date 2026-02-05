@@ -81,7 +81,8 @@ type PriorityFilter = "all" | "high" | "medium";
 
 export function ManageRequestsPage() {
   const variables = getVariables();
-  const { requests, isLoading, error, refresh } = useManageRequestsViewModel();
+  const { requests, isLoading, error, refresh, updateRequestStatus } =
+    useManageRequestsViewModel();
   const [activeTab, setActiveTab] = useState<TabValue>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -836,6 +837,7 @@ export function ManageRequestsPage() {
                 requests={paginatedRequests}
                 startIndex={startIndex}
                 onRefresh={refresh}
+                onStatusUpdate={updateRequestStatus}
               />
               {totalPages > 1 && (
                 <div

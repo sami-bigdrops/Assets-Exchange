@@ -55,6 +55,17 @@ interface RequestItemProps {
   viewButtonText?: string;
   showDownloadButton?: boolean;
   onRefresh?: () => void;
+  onStatusUpdate?: (
+    requestId: string,
+    newStatus:
+      | "new"
+      | "pending"
+      | "approved"
+      | "rejected"
+      | "sent-back"
+      | "revised",
+    newApprovalStage: "admin" | "advertiser" | "completed"
+  ) => void;
   isAdvertiserView?: boolean;
 }
 
@@ -233,7 +244,8 @@ export function RequestItem({
   colorVariant,
   viewButtonText = "View Request",
   showDownloadButton = false,
-  onRefresh,
+  onRefresh: _onRefresh,
+  onStatusUpdate,
   isAdvertiserView = false,
 }: RequestItemProps) {
   const variables = getVariables();
@@ -677,15 +689,15 @@ export function RequestItem({
                           setError(null);
                           try {
                             await approveRequest(request.id);
+                            onStatusUpdate?.(
+                              request.id,
+                              "approved",
+                              "completed"
+                            );
                             toast.success("Request approved", {
                               description:
                                 "The request has been successfully approved.",
                             });
-                            // Wait a moment for database to update before refreshing
-                            await new Promise((resolve) =>
-                              setTimeout(resolve, 500)
-                            );
-                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -727,15 +739,15 @@ export function RequestItem({
 
                           try {
                             await forwardRequest(request.id);
+                            onStatusUpdate?.(
+                              request.id,
+                              "pending",
+                              "advertiser"
+                            );
                             toast.success("Request forwarded to advertiser", {
                               description:
                                 "The request has been forwarded for advertiser review.",
                             });
-                            // Wait a moment for database to update before refreshing
-                            await new Promise((resolve) =>
-                              setTimeout(resolve, 500)
-                            );
-                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -870,16 +882,16 @@ export function RequestItem({
                           setError(null);
                           try {
                             await rejectRequest(request.id, rejectComments);
+                            onStatusUpdate?.(
+                              request.id,
+                              "rejected",
+                              "completed"
+                            );
                             toast.success("Request rejected", {
                               description:
                                 "The request has been rejected successfully.",
                             });
                             setRejectComments("");
-                            // Wait a moment for database to update before refreshing
-                            await new Promise((resolve) =>
-                              setTimeout(resolve, 500)
-                            );
-                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -917,16 +929,12 @@ export function RequestItem({
 
                           try {
                             await returnRequest(request.id, rejectComments);
+                            onStatusUpdate?.(request.id, "sent-back", "admin");
                             toast.success("Request sent back to publisher", {
                               description:
                                 "The request has been sent back to the publisher for revision.",
                             });
                             setRejectComments("");
-                            // Wait a moment for database to update before refreshing
-                            await new Promise((resolve) =>
-                              setTimeout(resolve, 500)
-                            );
-                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -1183,16 +1191,16 @@ export function RequestItem({
 
                           try {
                             await rejectRequest(request.id, sendBackComments);
+                            onStatusUpdate?.(
+                              request.id,
+                              "rejected",
+                              "completed"
+                            );
                             toast.success("Request rejected", {
                               description:
                                 "The request has been rejected successfully.",
                             });
                             setSendBackComments("");
-                            // Wait a moment for database to update before refreshing
-                            await new Promise((resolve) =>
-                              setTimeout(resolve, 500)
-                            );
-                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error
@@ -1231,16 +1239,12 @@ export function RequestItem({
                           setError(null);
                           try {
                             await returnRequest(request.id, sendBackComments);
+                            onStatusUpdate?.(request.id, "sent-back", "admin");
                             toast.success("Request sent back to publisher", {
                               description:
                                 "The request has been sent back to the publisher for revision.",
                             });
                             setSendBackComments("");
-                            // Wait a moment for database to update before refreshing
-                            await new Promise((resolve) =>
-                              setTimeout(resolve, 500)
-                            );
-                            await onRefresh?.();
                           } catch (err) {
                             const errorMessage =
                               err instanceof Error

@@ -78,8 +78,8 @@ export const useThankYouPage = () => {
         title: "Under Review",
         description: "Client reviewing",
         icon: Eye,
-        status: "pending",
-        color: "gray",
+        status: "active",
+        color: "blue",
       },
       {
         id: 3,

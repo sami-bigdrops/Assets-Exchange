@@ -293,7 +293,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                       className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200 overflow-hidden group"
                     >
                       {/* Preview Section */}
-                      <div className="aspect-[4/3] bg-gray-50 overflow-hidden relative">
+                      <div className="aspect-4/3 bg-gray-50 overflow-hidden relative">
                         {isImage && (creative.previewUrl || creative.url) ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -302,7 +302,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                             className="w-full h-full object-cover"
                           />
                         ) : isHtml ? (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-50">
+                          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-emerald-50 to-green-50">
                             <div className="text-center">
                               <FileText className="h-10 w-10 text-emerald-600 mx-auto mb-2" />
                               <p className="text-xs font-medium text-emerald-700">
@@ -311,7 +311,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-50">
+                          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-slate-50 to-gray-50">
                             <div className="text-center">
                               <File className="h-10 w-10 text-slate-500 mx-auto mb-2" />
                               <p className="text-xs font-medium text-slate-600">

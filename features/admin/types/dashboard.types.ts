@@ -7,6 +7,10 @@ export type DashboardStats = {
         pending: number
     }
     trends: {
+        totalAssets: {
+            today: number
+            yesterday: number
+        }
         newRequests: {
             today: number
             yesterday: number

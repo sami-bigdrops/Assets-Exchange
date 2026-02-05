@@ -153,51 +153,22 @@ export function StatsCard({
   const TrendIcon = calculatedTrend?.trendIconValue;
   const isPositive = TrendIcon === TrendingUp;
 
-  // Filter and order historical data: remove "Today", order as Yesterday, Current Month, Last Month, then add Total
+  // Filter and order historical data: Yesterday, Current Month, Last Month, Total
   const filteredAndOrderedHistoricalData = useMemo(() => {
     if (!historicalData) return null;
 
-    // Filter out "Today"
-    const filtered = historicalData.filter(
-      (item) => item.label !== "Today"
-    );
-
     // Define the desired order
-    const order = ["Yesterday", "Current Month", "Last Month"];
+    const order = ["Yesterday", "Current Month", "Last Month", "Total"];
 
     // Sort the filtered data according to the desired order
     const ordered = order
-      .map((label) => filtered.find((item) => item.label === label))
+      .map((label) => historicalData.find((item) => item.label === label))
       .filter((item) => item !== undefined);
 
     if (ordered.length === 0) return null;
 
-    // Calculate total: Today (value) + sum of all historical data
-    let totalValue = value; // Start with today's value
-    
-    // Add all historical values
-    historicalData.forEach((item) => {
-      let itemValue = 0;
-      if (typeof item.value === "number") {
-        itemValue = item.value;
-      } else if (typeof item.value === "string") {
-        itemValue = parseFormattedValue(item.value);
-      }
-      
-      // Only add if not "Today" (we already added it)
-      if (item.label !== "Today") {
-        totalValue += itemValue;
-      }
-    });
-
-    // Add Total row
-    ordered.push({
-      label: "Total",
-      value: formatNumberShorthand(totalValue),
-    });
-
     return ordered;
-  }, [historicalData, value]);
+  }, [historicalData]);
 
   const getBackgroundColor = () => {
     switch (title) {

@@ -1,4 +1,4 @@
-import { eq, and, inArray, sql, gte, lt, lte } from "drizzle-orm"
+import { eq, and, inArray, sql, gte, lte } from "drizzle-orm"
 
 import { db } from "@/lib/db"
 import { creativeRequests } from "@/lib/schema"
@@ -17,6 +17,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
     const [
         totalAssets,
+        totalAssetsToday,
         newRequests,
         approved,
         rejected,
@@ -42,6 +43,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         totalAssetsLastMonth,
     ] = await Promise.all([
         db.select({ count: sql<number>`count(*)` }).from(creativeRequests),
+        db.select({ count: sql<number>`count(*)` })
+            .from(creativeRequests)
+            .where(gte(creativeRequests.submittedAt, todayStart)),
         db.select({ count: sql<number>`count(*)` })
             .from(creativeRequests)
             .where(and(eq(creativeRequests.status, "new"), eq(creativeRequests.approvalStage, "admin"))),
@@ -250,6 +254,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
             pending: Number(pending[0].count),
         },
         trends: {
+            totalAssets: {
+                today: Number(totalAssetsToday[0].count),
+                yesterday: Number(totalAssetsYesterday[0].count),
+            },
             newRequests: {
                 today: Number(newToday[0].count),
                 yesterday: Number(newYesterday[0].count),

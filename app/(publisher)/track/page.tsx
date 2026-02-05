@@ -760,7 +760,7 @@ function TrackPageContent() {
                           >
                             <div className="p-5">
                               <div className="flex items-start gap-4 mb-4">
-                                <div className="shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center border border-blue-200">
+                                <div className="shrink-0 w-12 h-12 rounded-lg bg-linear-to-br from-blue-50 to-blue-100 flex items-center justify-center border border-blue-200">
                                   {fileType === "image" ? (
                                     <ImageIcon className="h-6 w-6 text-blue-600" />
                                   ) : fileType === "html" ? (
@@ -829,7 +829,7 @@ function TrackPageContent() {
 
                               <div className="border-t border-gray-100 pt-4">
                                 <dl className="grid grid-cols-3 gap-3">
-                                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg px-3 py-3 border border-blue-200">
+                                  <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-lg px-3 py-3 border border-blue-200">
                                     <dt className="text-xs font-medium text-blue-700 mb-1.5 font-inter uppercase tracking-wide">
                                       Creative Type
                                     </dt>
@@ -837,7 +837,7 @@ function TrackPageContent() {
                                       {data.creativeType ?? "—"}
                                     </dd>
                                   </div>
-                                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg px-3 py-3 border border-purple-200">
+                                  <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-lg px-3 py-3 border border-purple-200">
                                     <dt className="text-xs font-medium text-purple-700 mb-1.5 font-inter uppercase tracking-wide">
                                       From Lines
                                     </dt>
@@ -845,7 +845,7 @@ function TrackPageContent() {
                                       {data.fromLinesCount ?? "—"}
                                     </dd>
                                   </div>
-                                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg px-3 py-3 border border-green-200">
+                                  <div className="bg-linear-to-br from-green-50 to-green-100 rounded-lg px-3 py-3 border border-green-200">
                                     <dt className="text-xs font-medium text-green-700 mb-1.5 font-inter uppercase tracking-wide">
                                       Subject Lines
                                     </dt>

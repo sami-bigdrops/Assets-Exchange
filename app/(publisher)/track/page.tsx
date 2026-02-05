@@ -1170,16 +1170,26 @@ function mapStatusToTracker(
     );
   }
 
-  // If rejected, show rejection status
+  // If rejected, show rejection status with Completed
   if (isRejected) {
-    baseStatuses.push({
-      id: 4,
-      title: "Rejected",
-      description: normalizedStage === "admin" ? "Rejected by admin" : "Rejected by advertiser",
-      icon: MessageSquare,
-      status: "active" as "active" | "pending",
-      color: "red" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
-    });
+    baseStatuses.push(
+      {
+        id: 4,
+        title: "Rejected",
+        description: normalizedStage === "admin" ? "Rejected by admin" : "Rejected by advertiser",
+        icon: MessageSquare,
+        status: "active" as "active" | "pending",
+        color: "red" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+      },
+      {
+        id: 5,
+        title: "Completed",
+        description: "Case closed",
+        icon: CheckCircle2,
+        status: "active" as "active" | "pending",
+        color: "red" as "blue" | "gray" | "amber" | "cyan" | "green" | "red",
+      }
+    );
   }
 
   // If sent back, insert "Sent Back" status after "Decision Made"

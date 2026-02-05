@@ -60,7 +60,7 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                       : isGreenActive
                         ? "bg-gradient-to-r from-blue-500 via-teal-500 to-emerald-500"
                         : isRedActive
-                          ? "bg-gradient-to-r from-blue-500 via-blue-600 to-red-500"
+                          ? "bg-gradient-to-r from-blue-500 via-pink-500 to-red-500"
                           : "bg-gradient-to-r from-blue-500 to-blue-600"
                 }`}
                 style={{
@@ -113,7 +113,7 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ statuses }) => {
                     </div>
 
                     {/* Content */}
-                    <div className="text-center max-w-24">
+                    <div className="text-center max-w-48">
                       <h4
                         className={`text-xs font-bold mb-1 ${
                           isActive && status.color === "amber"

@@ -174,7 +174,9 @@ export function PerformanceChart({
       <Card className="overflow-hidden">
         <CardHeader
           className="-mt-6 mb-0 px-6 py-6 gap-4 flex flex-row items-center justify-between"
-          style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
+          style={{
+            backgroundColor: variables.colors.cardHeaderBackgroundColor,
+          }}
         >
           <CardTitle
             className="xl:text-lg text-sm lg:text-base font-inter font-medium"
@@ -236,7 +238,9 @@ export function PerformanceChart({
       <Card className="overflow-hidden">
         <CardHeader
           className="-mt-6 mb-0 px-6 py-6"
-          style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
+          style={{
+            backgroundColor: variables.colors.cardHeaderBackgroundColor,
+          }}
         >
           <CardTitle
             className="xl:text-lg text-sm lg:text-base font-inter font-medium"
@@ -259,7 +263,9 @@ export function PerformanceChart({
       <Card className="overflow-hidden">
         <CardHeader
           className="-mt-6 mb-0 px-6 py-6"
-          style={{ backgroundColor: variables.colors.cardHeaderBackgroundColor }}
+          style={{
+            backgroundColor: variables.colors.cardHeaderBackgroundColor,
+          }}
         >
           <CardTitle
             className="xl:text-lg text-sm lg:text-base font-inter font-medium"
@@ -363,8 +369,24 @@ export function PerformanceChart({
               tickLine={false}
               axisLine={false}
               interval={
-                comparisonType === "Current Month vs Last Month" ? 2 : 0
+                comparisonType === "Today vs Yesterday" ||
+                comparisonType === "Today vs Last Week"
+                  ? 3 // Show every 4th label (hourly) for 15-minute interval data
+                  : comparisonType === "Current Month vs Last Month"
+                    ? 2
+                    : 0
               }
+              tickFormatter={(value) => {
+                // For hourly views, only show labels that end with :00
+                if (
+                  (comparisonType === "Today vs Yesterday" ||
+                    comparisonType === "Today vs Last Week") &&
+                  !value.endsWith(":00")
+                ) {
+                  return "";
+                }
+                return value;
+              }}
             />
             <YAxis
               stroke="#6B7280"

@@ -244,7 +244,7 @@ function TrackPageContent() {
         throw new Error(errorData.error || "Failed to fetch status");
       }
       const result = await res.json();
-      setData(result);
+      setData(result.data);
     } catch (err) {
       setError(err as Error);
     } finally {

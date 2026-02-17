@@ -1,62 +1,73 @@
-import { eq, ne } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { creativeRequests, creatives } from "@/lib/schema";
+import { creativeRequests } from "@/lib/schema";
 
-export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const code = searchParams.get("code");
+    const trackingId = searchParams.get("id");
+    const trackingCode = searchParams.get("code");
 
-    if (!code || code.length !== 8) {
+    if (!trackingId && !trackingCode) {
       return NextResponse.json(
-        { error: "Invalid tracking code" },
+        { error: "Tracking Code or ID is required" },
         { status: 400 }
       );
     }
 
-    const request = await db.query.creativeRequests.findFirst({
-      where: eq(creativeRequests.trackingCode, code.toUpperCase()),
+    const requestData = await db.query.creativeRequests.findFirst({
+      where: trackingCode
+        ? eq(creativeRequests.trackingCode, trackingCode)
+        : eq(creativeRequests.id, trackingId!),
       with: {
-        creatives: {
-          where: ne(creatives.status, "superseded"),
-        },
-      },
-      columns: {
-        id: true,
-        offerId: true,
-        offerName: true,
-        status: true,
-        approvalStage: true,
-        adminStatus: true,
-        adminComments: true,
-        submittedAt: true,
-        trackingCode: true,
-        creativeType: true,
-        fromLinesCount: true,
-        subjectLinesCount: true,
-        priority: true,
-        fromLines: true,
-        subjectLines: true,
-        additionalNotes: true,
+        creatives: true,
       },
     });
 
-    if (!request) {
+    if (!requestData) {
       return NextResponse.json(
-        { error: "Submission not found" },
+        { error: "Request not found. Please check your Tracking ID." },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(request);
+    const safePayload = {
+      id: requestData.id,
+      offerName: requestData.offerName,
+      offerId: requestData.offerId,
+      status: requestData.status,
+      approvalStage: requestData.approvalStage,
+      adminStatus: requestData.adminStatus,
+      adminComments: requestData.adminComments || null,
+      submittedAt: requestData.submittedAt,
+      updatedAt: requestData.updatedAt,
+      trackingCode: requestData.trackingCode || "",
+      priority: requestData.priority,
+      creativeType: requestData.creativeType,
+      fromLinesCount: requestData.fromLinesCount,
+      subjectLinesCount: requestData.subjectLinesCount,
+      fromLines: requestData.fromLines || null,
+      subjectLines: requestData.subjectLines || null,
+      additionalNotes: requestData.additionalNotes || null,
+      files: requestData.creatives.map((file) => ({
+        id: file.id,
+        name: file.name,
+        url: file.url,
+        status: file.status,
+        type: file.type,
+      })),
+    };
+
+    return NextResponse.json({ success: true, data: safePayload });
   } catch (error) {
-    console.error("Tracking API error:", error);
+    console.error("Tracking API Error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to retrieve tracking data" },
       { status: 500 }
     );
   }

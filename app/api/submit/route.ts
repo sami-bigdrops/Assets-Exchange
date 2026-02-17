@@ -9,7 +9,7 @@ import { creativeRequests, creatives } from "@/lib/schema";
 import { generateTrackingCode } from "@/lib/utils/tracking";
 
 const fileSchema = z.object({
-  id: z.string(),
+  id: z.string().optional(),
   name: z.string(),
   url: z.string(),
   size: z.number(),
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 
     const priority =
       data.priority === "high" ? "High Priority" : "Medium Priority";
-    const trackingCode = generateTrackingCode(); // Used correctly
+    const trackingCode = generateTrackingCode();
 
     const [request] = await db
       .insert(creativeRequests)
@@ -109,13 +109,15 @@ export async function POST(req: NextRequest) {
         clientId: data.affiliateId,
         clientName: data.companyName,
         priority,
-        trackingCode, // Added trackingCode
+        trackingCode,
         status: "new",
         approvalStage: "admin",
         adminStatus: "pending",
         fromLines: data.fromLines,
         subjectLines: data.subjectLines,
         additionalNotes: data.additionalNotes,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning({ id: creativeRequests.id });
 

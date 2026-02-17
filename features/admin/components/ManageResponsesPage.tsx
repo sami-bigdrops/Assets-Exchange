@@ -296,6 +296,31 @@ export function ManageResponsesPage() {
     searchInText,
   ]);
 
+  const tabCounts = useMemo(() => {
+    const all = responses.length;
+    const pendingApprovals = responses.filter(
+      (r) =>
+        r.status.toLowerCase() === "pending" &&
+        r.approvalStage?.toLowerCase() === "advertiser"
+    ).length;
+    const approved = responses.filter(
+      (r) =>
+        r.status.toLowerCase() === "approved" &&
+        r.approvalStage?.toLowerCase() === "completed"
+    ).length;
+    const rejected = responses.filter(
+      (r) =>
+        r.status.toLowerCase() === "rejected" &&
+        r.approvalStage?.toLowerCase() === "advertiser"
+    ).length;
+    const sentBack = responses.filter(
+      (r) =>
+        r.status.toLowerCase() === "sent-back" &&
+        r.approvalStage?.toLowerCase() === "advertiser"
+    ).length;
+    return { all, pendingApprovals, approved, rejected, sentBack };
+  }, [responses]);
+
   const totalPages = Math.ceil(
     filteredAndSortedResponses.length / itemsPerPage
   );
@@ -619,7 +644,24 @@ export function ManageResponsesPage() {
                   }
                 }}
               >
-                All
+                <span className="flex items-center gap-1.5">
+                  All
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "all"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "all"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.all}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="pending-approvals"
@@ -645,7 +687,24 @@ export function ManageResponsesPage() {
                   }
                 }}
               >
-                Pending
+                <span className="flex items-center gap-1.5">
+                  Pending
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "pending-approvals"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "pending-approvals"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.pendingApprovals}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="approved"
@@ -671,7 +730,24 @@ export function ManageResponsesPage() {
                   }
                 }}
               >
-                Approved
+                <span className="flex items-center gap-1.5">
+                  Approved
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "approved"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "approved"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.approved}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="rejected"
@@ -697,7 +773,24 @@ export function ManageResponsesPage() {
                   }
                 }}
               >
-                Rejected
+                <span className="flex items-center gap-1.5">
+                  Rejected
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "rejected"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "rejected"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.rejected}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="sent-back"
@@ -723,7 +816,24 @@ export function ManageResponsesPage() {
                   }
                 }}
               >
-                Sent Back
+                <span className="flex items-center gap-1.5">
+                  Sent Back
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "sent-back"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "sent-back"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.sentBack}
+                  </span>
+                </span>
               </TabsTrigger>
             </TabsList>
 

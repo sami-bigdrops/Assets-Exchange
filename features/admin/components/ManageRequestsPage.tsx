@@ -315,6 +315,54 @@ export function ManageRequestsPage() {
     searchInText,
   ]);
 
+  const tabCounts = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const all = requests.length;
+    const newCount = requests.filter(
+      (r) => r.status === "new" && r.approvalStage?.toLowerCase() === "admin"
+    ).length;
+    const pending = requests.filter((r) => {
+      if (
+        r.status !== "pending" ||
+        r.approvalStage?.toLowerCase() !== "admin"
+      ) {
+        return false;
+      }
+      const submissionDate = parseDate(r.date || "");
+      submissionDate.setHours(0, 0, 0, 0);
+      const daysDiff = Math.floor(
+        (now.getTime() - submissionDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return daysDiff >= 2;
+    }).length;
+    const approved = requests.filter(
+      (r) =>
+        r.status === "approved" && r.approvalStage?.toLowerCase() === "admin"
+    ).length;
+    const rejected = requests.filter(
+      (r) =>
+        r.status === "rejected" && r.approvalStage?.toLowerCase() === "admin"
+    ).length;
+    const sentBack = requests.filter(
+      (r) =>
+        r.status === "sent-back" && r.approvalStage?.toLowerCase() === "admin"
+    ).length;
+    const revised = requests.filter(
+      (r) =>
+        r.status === "revised" && r.approvalStage?.toLowerCase() === "admin"
+    ).length;
+    return {
+      all,
+      new: newCount,
+      pending,
+      approved,
+      rejected,
+      sentBack,
+      revised,
+    };
+  }, [requests, parseDate]);
+
   const totalPages = Math.ceil(filteredAndSortedRequests.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -633,7 +681,24 @@ export function ManageRequestsPage() {
                   }
                 }}
               >
-                All
+                <span className="flex items-center gap-1.5">
+                  All
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "all"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "all"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.all}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="new"
@@ -659,7 +724,24 @@ export function ManageRequestsPage() {
                   }
                 }}
               >
-                New
+                <span className="flex items-center gap-1.5">
+                  New
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "new"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "new"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.new}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="pending"
@@ -685,7 +767,24 @@ export function ManageRequestsPage() {
                   }
                 }}
               >
-                Pending
+                <span className="flex items-center gap-1.5">
+                  Pending
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "pending"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "pending"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.pending}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="approved"
@@ -711,7 +810,24 @@ export function ManageRequestsPage() {
                   }
                 }}
               >
-                Approved
+                <span className="flex items-center gap-1.5">
+                  Approved
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "approved"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "approved"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.approved}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="rejected"
@@ -737,7 +853,24 @@ export function ManageRequestsPage() {
                   }
                 }}
               >
-                Rejected
+                <span className="flex items-center gap-1.5">
+                  Rejected
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "rejected"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "rejected"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.rejected}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="sent-back"
@@ -763,7 +896,24 @@ export function ManageRequestsPage() {
                   }
                 }}
               >
-                Sent Back
+                <span className="flex items-center gap-1.5">
+                  Sent Back
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "sent-back"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "sent-back"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.sentBack}
+                  </span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="revised"
@@ -789,7 +939,24 @@ export function ManageRequestsPage() {
                   }
                 }}
               >
-                Revised
+                <span className="flex items-center gap-1.5">
+                  Revised
+                  <span
+                    className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        activeTab === "revised"
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(0,0,0,0.06)",
+                      color:
+                        activeTab === "revised"
+                          ? variables.colors.buttonDefaultTextColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  >
+                    {tabCounts.revised}
+                  </span>
+                </span>
               </TabsTrigger>
             </TabsList>
 

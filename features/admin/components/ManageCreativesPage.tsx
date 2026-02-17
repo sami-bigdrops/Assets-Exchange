@@ -251,6 +251,12 @@ export function ManageCreativesPage() {
     searchInText,
   ]);
 
+  const tabCounts = useMemo(() => {
+    const approved = requests.filter((r) => r.status === "approved").length;
+    const rejected = requests.filter((r) => r.status === "rejected").length;
+    return { approved, rejected };
+  }, [requests]);
+
   const totalPages = Math.ceil(filteredAndSortedRequests.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -617,7 +623,24 @@ export function ManageCreativesPage() {
                     }
                   }}
                 >
-                  Approved
+                  <span className="flex items-center gap-1.5">
+                    Approved
+                    <span
+                      className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                      style={{
+                        backgroundColor:
+                          activeTab === "approved"
+                            ? "rgba(255,255,255,0.25)"
+                            : "rgba(0,0,0,0.06)",
+                        color:
+                          activeTab === "approved"
+                            ? variables.colors.buttonDefaultTextColor
+                            : variables.colors.inputTextColor,
+                      }}
+                    >
+                      {tabCounts.approved}
+                    </span>
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="rejected"
@@ -643,7 +666,24 @@ export function ManageCreativesPage() {
                     }
                   }}
                 >
-                  Rejected
+                  <span className="flex items-center gap-1.5">
+                    Rejected
+                    <span
+                      className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                      style={{
+                        backgroundColor:
+                          activeTab === "rejected"
+                            ? "rgba(255,255,255,0.25)"
+                            : "rgba(0,0,0,0.06)",
+                        color:
+                          activeTab === "rejected"
+                            ? variables.colors.buttonDefaultTextColor
+                            : variables.colors.inputTextColor,
+                      }}
+                    >
+                      {tabCounts.rejected}
+                    </span>
+                  </span>
                 </TabsTrigger>
               </TabsList>
             </div>

@@ -1,5 +1,5 @@
 {
-  "id": "20b4bd7f-e510-447c-834f-db418bee7a8b",
+  "id": "886ca3be-ba3b-46d1-8434-90f080f530c6",
   "prevId": "8e7734ae-22ba-468c-ab21-d9d85efaa82d",
   "version": "7",
   "dialect": "postgresql",
@@ -1321,26 +1321,6 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
-        },
-        "status_updated_at": {
-          "name": "status_updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "scan_attempts": {
-          "name": "scan_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "last_scan_error": {
-          "name": "last_scan_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -1364,27 +1344,6 @@
           "columns": [
             {
               "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_creatives_status_updated_at": {
-          "name": "idx_creatives_status_updated_at",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status_updated_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1475,12 +1434,6 @@
         },
         "result": {
           "name": "result",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "grammar_feedback": {
-          "name": "grammar_feedback",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -2786,7 +2739,8 @@
         "pending",
         "approved",
         "rejected",
-        "sent-back"
+        "sent-back",
+        "revised"
       ]
     }
   },

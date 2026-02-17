@@ -278,3 +278,75 @@ Note: POST in this file still uses manual if (!body.fileId) and does not use Zod
 - **useFileUpload:** Exposes `uploadProgress` (0–100) for consumers (e.g. admin flows).
 - **FileUploadModal:** Progress bar and percentage are driven by the parent’s `uploadProgress` prop, which is updated by CreativeDetails’ `onUploadProgress` during the modal-triggered upload (single or 50MB ZIP).
 - **Shadcn Progress:** Used with `value={uploadProgress}`; no changes to `components/ui/progress.tsx`.
+
+---
+
+## Creative "Gallery View" Toggle
+
+**Task:** Add a List vs Grid toggle on the Creatives page. List mode keeps the current table; Grid mode shows a responsive grid of creative cards with thumbnail, status badge, and campaign name.
+
+**Where it appears:** Dashboard Creatives page (`/creatives` or `/dashboard/creatives`). Visible only when logged in as **admin** (page uses `ManageCreativesPage` for admin role only).
+
+### 1. CreativeCard component (`features/publisher/components/CreativeCard.tsx`)
+
+- **New file.** Card used in Grid mode.
+- **Props:** `request` (CreativeRequest), optional `thumbnailUrl`, optional `onViewClick(requestId)`.
+- **UI:** Thumbnail area (image if `thumbnailUrl` provided, otherwise placeholder icon), status badge (approved = green, rejected = red), campaign name (offerName), advertiser name, "View Creative" button that calls `onViewClick(request.id)`.
+- **Styling:** Uses existing Card, Button, and `getVariables()` for theme.
+
+### 2. ManageCreativesPage (`features/admin/components/ManageCreativesPage.tsx`)
+
+- **Toggle:** List / Grid buttons (LayoutList and LayoutGrid icons) added in the toolbar between the Filter popover and the Approved/Rejected tabs. Default is List.
+- **State:** `viewMode` ("list" | "grid"), `viewData` (RequestViewData | null), `isViewModalOpen`, `isViewLoading` for opening creative view from grid.
+- **List mode:** Unchanged; renders `RequestSection` with `paginatedRequests` (accordion table, View Creative, Download).
+- **Grid mode:** Renders a responsive CSS grid (`grid-cols-2` up to `xl:grid-cols-6`) of `CreativeCard` for `paginatedRequests`. Same filters, tabs, search, and pagination apply.
+- **View from grid:** "View Creative" on a card calls `getRequestViewData(requestId)` (server action); on success opens `SingleCreativeViewModal` (single creative) or `MultipleCreativesModal` (multiple creatives). Same modals as in list view.
+- **Imports added:** LayoutList, LayoutGrid, getRequestViewData, RequestViewData from request.actions, SingleCreativeViewModal, MultipleCreativesModal from publisher, CreativeCard from publisher, toast from sonner.
+
+### 3. Thumbnails in grid
+
+- List API does not return creative image URLs. Cards show a placeholder in the thumbnail area. To show real thumbnails later, the API can be extended to include a thumbnail URL (e.g. first creative URL) per request and pass it to `CreativeCard` as `thumbnailUrl`.
+
+---
+
+## Date Range Picker for Charts
+
+**Task:** Add a Shadcn/UI Date Range Picker above the Admin Performance Chart. Pass selected `startDate` and `endDate` as query parameters to the dashboard performance API. Chart re-fetches when the date range changes.
+
+**Where it appears:** Admin Dashboard. Date picker is shown above the performance chart (when not loading). Chart data is filtered to the selected range when both from and to are set; "All Time" when no range is selected.
+
+### 1. AdminDashboard (`features/admin/components/AdminDashboard.tsx`)
+
+- **State:** `range` (`DateRange | undefined`) for the picker; `undefined` = "All Time".
+- **Label:** `rangeLabel` memo: "All Time", single date (from only), or "MMM dd, yyyy - MMM dd, yyyy" when both from and to are set.
+- **UI:** Popover with trigger Button (CalendarIcon + rangeLabel). PopoverContent contains Shadcn `Calendar` with `mode="range"`, `numberOfMonths={2}`, `selected={range}`, `onSelect={setRange}`. Clear button (X) when a range is set, calls `setRange(undefined)`.
+- **Chart:** `AdminPerformanceChart` receives `dateRange={range}` so the chart refetches when range changes. Removed invalid `initialFocus` prop from Calendar (not a valid react-day-picker prop).
+
+### 2. AdminPerformanceChart (`features/admin/components/AdminPerformanceChart.tsx`)
+
+- **Props:** `dateRange?: DateRange` passed from AdminDashboard.
+- **ViewModel:** Calls `usePerformanceChartViewModel(comparisonType, selectedMetric, dateRange)` so the view model can send startDate/endDate to the API when both are set.
+
+### 3. usePerformanceChartViewModel (`features/admin/view-models/usePerformanceChartViewModel.ts`)
+
+- **Params:** Accepts optional `dateRange` (DateRange). When both `dateRange.from` and `dateRange.to` exist, derives `startDate` and `endDate` as YYYY-MM-DD strings via `toYMD()`.
+- **Fetch:** Calls `getPerformanceChartData(comparisonType, metric, { startDate, endDate })`. `useEffect` dependency array includes `startDate`, `endDate` so the chart refetches when the date range changes.
+
+### 4. performance.client.ts (`features/admin/services/performance.client.ts`)
+
+- **API:** `getPerformanceChartData(comparisonType, metric, dateFilter?)`. Builds URLSearchParams with `comparisonType` and `metric`. When `dateFilter?.startDate` and `dateFilter?.endDate` are both set, appends them to the query string. Fetches `/api/admin/dashboard/performance?…`. Returns `result.data` (chart data object).
+
+### 5. API route (`app/api/admin/dashboard/performance/route.ts`)
+
+- **Query params:** Reads `startDate` and `endDate` from `searchParams` (optional). Builds `input` object with `comparisonType`, `metric`, and when present `startDate`, `endDate`.
+- **RPC:** Passes full `input` to the dashboard performance RPC handler so the backend can filter by date range.
+
+### 6. RPC handler (`lib/rpc/router.ts`)
+
+- **Input schema:** Added optional `startDate: z.string().optional()` and `endDate: z.string().optional()` to the dashboard performance procedure input.
+- **Imports:** Added `gte`, `lte` from `drizzle-orm`.
+- **Logic:** When both `startDate` and `endDate` are provided, builds `dateRangeWhere = and(gte(dateField, start), lte(dateField, end))` with start at 00:00:00.000Z and end at 23:59:59.999Z. Combines with existing metric where clause into `fullWhere`. All three performance queries (Today vs Yesterday/Last Week, Current Week vs Last Week, Current Month vs Last Month) use `.where(fullWhere)` instead of only `metricWhereClause`, so chart data is restricted to the selected date range when the user picks one.
+
+### 7. components/ui/calendar.tsx
+
+- No code changes. Existing Calendar supports `mode="range"`, `selected`, `onSelect`; used as-is from Shadcn/UI.

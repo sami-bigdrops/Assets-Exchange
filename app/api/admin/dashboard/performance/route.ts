@@ -23,13 +23,14 @@ export async function GET(request: Request) {
       | "Current Week vs Last Week"
       | "Current Month vs Last Month"
       | null;
-    const metric = (searchParams.get("metric") as
-      | "Total Assets"
-      | "New Requests"
-      | "Approved Assets"
-      | "Rejected Assets"
-      | "Pending Approval"
-      | null) || "Total Assets";
+    const metric =
+      (searchParams.get("metric") as
+        | "Total Assets"
+        | "New Requests"
+        | "Approved Assets"
+        | "Rejected Assets"
+        | "Pending Approval"
+        | null) || "Total Assets";
 
     if (!comparisonType) {
       return NextResponse.json(
@@ -61,13 +62,21 @@ export async function GET(request: Request) {
     ];
 
     if (!validMetrics.includes(metric)) {
-      return NextResponse.json(
-        { error: "Invalid metric" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid metric" }, { status: 400 });
     }
 
-    // Call the RPC handler directly
+    const startDate = searchParams.get("startDate") ?? undefined;
+    const endDate = searchParams.get("endDate") ?? undefined;
+
+    const input: {
+      comparisonType: string;
+      metric: string;
+      startDate?: string;
+      endDate?: string;
+    } = { comparisonType, metric };
+    if (startDate) input.startDate = startDate;
+    if (endDate) input.endDate = endDate;
+
     const procedure = router.admin.dashboard.performance;
     const procedureAny = procedure as unknown as {
       "~orpc"?: { handler?: (opts: { input: unknown }) => Promise<unknown> };
@@ -81,16 +90,12 @@ export async function GET(request: Request) {
       typeof procedureAny["~orpc"].handler === "function"
     ) {
       result = await procedureAny["~orpc"].handler({
-        input: {
-          comparisonType,
-          metric,
-        },
+        input,
       });
     } else if (typeof procedureAny === "function") {
-      result = await (procedureAny as (input: unknown) => Promise<unknown>)({
-        comparisonType,
-        metric,
-      });
+      result = await (procedureAny as (input: unknown) => Promise<unknown>)(
+        input
+      );
     } else {
       return NextResponse.json(
         { error: "RPC handler not found or not callable" },
@@ -103,7 +108,11 @@ export async function GET(request: Request) {
       data: {
         comparisonType: (result as { comparisonType: string }).comparisonType,
         xAxisLabel: (result as { xAxisLabel: string }).xAxisLabel,
-        data: (result as { data: Array<{ label: string; current: number; previous: number }> }).data,
+        data: (
+          result as {
+            data: Array<{ label: string; current: number; previous: number }>;
+          }
+        ).data,
       },
     });
   } catch (error: unknown) {

@@ -1,5 +1,17 @@
 import { os } from "@orpc/server";
-import { eq, and, sql, inArray, or, like, desc, asc, count } from "drizzle-orm";
+import {
+  eq,
+  and,
+  sql,
+  inArray,
+  or,
+  like,
+  desc,
+  asc,
+  count,
+  gte,
+  lte,
+} from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
@@ -609,6 +621,8 @@ const dashboardPerformance = os
         ])
         .optional()
         .default("Total Assets"),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
     })
   )
   .output(
@@ -629,7 +643,12 @@ const dashboardPerformance = os
     try {
       await requireRpcAdmin();
       const now = new Date();
-      const { comparisonType, metric = "Total Assets" } = input;
+      const {
+        comparisonType,
+        metric = "Total Assets",
+        startDate,
+        endDate,
+      } = input;
 
       // Build where clause based on metric
       const getMetricWhereClause = () => {
@@ -664,6 +683,21 @@ const dashboardPerformance = os
       };
 
       const dateField = getDateField();
+
+      let dateRangeWhere: ReturnType<typeof and> | undefined;
+      if (startDate && endDate) {
+        const start = new Date(`${startDate}T00:00:00.000Z`);
+        const end = new Date(`${endDate}T23:59:59.999Z`);
+        dateRangeWhere = and(gte(dateField, start), lte(dateField, end));
+      }
+      const whereParts: Array<
+        | ReturnType<typeof and>
+        | ReturnType<typeof eq>
+        | ReturnType<typeof inArray>
+      > = [];
+      if (metricWhereClause) whereParts.push(metricWhereClause);
+      if (dateRangeWhere) whereParts.push(dateRangeWhere);
+      const fullWhere = whereParts.length === 0 ? sql`1=1` : and(...whereParts);
 
       let data: Array<{ label: string; current: number; previous: number }> =
         [];
@@ -723,7 +757,7 @@ const dashboardPerformance = os
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
+          .where(fullWhere)
           .groupBy(
             sql`DATE(${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles')`,
             sql`EXTRACT(HOUR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
@@ -780,7 +814,7 @@ const dashboardPerformance = os
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
+          .where(fullWhere)
           .groupBy(
             sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
             sql`EXTRACT(WEEK FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
@@ -832,7 +866,7 @@ const dashboardPerformance = os
             count: sql<number>`COUNT(*)::int`,
           })
           .from(creativeRequests)
-          .where(metricWhereClause ? and(metricWhereClause) : sql`1=1`)
+          .where(fullWhere)
           .groupBy(
             sql`EXTRACT(YEAR FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,
             sql`EXTRACT(MONTH FROM (${dateField} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles'))`,

@@ -71,6 +71,13 @@
       "when": 1771233761086,
       "tag": "0009_tiresome_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771415358014,
+      "tag": "0010_wandering_enchantress",
+      "breakpoints": true
     }
   ]
 }

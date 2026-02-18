@@ -19,6 +19,7 @@
 
 import * as Accordion from "@radix-ui/react-accordion";
 import { ChevronDown, ChevronUp, Download, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
@@ -35,6 +36,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import MultipleCreativesModal from "@/features/publisher/components/form/_modals/MultipleCreativesModal";
 import SingleCreativeViewModal from "@/features/publisher/components/form/_modals/SingleCreativeViewModal";
 
+
 import {
   getRequestViewData,
   type RequestViewData,
@@ -46,6 +48,8 @@ import {
   returnRequest,
 } from "../services/adminRequests.client";
 import type { CreativeRequest } from "../types/request.types";
+
+import { ReviewActionModal } from "./modals/ReviewActionModal";
 
 const MAX_COMMENT_LENGTH = 5000;
 
@@ -248,6 +252,7 @@ export function RequestItem({
   onStatusUpdate,
   isAdvertiserView = false,
 }: RequestItemProps) {
+  const router = useRouter();
   const variables = getVariables();
   const accordionColors = getAccordionColors(colorVariant, variables.colors);
 
@@ -275,6 +280,13 @@ export function RequestItem({
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isViewLoading, setIsViewLoading] = useState(false);
 
+  // Review Action Modal State
+  const [reviewModal, setReviewModal] = useState<{
+    isOpen: boolean;
+    action: "reject" | "send-back";
+    creative: { id: string; url: string; type: string };
+  } | null>(null);
+
   // Character count for comments
   const rejectCommentsLength = useMemo(() => {
     const text = rejectComments.replace(/<[^>]*>/g, "");
@@ -286,7 +298,7 @@ export function RequestItem({
     return text.length;
   }, [sendBackComments]);
 
-  const isRejectCommentsValid = rejectCommentsLength <= MAX_COMMENT_LENGTH;
+  const _isRejectCommentsValid = rejectCommentsLength <= MAX_COMMENT_LENGTH;
   const isSendBackCommentsValid = sendBackCommentsLength <= MAX_COMMENT_LENGTH;
 
   // Check if popover has unsaved changes
@@ -353,6 +365,72 @@ export function RequestItem({
     },
     [hasUnsavedSendBackComments]
   );
+
+  const handleViewRequest = async () => {
+    setIsViewLoading(true);
+    try {
+      const data = await getRequestViewData(request.id);
+      if (data) {
+        setViewData(data);
+        setIsViewModalOpen(true);
+      } else {
+        toast.error("Failed to load request details");
+      }
+    } catch {
+      toast.error("Failed to load request details");
+    } finally {
+      setIsViewLoading(false);
+    }
+  };
+
+  const handleOpenReview = async (action: "reject" | "send-back") => {
+    setIsViewLoading(true);
+    try {
+      let data = viewData;
+      if (!data) {
+        data = await getRequestViewData(request.id);
+      }
+
+      if (!data) {
+        toast.error("Failed to load request data");
+        return;
+      }
+
+      let mainCreative;
+      if (data.type === "single") {
+        mainCreative = data.creative;
+      } else if (data.type === "multiple" && data.creatives.length > 0) {
+        mainCreative = data.creatives[0];
+      }
+
+      if (!mainCreative) {
+        toast.error("No creatives found to review");
+        return;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const isImage = !!(mainCreative as any).previewUrl;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const creativeUrl = (mainCreative as any).previewUrl || mainCreative.url;
+      const creativeType = isImage ? "image" : "html";
+
+      setReviewModal({
+        isOpen: true,
+        action,
+        creative: {
+          id: mainCreative.id,
+          url: creativeUrl,
+          type: creativeType,
+        },
+      });
+      setRejectPopoverOpen(false);
+      setSendBackPopoverOpen(false);
+    } catch {
+      toast.error("Failed to load creative for review");
+    } finally {
+      setIsViewLoading(false);
+    }
+  };
 
   const meta = [
     `Creative Type: ${request.creativeType}`,
@@ -484,28 +562,7 @@ export function RequestItem({
             border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
           }}
           disabled={isViewLoading}
-          onClick={async () => {
-            setIsViewLoading(true);
-            setError(null);
-            try {
-              const data = await getRequestViewData(request.id);
-              if (!data) {
-                toast.error("No creatives found", {
-                  description: "This request has no creative files.",
-                });
-                return;
-              }
-              setViewData(data);
-              setIsViewModalOpen(true);
-            } catch (err) {
-              const msg =
-                err instanceof Error ? err.message : "Failed to load request";
-              setError(msg);
-              toast.error("Failed to load request", { description: msg });
-            } finally {
-              setIsViewLoading(false);
-            }
-          }}
+          onClick={handleViewRequest}
         >
           {isViewLoading ? (
             <>
@@ -812,153 +869,45 @@ export function RequestItem({
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <h4 className="font-inter font-medium text-sm">
-                        What would you like to do?
+                        Review Request
                       </h4>
                       <p className="font-inter text-xs text-muted-foreground">
-                        Add comments and choose an action for this creative
-                        request.
+                        Enter Visual Review Mode to provide specific feedback on
+                        this creative.
                       </p>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label
-                          className="font-inter text-xs font-medium"
-                          htmlFor="reject-comments"
-                        >
-                          Comments{" "}
-                          <span className="text-muted-foreground">
-                            (Optional)
-                          </span>
-                        </label>
-                        <span
-                          className={`text-xs font-inter ${
-                            isRejectCommentsValid
-                              ? "text-muted-foreground"
-                              : "text-destructive"
-                          }`}
-                        >
-                          {rejectCommentsLength} / {MAX_COMMENT_LENGTH}
-                        </span>
-                      </div>
-                      <RichTextEditor
-                        value={rejectComments}
-                        onChange={setRejectComments}
-                        placeholder="Enter comments or reason for rejection..."
-                        className="min-h-[200px]"
-                        style={{
-                          backgroundColor:
-                            variables.colors.inputBackgroundColor,
-                          borderColor: isRejectCommentsValid
-                            ? variables.colors.inputBorderColor
-                            : "#dc2626",
-                        }}
-                        aria-label="Comments for rejection or send back action"
-                        aria-invalid={!isRejectCommentsValid}
-                      />
-                      {!isRejectCommentsValid && (
-                        <p className="text-xs text-destructive font-inter">
-                          Comments exceed maximum length of {MAX_COMMENT_LENGTH}{" "}
-                          characters.
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-row gap-2 pt-2">
-                      <Button
-                        className="flex-1 font-inter text-xs xl:text-sm font-medium"
-                        style={{
-                          color:
-                            variables.colors.requestCardRejectedButtonTextColor,
-                          backgroundColor:
-                            variables.colors
-                              .requestCardRejectedButtonBackgroundColor,
-                          border: `1px solid ${variables.colors.requestCardRejectedButtonBorderColor}`,
-                        }}
-                        disabled={
-                          isRejecting || isSendingBack || !isRejectCommentsValid
-                        }
-                        onClick={async () => {
-                          setRejectPopoverOpen(false);
-                          setIsRejecting(true);
-                          setError(null);
-                          try {
-                            await rejectRequest(request.id, rejectComments);
-                            onStatusUpdate?.(
-                              request.id,
-                              "rejected",
-                              "completed"
-                            );
-                            toast.success("Request rejected", {
-                              description:
-                                "The request has been rejected successfully.",
-                            });
-                            setRejectComments("");
-                          } catch (err) {
-                            const errorMessage =
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to reject request. Please try again.";
-                            setError(errorMessage);
-                            toast.error("Failed to reject request", {
-                              description: errorMessage,
-                            });
-                          } finally {
-                            setIsRejecting(false);
-                          }
-                        }}
-                        aria-label="Reject this creative request"
-                      >
-                        {isRejecting ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Rejecting...
-                          </>
-                        ) : (
-                          "Reject"
-                        )}
-                      </Button>
+
+                    <div className="flex flex-col gap-2 pt-2">
                       <Button
                         variant="destructive"
-                        className="flex-1 font-inter text-xs xl:text-sm font-medium bg-destructive! text-destructive-foreground! hover:bg-destructive/90!"
-                        disabled={
-                          isRejecting || isSendingBack || !isRejectCommentsValid
-                        }
-                        onClick={async () => {
-                          setRejectPopoverOpen(false);
-                          setIsSendingBack(true);
-                          setError(null);
-
-                          try {
-                            await returnRequest(request.id, rejectComments);
-                            onStatusUpdate?.(request.id, "sent-back", "admin");
-                            toast.success("Request sent back to publisher", {
-                              description:
-                                "The request has been sent back to the publisher for revision.",
-                            });
-                            setRejectComments("");
-                          } catch (err) {
-                            const errorMessage =
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to send back request. Please try again.";
-                            setError(errorMessage);
-                            toast.error("Failed to send back request", {
-                              description: errorMessage,
-                            });
-                          } finally {
-                            setIsSendingBack(false);
-                          }
-                        }}
-                        aria-label="Send back this creative request to publisher"
+                        className="w-full font-inter text-xs xl:text-sm font-medium"
+                        disabled={isViewLoading}
+                        onClick={() => handleOpenReview("reject")}
                       >
-                        {isSendingBack ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Sending...
-                          </>
+                        {isViewLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         ) : (
-                          "Send Back to Publisher"
+                          "Review & Reject"
                         )}
                       </Button>
+
+                      {!shouldShowRejectButtonOnly(
+                        request.status,
+                        request.approvalStage
+                      ) && (
+                        <Button
+                          variant="outline"
+                          className="w-full font-inter text-xs xl:text-sm font-medium border-destructive/30 text-destructive hover:bg-destructive/5"
+                          disabled={isViewLoading}
+                          onClick={() => handleOpenReview("send-back")}
+                        >
+                          {isViewLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            "Review & Send Back"
+                          )}
+                        </Button>
+                      )}
                     </div>
                     {error && (
                       <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20">
@@ -1543,6 +1492,31 @@ export function RequestItem({
           creatives={viewData.creatives}
           onRemoveCreative={() => {}}
           creativeType={viewData.creativeType}
+        />
+      )}
+
+      {/* Review Action Modal */}
+      {reviewModal && (
+        <ReviewActionModal
+          isOpen={reviewModal.isOpen}
+          onClose={() => setReviewModal(null)}
+          title={
+            reviewModal.action === "send-back"
+              ? "Review & Send Back"
+              : "Review & Reject Request"
+          }
+          actionType={reviewModal.action}
+          requestId={request.id}
+          creative={reviewModal.creative}
+          onSuccess={() => {
+            setReviewModal(null);
+            onStatusUpdate?.(
+              request.id,
+              reviewModal.action === "send-back" ? "sent-back" : "rejected",
+              "admin"
+            );
+            router.refresh();
+          }}
         />
       )}
     </Accordion.Item>

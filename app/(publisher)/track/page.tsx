@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { PublisherAnnotationViewer } from "@/features/publisher/components/annotations/PublisherAnnotationViewer";
 import FileUploadModal from "@/features/publisher/components/form/_modals/FileUploadModal";
 import MultipleCreativesModal from "@/features/publisher/components/form/_modals/MultipleCreativesModal";
 import SingleCreativeViewModal from "@/features/publisher/components/form/_modals/SingleCreativeViewModal";
@@ -57,6 +58,8 @@ interface Creative {
   url: string;
   type: string;
   size: number;
+  status?: string;
+  createdAt?: string;
   metadata?: {
     fromLines?: string;
     subjectLines?: string;
@@ -220,6 +223,11 @@ function TrackPageContent() {
   const [singleCreative, setSingleCreative] = useState<SingleCreative | null>(
     null
   );
+
+  // States for annotation viewer
+  const [isAnnotationViewerOpen, setIsAnnotationViewerOpen] = useState(false);
+  const [annotationViewCreative, setAnnotationViewCreative] =
+    useState<Creative | null>(null);
 
   // States for revision workflow (editing uploaded creative before submission)
   const [isRevisionMode, setIsRevisionMode] = useState(false);
@@ -787,6 +795,32 @@ function TrackPageContent() {
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
                                       {formatFileSize(creative.size)}
                                     </span>
+                                    {data.creatives &&
+                                      data.creatives.length > 1 &&
+                                      (() => {
+                                        const sorted = [...data.creatives].sort(
+                                          (a, b) =>
+                                            new Date(
+                                              a.createdAt || 0
+                                            ).getTime() -
+                                            new Date(b.createdAt || 0).getTime()
+                                        );
+                                        const isLatest =
+                                          creative.id ===
+                                          sorted[sorted.length - 1]?.id;
+                                        if (isLatest) {
+                                          return (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                              Resubmitted
+                                            </span>
+                                          );
+                                        }
+                                        return (
+                                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                                            Sent Back
+                                          </span>
+                                        );
+                                      })()}
                                   </div>
                                 </div>
                                 <div className="shrink-0 flex gap-2">
@@ -814,6 +848,34 @@ function TrackPageContent() {
                                     <Eye className="h-4 w-4 mr-2" />
                                     View Creative
                                   </Button>
+                                  {!(
+                                    data.creatives &&
+                                    data.creatives.length > 1 &&
+                                    (() => {
+                                      const sorted = [...data.creatives].sort(
+                                        (a, b) =>
+                                          new Date(a.createdAt || 0).getTime() -
+                                          new Date(b.createdAt || 0).getTime()
+                                      );
+                                      return (
+                                        creative.id ===
+                                        sorted[sorted.length - 1]?.id
+                                      );
+                                    })()
+                                  ) && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-10 px-6 font-inter text-sm font-medium rounded-md border-orange-300 text-orange-700 hover:bg-orange-50"
+                                      onClick={() => {
+                                        setAnnotationViewCreative(creative);
+                                        setIsAnnotationViewerOpen(true);
+                                      }}
+                                    >
+                                      <MessageSquare className="h-4 w-4 mr-2" />
+                                      View Annotations
+                                    </Button>
+                                  )}
                                   {data.status.toLowerCase() ===
                                     "sent-back" && (
                                     <Button
@@ -1026,6 +1088,26 @@ function TrackPageContent() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Publisher Annotation Viewer */}
+      {annotationViewCreative && data && (
+        <PublisherAnnotationViewer
+          isOpen={isAnnotationViewerOpen}
+          onClose={() => {
+            setIsAnnotationViewerOpen(false);
+            setAnnotationViewCreative(null);
+          }}
+          creativeUrl={annotationViewCreative.url}
+          creativeName={annotationViewCreative.name}
+          creativeId={annotationViewCreative.id}
+          trackingCode={data.trackingCode}
+          creativeType={
+            getFileType(annotationViewCreative.name) === "image"
+              ? "image"
+              : "html"
+          }
+        />
       )}
 
       {/* File Upload Modal for Sent-Back status */}

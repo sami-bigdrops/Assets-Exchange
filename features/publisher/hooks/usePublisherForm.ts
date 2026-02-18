@@ -230,8 +230,10 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
       }
 
       const trackingCode = result.trackingCode;
+      const telegramHint = formData.telegramId ? "true" : "false";
+
       router.push(
-        `/thankyou?type=${submissionType}&count=${fileCount}${trackingCode ? `&trackingCode=${trackingCode}` : ""}`
+        `/thankyou?type=${submissionType}&count=${fileCount}${trackingCode ? `&trackingCode=${trackingCode}` : ""}${telegramHint === "true" ? "&telegramHint=true" : ""}`
       );
 
       return result;

@@ -36,6 +36,7 @@ export const useThankYouPage = () => {
   const [fileCount, setFileCount] = useState<number>(0);
 
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
+  const [showTelegramHint, setShowTelegramHint] = useState<boolean>(false);
 
   useEffect(() => {
     // Get submission type from URL parameters
@@ -44,9 +45,14 @@ export const useThankYouPage = () => {
       ? parseInt(searchParams.get("count")!)
       : 0;
     const code = searchParams.get("trackingCode");
+    const telegramHint = searchParams.get("telegramHint");
 
     if (code) {
       setTrackingCode(code);
+    }
+
+    if (telegramHint === "true") {
+      setShowTelegramHint(true);
     }
 
     // If no URL params, try to get from localStorage (fallback)
@@ -151,6 +157,7 @@ export const useThankYouPage = () => {
     submissionType,
     fileCount,
     trackingCode,
+    showTelegramHint,
     statuses,
     submissionInfo,
     handleBackToHome,

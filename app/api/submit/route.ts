@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { getOffer } from "@/features/admin/services/offer.service";
+import { sendSubmissionTelegramAlert } from "@/features/notifications/notification.service";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { validateRequest } from "@/lib/middleware/validateRequest";
@@ -125,6 +126,14 @@ export async function POST(req: NextRequest) {
       }));
 
       await db.insert(creatives).values(creativeRecords);
+    }
+
+    if (data.telegramId) {
+      sendSubmissionTelegramAlert(
+        data.telegramId,
+        trackingCode,
+        offer.offerName
+      ).catch((err) => console.error("[TELEGRAM_NOTIFY_ERROR]:", err));
     }
 
     return NextResponse.json(

@@ -22,7 +22,8 @@ CREATE TABLE "external_tasks" (
 	"result" jsonb,
 	"started_at" timestamp DEFAULT now(),
 	"finished_at" timestamp,
-	"error_message" text
+	"error_message" text,
+	"grammar_feedback" jsonb,
 );
 --> statement-breakpoint
 ALTER TABLE "creative_requests" ADD COLUMN "from_lines" text;--> statement-breakpoint

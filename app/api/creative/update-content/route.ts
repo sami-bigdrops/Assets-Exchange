@@ -9,15 +9,15 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const session = await auth.api.getSession({
-        headers: req.headers,
-      });
-      userId = session?.user?.id;
-    } catch (authError) {
-      console.warn("Auth check skipped:", authError);
+    const session = await auth.api.getSession({
+      headers: req.headers,
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const userId = session.user.id;
 
     const { creativeId, content, filename } = await req.json();
 

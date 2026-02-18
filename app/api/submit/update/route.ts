@@ -10,6 +10,10 @@ import { creativeRequests, creatives } from "@/lib/schema";
 export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
 
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { requestId, files } = body;
@@ -56,7 +60,7 @@ export async function POST(req: Request) {
       fromStatus: existingRequest.status,
       toStatus: "pending",
       actorRole: "publisher",
-      actorId: session?.user?.id || "anonymous",
+      actorId: session.user.id,
       reason: "Publisher resubmitted updated creatives based on feedback.",
     });
 

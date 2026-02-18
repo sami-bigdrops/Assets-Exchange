@@ -11,15 +11,18 @@ export const maxDuration = 300; // 5 minutes - needed for AI image processing wh
 
 export async function POST(req: NextRequest) {
   try {
-    let userId: string | undefined;
-    try {
-      const session = await auth.api.getSession({
-        headers: req.headers,
-      });
-      userId = session?.user?.id;
-    } catch (authError) {
-      console.warn("Auth check skipped:", authError);
+    const session = await auth.api.getSession({
+      headers: req.headers,
+    });
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
+
+    const userId = session.user.id;
 
     const body = await req.json();
     const { creativeId, fileUrl, htmlContent } = body;
@@ -57,9 +60,9 @@ export async function POST(req: NextRequest) {
     // Return 502/503 for AI service unavailable errors
     const statusCode =
       errorMessage.includes("temporarily unavailable") ||
-        errorMessage.includes("502") ||
-        errorMessage.includes("503") ||
-        errorMessage.includes("504")
+      errorMessage.includes("502") ||
+      errorMessage.includes("503") ||
+      errorMessage.includes("504")
         ? 502
         : 500;
 

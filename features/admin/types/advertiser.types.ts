@@ -6,8 +6,23 @@ export type Advertiser = {
     advPlatform: string
     createdMethod: "API" | "Manually"
     contactEmail?: string | null
-    status: "active" | "inactive" | "Active" | "Inactive"
+    email?: string | null
+    status: "Active" | "Inactive"
     everflowAdvertiserId?: string | null
     createdAt: string
     updatedAt: string
+    createdBy?: string | null
+    updatedBy?: string | null
+    brandGuidelines?: {
+        type: "url" | "file" | "text" | null;
+        url?: string;
+        fileUrl?: string;
+        fileName?: string;
+        fileSize?: number;
+        mimeType?: string;
+        text?: string;
+        notes?: string;
+        attachedAt?: string;
+        attachedBy?: string;
+    } | null;
 }

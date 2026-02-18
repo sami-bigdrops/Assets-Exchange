@@ -99,31 +99,6 @@ export function AdvertiserDetailsModal({
     }
   }, [open, internalOpen]);
 
-  /**
-   * TODO: BACKEND - Fetch Advertiser Details
-   *
-   * Currently uses getAdvertiserById service which should call:
-   * GET /api/admin/advertisers/:id
-   *
-   * Backend should return:
-   * {
-   *   id: string,
-   *   advertiserName: string,
-   *   advPlatform: string,
-   *   createdMethod: "Manually" | "API",
-   *   status: "Active" | "Inactive",
-   *   createdAt: string,              // ISO timestamp
-   *   updatedAt: string,               // ISO timestamp
-   *   createdBy?: string,              // User ID who created
-   *   updatedBy?: string              // User ID who last updated
-   * }
-   *
-   * Error Handling:
-   * - 404: Advertiser not found - show error message
-   * - 401: Unauthorized - redirect to login
-   * - 403: Forbidden - show permission denied
-   * - 500: Server error - show error with retry option
-   */
   useEffect(() => {
     if (open && advertiserId) {
       const fetchAdvertiser = async () => {
@@ -141,7 +116,7 @@ export function AdvertiserDetailsModal({
               advertiserName: fetchedAdvertiser.advertiserName,
               status,
               advPlatform: fetchedAdvertiser.advPlatform,
-              email: (fetchedAdvertiser as Record<string, unknown>).email as string || "",
+              email: fetchedAdvertiser.email || "",
               password: "",
             };
             setFormData(initialData);
@@ -789,7 +764,7 @@ export function AdvertiserDetailsModal({
                                     if (advertiser) {
                                       updateFormField(
                                         "email",
-                                        (advertiser as any).email || ""
+                                        advertiser.email || ""
                                       );
                                     }
                                     setIsEditingEmail(false);

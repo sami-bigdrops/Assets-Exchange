@@ -21,11 +21,18 @@ async function checkAdmin() {
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-    if (!await checkAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const isAdmin = await checkAdmin();
+    if (!isAdmin) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { id } = await params;
     const row = await getAdvertiser(id);
-    if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    if (!row) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     return NextResponse.json(row);
 }
 

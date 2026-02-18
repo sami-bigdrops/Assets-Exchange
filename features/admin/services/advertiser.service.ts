@@ -14,10 +14,14 @@ function mapAdvertiser(row: typeof advertisers.$inferSelect): Advertiser {
     advPlatform: row.everflowAdvertiserId ? "Everflow" : "",
     createdMethod: row.everflowAdvertiserId ? ("API" as const) : ("Manually" as const),
     contactEmail: row.contactEmail,
-    status: row.status as "active" | "inactive",
+    email: row.contactEmail,
+    status: (row.status.charAt(0).toUpperCase() + row.status.slice(1)) as "Active" | "Inactive",
     everflowAdvertiserId: row.everflowAdvertiserId ? String(row.everflowAdvertiserId) : null,
+    brandGuidelines: row.brandGuidelines,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    createdBy: null,
+    updatedBy: null,
   } as Advertiser;
 }
 

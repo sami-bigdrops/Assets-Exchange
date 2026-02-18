@@ -14,6 +14,7 @@ export interface CreativeFile {
   source?: "single" | "zip";
   uploadId?: string;
   embeddedHtml?: string;
+  isHidden?: boolean;
   metadata?: {
     fromLines?: string;
     subjectLines?: string;
@@ -69,9 +70,8 @@ export const useMultipleCreativesModal = ({
 
       try {
         // Check for embedded HTML first
-        if ((creative as { embeddedHtml?: string }).embeddedHtml) {
-          const embedded = (creative as { embeddedHtml?: string })
-            .embeddedHtml!;
+        if (creative.embeddedHtml) {
+          const embedded = creative.embeddedHtml;
           if (embedded && embedded.length > 0) {
             setHtmlContent((prev) => ({ ...prev, [creative.id]: embedded }));
             return;

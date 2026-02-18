@@ -123,24 +123,23 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
 
   console.log("MultipleCreativesModal debug:", {
     total: creatives.length,
-    hiddenCount: creatives.filter((c) => (c as any).isHidden).length,
-    firstHidden: creatives.find((c) => (c as any).isHidden),
-    allIsHidden: creatives.map((c) => (c as any).isHidden),
+    hiddenCount: creatives.filter((c) => c.isHidden).length,
+    firstHidden: creatives.find((c) => c.isHidden),
+    allIsHidden: creatives.map((c) => c.isHidden),
   });
 
   const htmlFiles = creatives.filter(
-    (c) => (c.html || /\.html?$/i.test(c.name)) && !(c as any).isHidden
+    (c) => (c.html || /\.html?$/i.test(c.name)) && !c.isHidden
   );
   const imageFiles = creatives.filter(
-    (c) =>
-      /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(c.name) && !(c as any).isHidden
+    (c) => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(c.name) && !c.isHidden
   );
   const otherFiles = creatives.filter(
     (c) =>
       !c.html &&
       !/\.html?$/i.test(c.name) &&
       !/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(c.name) &&
-      !(c as any).isHidden
+      !c.isHidden
   );
 
   return (
@@ -281,7 +280,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
             {/* Grid Layout */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
               {creatives
-                .filter((c) => !(c as any).isHidden)
+                .filter((c) => !c.isHidden)
                 .map((creative) => {
                   const fileType = viewModel.getFileType(creative.name);
                   const isImage = fileType === "image";

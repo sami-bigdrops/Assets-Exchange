@@ -80,6 +80,8 @@ export async function POST(req: NextRequest) {
         fromLines: data.fromLines,
         subjectLines: data.subjectLines,
         additionalNotes: data.additionalNotes,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning({ id: creativeRequests.id });
 

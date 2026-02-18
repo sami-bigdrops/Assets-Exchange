@@ -1,0 +1,1 @@
+-- Migration changes already applied to DB. Marking as applied.

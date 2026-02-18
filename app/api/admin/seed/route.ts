@@ -1,24 +1,35 @@
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getRateLimitKey } from "@/lib/getRateLimitKey";
-import { ratelimit } from "@/lib/ratelimit";
 import { user } from "@/lib/schema";
 
-async function enforceRateLimit() {
-  const key = await getRateLimitKey();
-  const { success } = await ratelimit.limit(key);
-  if (!success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
-}
-
-export async function POST() {
+export async function POST(_req: NextRequest) {
   try {
-    const rl = await enforceRateLimit();
-    if (rl) return rl;
+    const reqHeaders = await headers();
+
+    const session = await auth.api.getSession({
+      headers: reqHeaders,
+    });
+
+    const authHeader = reqHeaders.get("authorization");
+    const expectedSecret = process.env.CRON_SECRET;
+    const isAuthorizedScript =
+      expectedSecret && authHeader === `Bearer ${expectedSecret}`;
+
+    if (!isAuthorizedScript && (!session || session.user.role !== "admin")) {
+      console.warn("Unauthorized database seed attempt blocked.");
+      return NextResponse.json(
+        {
+          error:
+            "Forbidden: You do not have permission to execute this action.",
+        },
+        { status: 403 }
+      );
+    }
 
     const adminEmail = "admin@assets-exchange.com";
     const adminPassword = "Admin@123";
@@ -76,12 +87,9 @@ export async function POST() {
       },
     });
   } catch (error) {
-    console.error("Error seeding admin:", error);
-    return Response.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
+    console.error("Seed Error:", error);
+    return NextResponse.json(
+      { error: "Failed to process seed request" },
       { status: 500 }
     );
   }

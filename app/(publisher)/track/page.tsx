@@ -21,7 +21,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  Suspense,
+  useRef,
+} from "react";
 import { toast } from "sonner";
 
 import { Constants } from "@/app/Constants/Constants";
@@ -84,10 +90,9 @@ interface TrackingData {
   additionalNotes?: string | null;
 }
 
-const variables = getVariables();
-
-const getStatusBadgeClass = (status: string) => {
-  switch (status.toLowerCase()) {
+const getStatusBadgeClass = (status: string | undefined | null) => {
+  const s = typeof status === "string" ? status : "";
+  switch (s.toLowerCase()) {
     case "new":
       return "rounded-[20px] border border-[#93C5FD] bg-[#DBEAFE] h-7 px-2 text-xs xl:text-sm font-inter font-medium text-[#1E40AF]";
     case "pending":
@@ -105,9 +110,16 @@ const getStatusBadgeClass = (status: string) => {
   }
 };
 
-const getStatusLabel = (status: string, approvalStage: string) => {
-  const normalizedStatus = status.toLowerCase();
-  const normalizedStage = approvalStage.toLowerCase();
+const getStatusLabel = (
+  status: string | undefined | null,
+  approvalStage: string | undefined | null
+) => {
+  const normalizedStatus = (
+    typeof status === "string" ? status : ""
+  ).toLowerCase();
+  const normalizedStage = (
+    typeof approvalStage === "string" ? approvalStage : ""
+  ).toLowerCase();
 
   if (normalizedStatus === "approved" && normalizedStage === "completed") {
     return "Fully Approved";
@@ -158,11 +170,12 @@ const getStatusLabel = (status: string, approvalStage: string) => {
   }
 };
 
-const getPriorityBadgeClass = (priority: string) => {
-  if (priority?.toLowerCase().includes("high")) {
+const getPriorityBadgeClass = (priority: string | undefined | null) => {
+  const p = (typeof priority === "string" ? priority : "").toLowerCase();
+  if (p.includes("high")) {
     return "rounded-[20px] border border-[#FCA5A5] bg-[#FFDFDF] h-7 px-1.5 text-xs xl:text-sm font-inter text-[#D70000]";
   }
-  if (priority?.toLowerCase().includes("medium")) {
+  if (p.includes("medium")) {
     return "rounded-[20px] border border-[#FCD34D] bg-[#FFF8DB] h-7 px-1.5 text-xs xl:text-sm font-inter text-[#B18100]";
   }
   return "rounded-[20px] border border-[#93C5FD] bg-[#DBEAFE] h-7 px-1.5 text-xs xl:text-sm font-inter text-[#1E40AF]";
@@ -172,15 +185,9 @@ const getFileType = (
   fileName: string
 ): "image" | "html" | "video" | "other" => {
   const lowerName = fileName.toLowerCase();
-  if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(lowerName)) {
-    return "image";
-  }
-  if (/\.(html|htm)$/i.test(lowerName)) {
-    return "html";
-  }
-  if (/\.(mp4|webm|mov|avi)$/i.test(lowerName)) {
-    return "video";
-  }
+  if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(lowerName)) return "image";
+  if (/\.(html|htm)$/i.test(lowerName)) return "html";
+  if (/\.(mp4|webm|mov|avi)$/i.test(lowerName)) return "video";
   return "other";
 };
 
@@ -193,7 +200,9 @@ const formatFileSize = (bytes: number): string => {
 };
 
 function TrackPageContent() {
+  const variables = getVariables(); // ✅ moved inside component (avoid hydration issues)
   const searchParams = useSearchParams();
+
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<TrackingData | null>(null);
@@ -232,19 +241,31 @@ function TrackPageContent() {
     }>
   >([]);
 
+  // ✅ prevent double auto-trigger in dev (StrictMode)
+  const autoTriggeredRef = useRef(false);
+
   const fetchStatus = useCallback(async (trackingCode: string) => {
     setIsLoading(true);
     setError(null);
     setData(null);
 
     try {
-      const res = await fetch(`/api/track?code=${trackingCode}`);
+      // Keep backend param as `code=` even if URL param is `id=`
+      const res = await fetch(
+        `/api/track?code=${encodeURIComponent(trackingCode)}`
+      );
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to fetch status");
       }
       const result = await res.json();
-      setData(result);
+      const payload = result.data ?? result;
+      // API returns "files"; page expects "creatives"
+      if (payload && !payload.creatives && payload.files) {
+        setData({ ...payload, creatives: payload.files });
+      } else {
+        setData(payload);
+      }
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -252,18 +273,34 @@ function TrackPageContent() {
     }
   }, []);
 
+  /**
+   * ✅ TASK IMPLEMENTATION:
+   * - Read id from URL: /track?id=sub_12345
+   * - Auto-fill input
+   * - Auto-trigger fetch
+   * - Also support old param: /track?code=ABCDEFGH
+   */
   useEffect(() => {
+    if (autoTriggeredRef.current) return;
+
+    const idFromUrl = searchParams.get("id");
     const codeFromUrl = searchParams.get("code");
-    if (codeFromUrl && codeFromUrl.length === 8) {
-      setCode(codeFromUrl);
-      fetchStatus(codeFromUrl);
-    }
+
+    const value = (idFromUrl || codeFromUrl || "").trim();
+    if (!value) return;
+
+    autoTriggeredRef.current = true;
+    const displayCode = value.toUpperCase();
+    setCode(displayCode);
+    // Use uppercase for code param (tracking codes are stored uppercase); keep id as-is
+    fetchStatus(idFromUrl ? value : displayCode);
   }, [searchParams, fetchStatus]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.trim().length !== 8) return;
-    fetchStatus(code.trim());
+    const value = code.trim();
+    if (!value) return;
+    fetchStatus(value);
   };
 
   const handleViewCreative = async (
@@ -273,9 +310,7 @@ function TrackPageContent() {
     const fileType = getFileType(creative.name);
 
     if (isSentBack && data) {
-      // For sent-back status, open full modal with edit capabilities
       if (data.creatives && data.creatives.length > 1) {
-        // Multiple creatives - open MultipleCreativesModal
         const creativesData: CreativeFile[] = data.creatives.map((c) => {
           const fType = getFileType(c.name);
           return {
@@ -296,7 +331,6 @@ function TrackPageContent() {
         setModalCreatives(creativesData);
         setIsMultipleModalOpen(true);
       } else {
-        // Single creative - open SingleCreativeViewModal
         const creativeData: SingleCreative = {
           id: creative.id,
           name: creative.name,
@@ -316,7 +350,6 @@ function TrackPageContent() {
         setIsSingleModalOpen(true);
       }
     } else {
-      // For normal status, open simple fullscreen preview
       setSelectedCreative(creative);
 
       if (fileType === "html") {
@@ -351,10 +384,7 @@ function TrackPageContent() {
   const handleZoomIn = () => {
     setImageZoom((prev) => {
       const newZoom = Math.min(prev + 0.25, 1.5);
-      // Reset position when zooming to prevent out-of-bounds
-      if (newZoom !== prev) {
-        setImagePosition({ x: 0, y: 0 });
-      }
+      if (newZoom !== prev) setImagePosition({ x: 0, y: 0 });
       return newZoom;
     });
   };
@@ -362,10 +392,7 @@ function TrackPageContent() {
   const handleZoomOut = () => {
     setImageZoom((prev) => {
       const newZoom = Math.max(prev - 0.25, 1);
-      // Reset position when reaching 1x zoom
-      if (newZoom === 1) {
-        setImagePosition({ x: 0, y: 0 });
-      }
+      if (newZoom === 1) setImagePosition({ x: 0, y: 0 });
       return newZoom;
     });
   };
@@ -385,16 +412,9 @@ function TrackPageContent() {
   const handleImageMouseMove = (e: React.MouseEvent) => {
     if (isDragging && imageZoom > 1) {
       const newY = e.clientY - dragStart.y;
-
-      // Calculate bounds to keep image in viewport
-      // When zoomed to 1.5x, the image is 50% larger, so we can pan by 25% in each direction
       const maxPan = (window.innerHeight * (imageZoom - 1)) / 2;
       const clampedY = Math.max(-maxPan, Math.min(maxPan, newY));
-
-      setImagePosition({
-        x: 0,
-        y: clampedY,
-      });
+      setImagePosition({ x: 0, y: clampedY });
     }
   };
 
@@ -404,24 +424,17 @@ function TrackPageContent() {
 
   const handleFileUpload = async (file: File) => {
     if (!data) return;
-
-    if (isUploading) {
-      return;
-    }
+    if (isUploading) return;
 
     setIsUploading(true);
 
     try {
-      // Step 1: Upload file to blob storage
       const formData = new FormData();
       formData.append("file", file);
 
-      // Enable smart detection for ZIP files
       const isZipFile =
         file.name.toLowerCase().endsWith(".zip") || file.type.includes("zip");
-      if (isZipFile) {
-        formData.append("smartDetection", "true");
-      }
+      if (isZipFile) formData.append("smartDetection", "true");
 
       const uploadResponse = await fetch("/api/upload", {
         method: "POST",
@@ -439,12 +452,9 @@ function TrackPageContent() {
         throw new Error(uploadResult.error || "Upload failed");
       }
 
-      // Close upload modal
       setIsUploadModalOpen(false);
 
-      // Check if it's a ZIP file with smart detection
       if (uploadResult.zipAnalysis) {
-        // Handle multiple creatives from ZIP
         const creativeItems = uploadResult.zipAnalysis.items
           .filter((item: { isDependency: boolean }) => !item.isDependency)
           .map(
@@ -467,12 +477,10 @@ function TrackPageContent() {
           throw new Error("No valid creatives found in ZIP file");
         }
 
-        // Store pending creatives and open modal for editing
         setPendingCreatives(creativeItems);
         setIsRevisionMode(true);
 
         if (creativeItems.length === 1) {
-          // Single creative from ZIP - open SingleCreativeViewModal
           const fileType = getFileType(creativeItems[0].name);
           const creativeData: SingleCreative = {
             id: creativeItems[0].id,
@@ -486,7 +494,6 @@ function TrackPageContent() {
           setSingleCreative(creativeData);
           setIsSingleModalOpen(true);
         } else {
-          // Multiple creatives - open MultipleCreativesModal
           const creativesData: CreativeFile[] = creativeItems.map(
             (item: {
               id: string;
@@ -511,7 +518,6 @@ function TrackPageContent() {
           setIsMultipleModalOpen(true);
         }
       } else {
-        // Handle single file upload
         const creativeItem = {
           id: uploadResult.file.fileId || Date.now().toString(),
           name: uploadResult.file.fileName,
@@ -520,7 +526,6 @@ function TrackPageContent() {
           size: uploadResult.file.fileSize,
         };
 
-        // Store pending creative and open modal for editing
         setPendingCreatives([creativeItem]);
         setIsRevisionMode(true);
 
@@ -555,7 +560,6 @@ function TrackPageContent() {
     if (!data || pendingCreatives.length === 0) return;
 
     try {
-      // Submit the revision with the new creatives
       const reviseResponse = await fetch("/api/creative-request/revise", {
         method: "POST",
         headers: {
@@ -577,7 +581,6 @@ function TrackPageContent() {
         throw new Error(errorData.error || "Failed to update creative request");
       }
 
-      // Close modal and reset state
       setIsSingleModalOpen(false);
       setIsMultipleModalOpen(false);
       setSingleCreative(null);
@@ -585,10 +588,7 @@ function TrackPageContent() {
       setPendingCreatives([]);
       setIsRevisionMode(false);
 
-      // Refresh tracking data
-      if (code) {
-        await fetchStatus(code);
-      }
+      if (code) await fetchStatus(code);
 
       toast.success(
         "Creative revised successfully! Your request has been resubmitted for review."
@@ -602,14 +602,8 @@ function TrackPageContent() {
     }
   };
 
-  const handleRemoveCreative = (_id: string) => {
-    // For read-only view in track page
-  };
-
-  const handleFileNameChange = (_fileId: string, _newFileName: string) => {
-    // For sent-back, allow file name changes
-  };
-
+  const _handleRemoveCreative = (_id: string) => {};
+  const handleFileNameChange = (_fileId: string, _newFileName: string) => {};
   const handleMetadataChange = (
     _fileId: string,
     _metadata: {
@@ -617,16 +611,11 @@ function TrackPageContent() {
       subjectLines?: string;
       additionalNotes?: string;
     }
-  ) => {
-    // For sent-back, allow metadata changes
-  };
-
+  ) => {};
   const handleFileUpdate = (_updates: {
     url?: string;
     metadata?: Record<string, unknown>;
-  }) => {
-    // Handle file updates after proofreading or edits
-  };
+  }) => {};
 
   return (
     <div
@@ -656,24 +645,24 @@ function TrackPageContent() {
               Track Your Creative
             </CardTitle>
             <CardDescription className="text-gray-500">
-              Enter your 8-digit tracking code to view submission status
+              Enter your tracking code to view submission status
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <form
               onSubmit={handleSearch}
               className="flex flex-col sm:flex-row gap-2 sm:gap-3 max-w-lg mx-auto mb-6"
             >
               <Input
-                placeholder="8-digit code"
+                placeholder="Tracking code"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
-                maxLength={8}
                 className="flex-1 h-10 sm:h-10 text-sm font-inter tracking-[0.2em] text-center placeholder:tracking-normal placeholder:text-gray-400"
               />
               <Button
                 type="submit"
-                disabled={isLoading || code.length !== 8}
+                disabled={isLoading || code.trim().length === 0}
                 className="h-10 px-6 bg-blue-500 hover:bg-blue-600 text-white text-sm font-inter font-medium rounded-md shrink-0"
               >
                 {isLoading ? (
@@ -736,7 +725,10 @@ function TrackPageContent() {
                 />
 
                 {data.adminComments &&
-                  data.status.toLowerCase() === "sent-back" && (
+                  (typeof data.status === "string"
+                    ? data.status
+                    : ""
+                  ).toLowerCase() === "sent-back" && (
                     <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                       <h4 className="font-medium text-sm text-amber-800 mb-2">
                         Admin Comments
@@ -771,6 +763,7 @@ function TrackPageContent() {
                                     <File className="h-6 w-6 text-gray-600" />
                                   )}
                                 </div>
+
                                 <div className="min-w-0 flex-1">
                                   <h5
                                     className="font-inter font-semibold text-gray-900 truncate text-base mb-1"
@@ -789,6 +782,7 @@ function TrackPageContent() {
                                     </span>
                                   </div>
                                 </div>
+
                                 <div className="shrink-0 flex gap-2">
                                   <Button
                                     variant="outline"
@@ -806,16 +800,21 @@ function TrackPageContent() {
                                     onClick={() =>
                                       handleViewCreative(
                                         creative,
-                                        data.status.toLowerCase() ===
-                                          "sent-back"
+                                        (typeof data.status === "string"
+                                          ? data.status
+                                          : ""
+                                        ).toLowerCase() === "sent-back"
                                       )
                                     }
                                   >
                                     <Eye className="h-4 w-4 mr-2" />
                                     View Creative
                                   </Button>
-                                  {data.status.toLowerCase() ===
-                                    "sent-back" && (
+
+                                  {(typeof data.status === "string"
+                                    ? data.status
+                                    : ""
+                                  ).toLowerCase() === "sent-back" && (
                                     <Button
                                       variant="default"
                                       size="sm"
@@ -1028,7 +1027,6 @@ function TrackPageContent() {
         </Dialog>
       )}
 
-      {/* File Upload Modal for Sent-Back status */}
       <FileUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
@@ -1040,7 +1038,6 @@ function TrackPageContent() {
         onFileUpload={handleFileUpload}
       />
 
-      {/* Single Creative View Modal for Sent-Back status */}
       {singleCreative && (
         <SingleCreativeViewModal
           isOpen={isSingleModalOpen}
@@ -1064,7 +1061,6 @@ function TrackPageContent() {
         />
       )}
 
-      {/* Multiple Creatives Modal for Sent-Back status */}
       {modalCreatives.length > 0 && (
         <MultipleCreativesModal
           isOpen={isMultipleModalOpen}
@@ -1077,7 +1073,7 @@ function TrackPageContent() {
             }
           }}
           creatives={modalCreatives}
-          onRemoveCreative={handleRemoveCreative}
+          onRemoveCreative={() => {}}
           onFileNameChange={handleFileNameChange}
           onMetadataChange={handleMetadataChange}
           creativeType={data?.creativeType ?? "email"}
@@ -1104,12 +1100,16 @@ export default function TrackPage() {
 }
 
 function mapStatusToTracker(
-  status: string,
-  approvalStage: string,
+  status: string | undefined | null,
+  approvalStage: string | undefined | null,
   _adminStatus: string
 ) {
-  const normalizedStatus = status.toLowerCase();
-  const normalizedStage = approvalStage.toLowerCase();
+  const normalizedStatus = (
+    typeof status === "string" ? status : ""
+  ).toLowerCase();
+  const normalizedStage = (
+    typeof approvalStage === "string" ? approvalStage : ""
+  ).toLowerCase();
   const isSentBack = normalizedStatus === "sent-back";
   const isRevised = normalizedStatus === "revised";
   const isApproved = normalizedStatus === "approved";
@@ -1117,7 +1117,6 @@ function mapStatusToTracker(
   const isPending = normalizedStatus === "pending";
   const isForwardedToAdvertiser = isPending && normalizedStage === "advertiser";
 
-  // Base statuses
   const baseStatuses = [
     {
       id: 1,
@@ -1157,7 +1156,6 @@ function mapStatusToTracker(
     },
   ];
 
-  // If approved by admin, show the approval flow with Completed
   if (isApproved && normalizedStage === "admin") {
     baseStatuses.push(
       {
@@ -1179,7 +1177,6 @@ function mapStatusToTracker(
     );
   }
 
-  // If forwarded to advertiser, show the forwarding flow
   if (isForwardedToAdvertiser) {
     baseStatuses.push(
       {
@@ -1209,7 +1206,6 @@ function mapStatusToTracker(
     );
   }
 
-  // If rejected, show rejection status with Completed
   if (isRejected) {
     baseStatuses.push(
       {
@@ -1234,7 +1230,6 @@ function mapStatusToTracker(
     );
   }
 
-  // If sent back, insert "Sent Back" status after "Decision Made"
   if (isSentBack) {
     baseStatuses.push({
       id: 4,
@@ -1246,7 +1241,6 @@ function mapStatusToTracker(
     });
   }
 
-  // If revised, show the revision flow
   if (isRevised) {
     baseStatuses.push(
       {
@@ -1276,7 +1270,6 @@ function mapStatusToTracker(
     );
   }
 
-  // Add remaining statuses only if not rejected, not approved by admin, and not forwarded to advertiser
   if (
     !isRejected &&
     !(isApproved && normalizedStage === "admin") &&
@@ -1284,7 +1277,6 @@ function mapStatusToTracker(
   ) {
     const nextId = isRevised ? 7 : isSentBack ? 5 : 4;
 
-    // Show completed if fully approved
     if (isApproved && normalizedStage === "completed") {
       baseStatuses[2].status = "active";
       baseStatuses[2].color = "blue";

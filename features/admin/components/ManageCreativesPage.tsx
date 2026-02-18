@@ -15,11 +15,14 @@ import {
   ArrowDownAZ,
   ArrowUpAZ,
   ChevronRight,
+  LayoutGrid,
+  LayoutList,
   ListFilter,
   Search,
   X,
 } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 
 import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
@@ -47,7 +50,14 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CreativeCard } from "@/features/publisher/components/CreativeCard";
+import MultipleCreativesModal from "@/features/publisher/components/form/_modals/MultipleCreativesModal";
+import SingleCreativeViewModal from "@/features/publisher/components/form/_modals/SingleCreativeViewModal";
 
+import {
+  getRequestViewData,
+  type RequestViewData,
+} from "../actions/request.actions";
 import { useManageCreativesViewModel } from "../view-models/useManageCreativesViewModel";
 
 import { RequestSection } from "./RequestSection";
@@ -76,6 +86,10 @@ export function ManageCreativesPage() {
   >(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [viewData, setViewData] = useState<RequestViewData | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [_isViewLoading, setIsViewLoading] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -236,6 +250,12 @@ export function ManageCreativesPage() {
     parseDate,
     searchInText,
   ]);
+
+  const tabCounts = useMemo(() => {
+    const approved = requests.filter((r) => r.status === "approved").length;
+    const rejected = requests.filter((r) => r.status === "rejected").length;
+    return { approved, rejected };
+  }, [requests]);
 
   const totalPages = Math.ceil(filteredAndSortedRequests.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -527,6 +547,52 @@ export function ManageCreativesPage() {
                 </PopoverContent>
               </Popover>
 
+              <div
+                className="flex rounded-md border overflow-hidden"
+                style={{ borderColor: variables.colors.inputBorderColor }}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10 rounded-none border-0 border-r"
+                  style={{
+                    backgroundColor:
+                      viewMode === "list"
+                        ? variables.colors.buttonDefaultBackgroundColor
+                        : variables.colors.cardBackground,
+                    color:
+                      viewMode === "list"
+                        ? variables.colors.buttonDefaultTextColor
+                        : variables.colors.inputTextColor,
+                    borderColor: variables.colors.inputBorderColor,
+                  }}
+                  onClick={() => setViewMode("list")}
+                >
+                  <LayoutList className="h-4 w-4 mr-1.5" />
+                  List
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10 rounded-none border-0"
+                  style={{
+                    backgroundColor:
+                      viewMode === "grid"
+                        ? variables.colors.buttonDefaultBackgroundColor
+                        : variables.colors.cardBackground,
+                    color:
+                      viewMode === "grid"
+                        ? variables.colors.buttonDefaultTextColor
+                        : variables.colors.inputTextColor,
+                    borderColor: variables.colors.inputBorderColor,
+                  }}
+                  onClick={() => setViewMode("grid")}
+                >
+                  <LayoutGrid className="h-4 w-4 mr-1.5" />
+                  Grid
+                </Button>
+              </div>
+
               <TabsList
                 className="flex-1 grid grid-cols-2 h-auto p-1 gap-1"
                 style={{
@@ -557,7 +623,24 @@ export function ManageCreativesPage() {
                     }
                   }}
                 >
-                  Approved
+                  <span className="flex items-center gap-1.5">
+                    Approved
+                    <span
+                      className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                      style={{
+                        backgroundColor:
+                          activeTab === "approved"
+                            ? "rgba(255,255,255,0.25)"
+                            : "rgba(0,0,0,0.06)",
+                        color:
+                          activeTab === "approved"
+                            ? variables.colors.buttonDefaultTextColor
+                            : variables.colors.inputTextColor,
+                      }}
+                    >
+                      {tabCounts.approved}
+                    </span>
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="rejected"
@@ -583,7 +666,24 @@ export function ManageCreativesPage() {
                     }
                   }}
                 >
-                  Rejected
+                  <span className="flex items-center gap-1.5">
+                    Rejected
+                    <span
+                      className="ml-1 min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-medium tabular-nums"
+                      style={{
+                        backgroundColor:
+                          activeTab === "rejected"
+                            ? "rgba(255,255,255,0.25)"
+                            : "rgba(0,0,0,0.06)",
+                        color:
+                          activeTab === "rejected"
+                            ? variables.colors.buttonDefaultTextColor
+                            : variables.colors.inputTextColor,
+                      }}
+                    >
+                      {tabCounts.rejected}
+                    </span>
+                  </span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -628,12 +728,49 @@ export function ManageCreativesPage() {
               </div>
             ) : (
               <>
-                <RequestSection
-                  requests={paginatedRequests}
-                  startIndex={startIndex}
-                  viewButtonText="View Creative"
-                  showDownloadButton={true}
-                />
+                {viewMode === "list" ? (
+                  <RequestSection
+                    requests={paginatedRequests}
+                    startIndex={startIndex}
+                    viewButtonText="View Creative"
+                    showDownloadButton={true}
+                  />
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {paginatedRequests.map((request) => (
+                      <CreativeCard
+                        key={request.id}
+                        request={request}
+                        onViewClick={async (requestId) => {
+                          setIsViewLoading(true);
+                          setViewData(null);
+                          try {
+                            const data = await getRequestViewData(requestId);
+                            if (!data) {
+                              toast.error("No creatives found", {
+                                description:
+                                  "This request has no creative files.",
+                              });
+                              return;
+                            }
+                            setViewData(data);
+                            setIsViewModalOpen(true);
+                          } catch (err) {
+                            const msg =
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to load request";
+                            toast.error("Failed to load request", {
+                              description: msg,
+                            });
+                          } finally {
+                            setIsViewLoading(false);
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
                 {totalPages > 1 && (
                   <div
                     className="flex items-center gap-4 mt-6 pt-6 border-t"
@@ -784,6 +921,31 @@ export function ManageCreativesPage() {
                       </Select>
                     </div>
                   </div>
+                )}
+
+                {viewData?.type === "single" && (
+                  <SingleCreativeViewModal
+                    isOpen={isViewModalOpen && viewData.type === "single"}
+                    onClose={() => {
+                      setIsViewModalOpen(false);
+                      setViewData(null);
+                    }}
+                    creative={viewData.creative}
+                    showAdditionalNotes={false}
+                    creativeType={viewData.creativeType}
+                  />
+                )}
+                {viewData?.type === "multiple" && (
+                  <MultipleCreativesModal
+                    isOpen={isViewModalOpen && viewData.type === "multiple"}
+                    onClose={() => {
+                      setIsViewModalOpen(false);
+                      setViewData(null);
+                    }}
+                    creatives={viewData.creatives}
+                    onRemoveCreative={() => {}}
+                    creativeType={viewData.creativeType}
+                  />
                 )}
               </>
             )}

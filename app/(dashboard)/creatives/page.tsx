@@ -32,7 +32,7 @@
 
 import { redirect } from "next/navigation";
 
-import { ManageCreativesPage } from "@/features/admin";
+import { ManageCreativesPage } from "@/features/admin/components/ManageCreativesPage";
 import { getCurrentUser } from "@/lib/get-user";
 
 export default async function CreativesPage() {

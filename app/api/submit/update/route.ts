@@ -1,120 +1,37 @@
-import { and, eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { getOffer } from "@/features/admin/services/offer.service";
+import { logStatusChange } from "@/features/admin/services/statusHistory.service";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { creativeRequests, creatives } from "@/lib/schema";
 
-function countLines(text: string | undefined): number {
-  if (!text || text.trim() === "") return 0;
-  return text.split("\n").filter((line) => line.trim() !== "").length;
-}
-
 export async function POST(req: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const session = await auth.api.getSession({ headers: await headers() });
 
   try {
     const body = await req.json();
-    const { requestId, files, formData } = body;
+    const { requestId, files } = body;
 
-    if (!requestId || !files || !Array.isArray(files) || files.length === 0) {
-      return NextResponse.json(
-        { error: "Missing requestId or files" },
-        { status: 400 }
-      );
+    if (!requestId || !files) {
+      return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
 
-    const [existingRequest] = await db
-      .select()
-      .from(creativeRequests)
-      .where(
-        and(
-          eq(creativeRequests.id, requestId),
-          eq(creativeRequests.publisherId, session.user.id)
-        )
-      )
-      .limit(1);
-
-    if (!existingRequest) {
-      return NextResponse.json(
-        { error: "Request not found or unauthorized" },
-        { status: 404 }
-      );
-    }
-
-    if (existingRequest.status !== "sent-back") {
-      return NextResponse.json(
-        { error: "Request cannot be resubmitted" },
-        { status: 409 }
-      );
-    }
-
-    let fromLinesCount = countLines(formData?.fromLines);
-    let subjectLinesCount = countLines(formData?.subjectLines);
-    files.forEach((file: { metadata?: Record<string, unknown> }) => {
-      if (file.metadata) {
-        if (typeof file.metadata.fromLines === "string") {
-          fromLinesCount += countLines(file.metadata.fromLines);
-        }
-        if (typeof file.metadata.subjectLines === "string") {
-          subjectLinesCount += countLines(file.metadata.subjectLines);
-        }
-      }
+    const existingRequest = await db.query.creativeRequests.findFirst({
+      where: eq(creativeRequests.id, requestId),
     });
 
-    const priority =
-      formData?.priority === "high" ? "High Priority" : "Medium Priority";
-
-    let offer: Awaited<ReturnType<typeof getOffer>> = null;
-    if (formData?.offerId) {
-      offer = await getOffer(formData.offerId);
+    if (!existingRequest) {
+      return NextResponse.json({ error: "Request not found" }, { status: 404 });
     }
 
     await db
       .update(creativeRequests)
       .set({
-        status: "new",
-        approvalStage: "admin",
+        status: "pending",
         adminStatus: "pending",
-        creativeCount: files.length,
-        fromLinesCount,
-        subjectLinesCount,
         updatedAt: new Date(),
-        ...(offer && formData?.offerId
-          ? {
-              offerId: formData.offerId,
-              offerName: offer.offerName,
-              advertiserId: offer.advertiserId ?? "",
-              advertiserName: offer.advName ?? "",
-            }
-          : {}),
-        ...(formData
-          ? {
-              ...(formData.creativeType != null && {
-                creativeType: formData.creativeType,
-              }),
-              ...(formData.fromLines != null && {
-                fromLines: formData.fromLines,
-              }),
-              ...(formData.subjectLines != null && {
-                subjectLines: formData.subjectLines,
-              }),
-              ...(formData.additionalNotes != null && {
-                additionalNotes: formData.additionalNotes,
-              }),
-              ...(formData.priority != null && {
-                priority: priority as "High Priority" | "Medium Priority",
-              }),
-            }
-          : {}),
       })
       .where(eq(creativeRequests.id, requestId));
 
@@ -125,7 +42,7 @@ export async function POST(req: Request) {
           .set({
             url: file.url,
             status: "pending",
-            metadata: (file.metadata as Record<string, unknown>) ?? {},
+            metadata: file.metadata || {},
             updatedAt: new Date(),
           })
           .where(
@@ -134,9 +51,18 @@ export async function POST(req: Request) {
       }
     }
 
+    await logStatusChange({
+      requestId,
+      fromStatus: existingRequest.status,
+      toStatus: "pending",
+      actorRole: "publisher",
+      actorId: session?.user?.id || "anonymous",
+      reason: "Publisher resubmitted updated creatives based on feedback.",
+    });
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Resubmit error:", error);
+  } catch (_error) {
+    console.error("Resubmit error:", _error);
     return NextResponse.json({ error: "Failed to resubmit" }, { status: 500 });
   }
 }

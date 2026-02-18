@@ -18,7 +18,7 @@ export interface ValidationState {
 }
 
 export const useFormValidation = (_initialFormData: PublisherFormData) => {
-  const keepValidation = false;
+  const keepValidation = true;
 
   const [validationState, setValidationState] = useState<ValidationState>({
     errors: {},
@@ -28,13 +28,11 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
   const [hasUploadedFiles, setHasUploadedFiles] = useState(false);
   const [hasFromSubjectLines, setHasFromSubjectLines] = useState(false);
 
-  // Update form data - this should not trigger state updates that cause infinite loops
-  const updateFormData = useCallback((_updates: Partial<PublisherFormData>) => {
-    // This function is now just a placeholder - actual form data is managed by the parent component
-    // We don't need to store form data here since it's passed as a parameter to validation functions
-  }, []);
+  const updateFormData = useCallback(
+    (_updates: Partial<PublisherFormData>) => {},
+    []
+  );
 
-  // Mark field as touched
   const markFieldAsTouched = useCallback((fieldName: string) => {
     setValidationState((prev) => ({
       ...prev,
@@ -42,7 +40,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     }));
   }, []);
 
-  // Mark field as touched on blur
   const handleFieldBlur = useCallback(
     (fieldName: string) => {
       markFieldAsTouched(fieldName);
@@ -50,7 +47,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [markFieldAsTouched]
   );
 
-  // Validate a single field
   const validateSingleField = useCallback(
     (fieldName: keyof PublisherFormData, value: string) => {
       if (!keepValidation) {
@@ -62,7 +58,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [keepValidation]
   );
 
-  // Validate field on change
   const handleFieldChange = useCallback(
     (fieldName: keyof PublisherFormData, value: string) => {
       if (!keepValidation) {
@@ -82,7 +77,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [keepValidation]
   );
 
-  // Validate personal details step
   const validatePersonalDetailsStep = useCallback(
     (formData: Partial<PublisherFormData>): ValidationResult => {
       if (!keepValidation) {
@@ -122,7 +116,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [keepValidation]
   );
 
-  // Validate contact details step
   const validateContactDetailsStep = useCallback(
     (formData: Partial<PublisherFormData>): ValidationResult => {
       if (!keepValidation) {
@@ -158,7 +151,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [keepValidation]
   );
 
-  // Validate creative details step
   const validateCreativeDetailsStep = useCallback(
     (
       formData: Partial<PublisherFormData>,
@@ -183,7 +175,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
 
       Object.assign(errors, result.errors);
 
-      // Additional validation for files and lines if required
       if (!formData.creativeType) {
         errors.creativeType =
           errors.creativeType || "Please select a creative type";
@@ -226,7 +217,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [keepValidation]
   );
 
-  // Validate complete form
   const validateCompleteFormData = useCallback(
     (
       formData: PublisherFormData,
@@ -242,7 +232,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
 
       const result = validateForm(formData);
 
-      // Additional checks for files and lines
       const errors = { ...result.errors };
 
       if (formData.creativeType === "email") {
@@ -293,7 +282,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [keepValidation]
   );
 
-  // Clear all errors
   const clearErrors = useCallback(() => {
     setValidationState((prev) => ({
       ...prev,
@@ -302,7 +290,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     }));
   }, []);
 
-  // Clear specific field error
   const clearFieldError = useCallback((fieldName: string) => {
     setValidationState((prev) => ({
       ...prev,
@@ -313,7 +300,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     }));
   }, []);
 
-  // Check if a specific field has an error
   const hasFieldError = useCallback(
     (fieldName: string): boolean => {
       if (!keepValidation) {
@@ -324,7 +310,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [validationState.errors, keepValidation]
   );
 
-  // Get error message for a specific field
   const getFieldErrorMessage = useCallback(
     (fieldName: string): string => {
       if (!keepValidation) {
@@ -335,7 +320,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [validationState.errors, keepValidation]
   );
 
-  // Check if a field has been touched
   const isFieldTouched = useCallback(
     (fieldName: string): boolean => {
       return !!validationState.touched[fieldName];
@@ -343,7 +327,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [validationState.touched]
   );
 
-  // Check if form is valid
   const isFormValid = useCallback((): boolean => {
     if (!keepValidation) {
       return true;
@@ -351,17 +334,13 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     return validationState.isValid;
   }, [validationState.isValid, keepValidation]);
 
-  // Update file upload state
   const updateFileUploadState = useCallback((hasFiles: boolean) => {
     setHasUploadedFiles(hasFiles);
   }, []);
-
-  // Update from/subject lines state
   const updateFromSubjectLinesState = useCallback((hasLines: boolean) => {
     setHasFromSubjectLines(hasLines);
   }, []);
 
-  // Validate all fields and update validation state
   const validateAllFields = useCallback(
     (formData: PublisherFormData, hasFiles: boolean, hasLines: boolean) => {
       const result = validateCompleteFormData(formData, hasFiles, hasLines);
@@ -370,7 +349,6 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     [validateCompleteFormData]
   );
 
-  // Reset form to initial state
   const resetForm = useCallback(() => {
     setValidationState({
       errors: {},
@@ -381,12 +359,9 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
     setHasFromSubjectLines(false);
   }, []);
 
-  // Additional methods expected by components
   const hasErrors = Object.keys(validationState.errors).some(
     (key) => validationState.errors[key]
   );
-
-  // Validate form method (used by some components)
   const validateFormMethod = useCallback(
     (data: Partial<PublisherFormData>) => {
       if (!keepValidation) {
@@ -423,19 +398,15 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
 
   return useMemo(
     () => ({
-      // Core validation state
       errors: validationState.errors,
       hasErrors,
       isValid: validationState.isValid,
       hasUploadedFiles,
       hasFromSubjectLines,
 
-      // Core methods
       validateField: validateSingleField,
       validateForm: validateFormMethod,
       clearErrors,
-
-      // Methods used by step components
       handleFieldChange,
       handleFieldBlur,
       getFieldErrorMessage,
@@ -443,13 +414,10 @@ export const useFormValidation = (_initialFormData: PublisherFormData) => {
       isFieldTouched,
       markFieldAsTouched,
 
-      // Step validation methods used by CreativeForm
       validatePersonalDetailsStep,
       validateContactDetailsStep,
       validateCreativeDetailsStep,
       validateCompleteFormData,
-
-      // Additional methods (for backward compatibility)
       validationState,
       updateFormData,
       validateAllFields,

@@ -11,7 +11,7 @@ export const fileSchema = z.object({
 
 export const submitSchema = z.object({
   affiliateId: z.string().min(1),
-  companyName: z.string().min(5), // ✅ 5+ chars (task requirement)
+  companyName: z.string().min(5),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   email: z.string().email(),

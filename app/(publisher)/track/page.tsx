@@ -90,8 +90,9 @@ interface TrackingData {
   additionalNotes?: string | null;
 }
 
-const getStatusBadgeClass = (status: string) => {
-  switch (status.toLowerCase()) {
+const getStatusBadgeClass = (status: string | undefined | null) => {
+  const s = typeof status === "string" ? status : "";
+  switch (s.toLowerCase()) {
     case "new":
       return "rounded-[20px] border border-[#93C5FD] bg-[#DBEAFE] h-7 px-2 text-xs xl:text-sm font-inter font-medium text-[#1E40AF]";
     case "pending":
@@ -109,9 +110,16 @@ const getStatusBadgeClass = (status: string) => {
   }
 };
 
-const getStatusLabel = (status: string, approvalStage: string) => {
-  const normalizedStatus = status.toLowerCase();
-  const normalizedStage = approvalStage.toLowerCase();
+const getStatusLabel = (
+  status: string | undefined | null,
+  approvalStage: string | undefined | null
+) => {
+  const normalizedStatus = (
+    typeof status === "string" ? status : ""
+  ).toLowerCase();
+  const normalizedStage = (
+    typeof approvalStage === "string" ? approvalStage : ""
+  ).toLowerCase();
 
   if (normalizedStatus === "approved" && normalizedStage === "completed") {
     return "Fully Approved";
@@ -162,11 +170,12 @@ const getStatusLabel = (status: string, approvalStage: string) => {
   }
 };
 
-const getPriorityBadgeClass = (priority: string) => {
-  if (priority?.toLowerCase().includes("high")) {
+const getPriorityBadgeClass = (priority: string | undefined | null) => {
+  const p = (typeof priority === "string" ? priority : "").toLowerCase();
+  if (p.includes("high")) {
     return "rounded-[20px] border border-[#FCA5A5] bg-[#FFDFDF] h-7 px-1.5 text-xs xl:text-sm font-inter text-[#D70000]";
   }
-  if (priority?.toLowerCase().includes("medium")) {
+  if (p.includes("medium")) {
     return "rounded-[20px] border border-[#FCD34D] bg-[#FFF8DB] h-7 px-1.5 text-xs xl:text-sm font-inter text-[#B18100]";
   }
   return "rounded-[20px] border border-[#93C5FD] bg-[#DBEAFE] h-7 px-1.5 text-xs xl:text-sm font-inter text-[#1E40AF]";
@@ -250,7 +259,13 @@ function TrackPageContent() {
         throw new Error(errorData.error || "Failed to fetch status");
       }
       const result = await res.json();
-      setData(result);
+      const payload = result.data ?? result;
+      // API returns "files"; page expects "creatives"
+      if (payload && !payload.creatives && payload.files) {
+        setData({ ...payload, creatives: payload.files });
+      } else {
+        setData(payload);
+      }
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -275,8 +290,10 @@ function TrackPageContent() {
     if (!value) return;
 
     autoTriggeredRef.current = true;
-    setCode(value.toUpperCase());
-    fetchStatus(value);
+    const displayCode = value.toUpperCase();
+    setCode(displayCode);
+    // Use uppercase for code param (tracking codes are stored uppercase); keep id as-is
+    fetchStatus(idFromUrl ? value : displayCode);
   }, [searchParams, fetchStatus]);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -708,7 +725,10 @@ function TrackPageContent() {
                 />
 
                 {data.adminComments &&
-                  data.status.toLowerCase() === "sent-back" && (
+                  (typeof data.status === "string"
+                    ? data.status
+                    : ""
+                  ).toLowerCase() === "sent-back" && (
                     <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                       <h4 className="font-medium text-sm text-amber-800 mb-2">
                         Admin Comments
@@ -780,8 +800,10 @@ function TrackPageContent() {
                                     onClick={() =>
                                       handleViewCreative(
                                         creative,
-                                        data.status.toLowerCase() ===
-                                          "sent-back"
+                                        (typeof data.status === "string"
+                                          ? data.status
+                                          : ""
+                                        ).toLowerCase() === "sent-back"
                                       )
                                     }
                                   >
@@ -789,8 +811,10 @@ function TrackPageContent() {
                                     View Creative
                                   </Button>
 
-                                  {data.status.toLowerCase() ===
-                                    "sent-back" && (
+                                  {(typeof data.status === "string"
+                                    ? data.status
+                                    : ""
+                                  ).toLowerCase() === "sent-back" && (
                                     <Button
                                       variant="default"
                                       size="sm"
@@ -1076,12 +1100,16 @@ export default function TrackPage() {
 }
 
 function mapStatusToTracker(
-  status: string,
-  approvalStage: string,
+  status: string | undefined | null,
+  approvalStage: string | undefined | null,
   _adminStatus: string
 ) {
-  const normalizedStatus = status.toLowerCase();
-  const normalizedStage = approvalStage.toLowerCase();
+  const normalizedStatus = (
+    typeof status === "string" ? status : ""
+  ).toLowerCase();
+  const normalizedStage = (
+    typeof approvalStage === "string" ? approvalStage : ""
+  ).toLowerCase();
   const isSentBack = normalizedStatus === "sent-back";
   const isRevised = normalizedStatus === "revised";
   const isApproved = normalizedStatus === "approved";

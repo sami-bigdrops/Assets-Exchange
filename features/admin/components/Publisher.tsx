@@ -1,50 +1,7 @@
 "use client";
 
-/**
- * TODO: BACKEND - Publisher Component Backend Integration
- *
- * This component currently uses client-side filtering, sorting, and mock data.
- * For production, consider the following backend integrations:
- *
- * 1. Server-Side Filtering & Sorting:
- *    - Move filtering logic to backend for better performance with large datasets
- *    - Endpoint: GET /api/admin/publishers with query parameters
- *    - Query params: status, platform, creationMethod, search, sortBy, sortOrder
- *    - Benefits: Reduced client-side processing, pagination support
- *
- * 2. Real-Time Updates:
- *    - Consider WebSocket/SSE for real-time publisher updates
- *    - Notify when publishers are created/updated/deleted by other users
- *    - Auto-refresh publishers list when changes occur
- *
- * 3. Pagination:
- *    - Implement server-side pagination for large publisher lists
- *    - Add pagination controls (page numbers, items per page)
- *    - Endpoint should return: { data: Publisher[], pagination: { page, limit, total, totalPages } }
- *
- * 4. Search Optimization:
- *    - Consider full-text search on backend for better performance
- *    - Support advanced search (filters combined with search)
- *    - Add search suggestions/autocomplete
- *
- * 5. Caching Strategy:
- *    - Implement caching for frequently accessed publishers
- *    - Cache invalidation on updates
- *    - Consider using React Query or SWR for data fetching
- *
- * 6. Error Handling:
- *    - Implement retry logic for failed requests
- *    - Show user-friendly error messages
- *    - Log errors for debugging
- *
- * 7. Loading States:
- *    - Add skeleton loaders for better UX
- *    - Show progress indicators for long-running operations
- *    - Implement optimistic updates where appropriate
- */
-
 import { ChevronRight, ListFilter, Plus, Search, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
@@ -55,6 +12,22 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   EntityDataTable,
   EntityDataCard,
 } from "@/features/dashboard/components/EntityDataTable";
@@ -63,6 +36,7 @@ import type { Publisher as PublisherType } from "../types/publisher.types";
 import { usePublisherViewModel } from "../view-models/usePublisherViewModel";
 
 import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
+import { EditPublisherModal } from "./EditPublisherModal";
 
 type StatusFilter = "Active" | "Inactive" | null;
 type PlatformFilter =
@@ -84,6 +58,7 @@ type FilterCategory =
 export function Publisher() {
   const variables = getVariables();
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(null);
   const [creationMethodFilter, setCreationMethodFilter] =
@@ -98,8 +73,68 @@ export function Publisher() {
   );
   const [selectedPublisherName, setSelectedPublisherName] =
     useState<string>("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const { publishers, isLoading, error } = usePublisherViewModel();
+  const { publishers, pagination, isLoading, error, load, refresh } = usePublisherViewModel();
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load data when filters change
+  useEffect(() => {
+    load({
+      search: debouncedSearchQuery,
+      status: statusFilter || undefined,
+      platform: platformFilter || undefined,
+      createdMethod: creationMethodFilter || undefined,
+      sortBy: "createdAt",
+      sortOrder: sortByFilter === "Old to New" ? "asc" : "desc",
+      page: 1, // Reset to page 1 on filter change
+      limit: pagination.limit
+    });
+  }, [debouncedSearchQuery, statusFilter, platformFilter, creationMethodFilter, sortByFilter, load]);
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    load({
+      search: debouncedSearchQuery,
+      status: statusFilter || undefined,
+      platform: platformFilter || undefined,
+      createdMethod: creationMethodFilter || undefined,
+      sortBy: "createdAt",
+      sortOrder: sortByFilter === "Old to New" ? "asc" : "desc",
+      page,
+      limit: pagination.limit
+    });
+  };
+
+  // Handle limit change
+  const handleLimitChange = (limitStr: string) => {
+    const limit = parseInt(limitStr);
+    load({
+      search: debouncedSearchQuery,
+      status: statusFilter || undefined,
+      platform: platformFilter || undefined,
+      createdMethod: creationMethodFilter || undefined,
+      sortBy: "createdAt",
+      sortOrder: sortByFilter === "Old to New" ? "asc" : "desc",
+      page: 1,
+      limit
+    });
+  };
+
+  // Poll for real-time updates every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refresh();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [refresh]);
 
   const columns = [
     { header: "ID", width: "200px" },
@@ -110,90 +145,9 @@ export function Publisher() {
     { header: "Actions", width: "340px" },
   ];
 
-  const filteredPublishers = (publishers || [])
-    .filter((publisher) => {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch =
-        (publisher.id || "").toLowerCase().includes(query) ||
-        (publisher.publisherName || "").toLowerCase().includes(query) ||
-        (publisher.pubPlatform || "").toLowerCase().includes(query);
-
-      const matchesStatus = !statusFilter || publisher.status === statusFilter;
-      const matchesPlatform =
-        !platformFilter || publisher.pubPlatform === platformFilter;
-      const matchesCreationMethod =
-        !creationMethodFilter ||
-        publisher.createdMethod === creationMethodFilter;
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesPlatform &&
-        matchesCreationMethod
-      );
-    })
-    .sort((a, b) => {
-      if (!sortByFilter) return 0;
-
-      const aId = parseInt((a.id || "0").replace(/\D/g, ""));
-      const bId = parseInt((b.id || "0").replace(/\D/g, ""));
-
-      if (sortByFilter === "New to Old") {
-        return bId - aId;
-      } else {
-        return aId - bId;
-      }
-    });
-
-  /**
-   * TODO: BACKEND - Implement Edit Publisher Details Handler
-   *
-   * Endpoint: GET /api/admin/publishers/:id
-   *
-   * Requirements:
-   * 1. Fetch full publisher details by ID including:
-   *    - All publisher fields (publisherName, platform, status, etc.)
-   *    - Brand guidelines (URL, file, or text content)
-   *    - Creation metadata (createdAt, createdBy, updatedAt, etc.)
-   *
-   * 2. Open a modal/form with pre-filled data for editing
-   *    - Pre-populate all form fields with fetched data
-   *    - Handle brand guidelines based on type (url/file/text)
-   *
-   * 3. On save, call: PUT /api/admin/publishers/:id
-   *    - Request body: {
-   *        publisherName: string,
-   *        platform: string,
-   *        status: "Active" | "Inactive",
-   *        brandGuidelines?: {
-   *          type: "url" | "file" | "text",
-   *          url?: string,
-   *          file?: File,
-   *          text?: string
-   *        }
-   *      }
-   *    - Validate all required fields
-   *    - Return updated publisher object
-   *
-   * 4. Error Handling:
-   *    - 404: Publisher not found - show error message
-   *    - 400: Validation errors - show field-specific errors in form
-   *    - 401: Unauthorized - redirect to login
-   *    - 403: Forbidden - show permission denied message
-   *    - 500: Server error - show generic error with retry option
-   *
-   * 5. Success:
-   *    - Close edit modal
-   *    - Refresh publishers list
-   *    - Show success notification
-   *    - Update local state if needed
-   */
-  const handleEditDetails = (_id: string) => {
-    // TODO: BACKEND - Implement edit publisher details functionality
-    // 1. Fetch publisher details: GET /api/admin/publishers/:id
-    // 2. Open edit modal with pre-filled data
-    // 3. On save: PUT /api/admin/publishers/:id
-    // 4. Handle success/error and refresh list
+  const handleEditDetails = (id: string) => {
+    setSelectedPublisherId(id);
+    setIsEditModalOpen(true);
   };
 
   const handleBrandGuidelines = (id: string) => {
@@ -218,29 +172,41 @@ export function Publisher() {
     creationMethodFilter !== null ||
     sortByFilter !== null;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">Loading publishers...</div>
-      </div>
-    );
-  }
+  const getPageNumbers = useCallback(() => {
+    const { page: currentPage, totalPages } = pagination;
+    const pages: (number | "ellipsis")[] = [];
+    const maxVisible = 5;
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-destructive">Error: {error}</div>
-      </div>
-    );
-  }
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push("ellipsis");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push("ellipsis");
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push("ellipsis");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push("ellipsis");
+        pages.push(totalPages);
+      }
+    }
 
-  if (!publishers || publishers.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">No publishers available</div>
-      </div>
-    );
-  }
+    return pages;
+  }, [pagination]);
 
   return (
     <div className="w-full">
@@ -537,22 +503,190 @@ export function Publisher() {
         </div>
       </div>
 
-      <EntityDataTable
-        data={filteredPublishers}
-        columns={columns}
-        renderRow={(publisher: PublisherType, index: number) => (
-          <EntityDataCard
-            id={publisher.id}
-            name={publisher.publisherName}
-            platform={publisher.pubPlatform}
-            createdMethod={publisher.createdMethod}
-            status={publisher.status}
-            variant={index % 2 === 0 ? "purple" : "blue"}
-            onEditDetails={() => handleEditDetails(publisher.id)}
-            onBrandGuidelines={() => handleBrandGuidelines(publisher.id)}
+      {isLoading && publishers.length === 0 ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-muted-foreground">Loading publishers...</div>
+        </div>
+      ) : error ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-destructive">Error: {error}</div>
+        </div>
+      ) : !publishers || publishers.length === 0 ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-muted-foreground">No publishers found</div>
+        </div>
+      ) : (
+        <>
+          <EntityDataTable
+            data={publishers}
+            columns={columns}
+            renderRow={(publisher: PublisherType, index: number) => (
+              <EntityDataCard
+                id={publisher.id}
+                name={publisher.publisherName}
+                platform={publisher.platform}
+                createdMethod={publisher.createdMethod}
+                status={publisher.status}
+                variant={index % 2 === 0 ? "purple" : "blue"}
+                onEditDetails={() => handleEditDetails(publisher.id)}
+                onBrandGuidelines={() => handleBrandGuidelines(publisher.id)}
+              />
+            )}
           />
-        )}
-      />
+
+          <div
+            className="flex items-center gap-4 mt-6 pt-6 border-t"
+            style={{ borderColor: variables.colors.inputBorderColor }}
+          >
+            <div
+              className="text-sm font-inter whitespace-nowrap"
+              style={{ color: variables.colors.descriptionColor }}
+            >
+              Showing{" "}
+              <span
+                className="font-medium"
+                style={{ color: variables.colors.inputTextColor }}
+              >
+                {Math.min((pagination.page - 1) * pagination.limit + 1, pagination.total)}
+              </span>{" "}
+              to{" "}
+              <span
+                className="font-medium"
+                style={{ color: variables.colors.inputTextColor }}
+              >
+                 {Math.min(pagination.page * pagination.limit, pagination.total)}
+              </span>{" "}
+              of{" "}
+              <span
+                className="font-medium"
+                style={{ color: variables.colors.inputTextColor }}
+              >
+                {pagination.total}
+              </span>{" "}
+              publishers
+            </div>
+            <Pagination>
+              <PaginationContent className="gap-1">
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (pagination.page > 1) handlePageChange(pagination.page - 1);
+                    }}
+                    className={`transition-all duration-200 ${
+                      pagination.page === 1
+                        ? "pointer-events-none opacity-40 cursor-not-allowed"
+                        : "cursor-pointer hover:bg-gray-100"
+                    }`}
+                    style={{
+                      color:
+                        pagination.page === 1
+                          ? variables.colors.descriptionColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  />
+                </PaginationItem>
+                {getPageNumbers().map((page, index) => (
+                  <PaginationItem key={index}>
+                    {page === "ellipsis" ? (
+                      <PaginationEllipsis className="text-gray-400" />
+                    ) : (
+                      <PaginationLink
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(page as number);
+                        }}
+                        isActive={pagination.page === page}
+                        className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${
+                          pagination.page === page
+                            ? "cursor-default"
+                            : "cursor-pointer hover:bg-gray-100"
+                        }`}
+                        style={{
+                          backgroundColor:
+                            pagination.page === page
+                              ? variables.colors.buttonDefaultBackgroundColor
+                              : "transparent",
+                          color:
+                            pagination.page === page
+                              ? variables.colors.buttonDefaultTextColor
+                              : variables.colors.inputTextColor,
+                          borderColor:
+                            pagination.page === page
+                              ? variables.colors.buttonDefaultBackgroundColor
+                              : variables.colors.inputBorderColor,
+                        }}
+                      >
+                        {page}
+                      </PaginationLink>
+                    )}
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (pagination.page < pagination.totalPages) handlePageChange(pagination.page + 1);
+                    }}
+                    className={`transition-all duration-200 ${
+                      pagination.page === pagination.totalPages
+                        ? "pointer-events-none opacity-40 cursor-not-allowed"
+                        : "cursor-pointer hover:bg-gray-100"
+                    }`}
+                    style={{
+                      color:
+                        pagination.page === pagination.totalPages
+                          ? variables.colors.descriptionColor
+                          : variables.colors.inputTextColor,
+                    }}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-sm font-inter whitespace-nowrap"
+                style={{ color: variables.colors.descriptionColor }}
+              >
+                Show:
+              </span>
+              <Select
+                value={pagination.limit.toString()}
+                onValueChange={(value) => handleLimitChange(value)}
+              >
+                <SelectTrigger
+                  className="h-8 w-20 text-xs font-inter border rounded-md"
+                  style={{
+                    backgroundColor: variables.colors.inputBackgroundColor,
+                    borderColor: variables.colors.inputBorderColor,
+                    color: variables.colors.inputTextColor,
+                  }}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </>
+      )}
+
+      {selectedPublisherId && isEditModalOpen && (
+        <EditPublisherModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          publisherId={selectedPublisherId}
+          onSuccess={() => {
+            setIsEditModalOpen(false);
+            refresh();
+          }}
+        />
+      )}
 
       {selectedPublisherId && (
         <BrandGuidelinesModal

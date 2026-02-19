@@ -5,40 +5,49 @@ import { getPublisher, updatePublisher, softDeletePublisher } from "@/features/a
 import { auth } from "@/lib/auth";
 import { getRateLimitKey } from "@/lib/getRateLimitKey";
 import { ratelimit } from "@/lib/ratelimit";
+import { updatePublisherSchema } from "@/lib/validations/admin";
 
 async function enforceRateLimit() {
     const key = await getRateLimitKey();
     const { success } = await ratelimit.limit(key);
     if (!success) {
-        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        return NextResponse.json({ error: "Too many requests", code: "RATE_LIMITED" }, { status: 429 });
     }
 }
 
 async function checkAdmin() {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || session.user.role !== "admin") return false;
-    return true;
+    return session?.user.role === "admin";
 }
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     if (!await checkAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id } = await params;
-    const row = await getPublisher(id);
+    const row = await getPublisher(params.id);
     if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(row);
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(req: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     if (!await checkAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const rl = await enforceRateLimit();
         if (rl) return rl;
 
-        const { id } = await params;
         const body = await req.json();
-        const row = await updatePublisher(id, body);
+        const parsed = updatePublisherSchema.safeParse({ ...body, id: params.id });
+
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: "Invalid input", details: parsed.error.flatten() },
+                { status: 400 }
+            );
+        }
+
+        const row = await updatePublisher(params.id, parsed.data);
         if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
         return NextResponse.json(row);
     } catch (err: unknown) {
@@ -47,15 +56,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     if (!await checkAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const rl = await enforceRateLimit();
         if (rl) return rl;
 
-        const { id } = await params;
-        await softDeletePublisher(id);
+        await softDeletePublisher(params.id);
         return new NextResponse(null, { status: 204 });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Internal server error";

@@ -21,11 +21,27 @@ export async function GET(req: Request) {
     if (!session || session.user.role !== "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") ?? undefined;
+    const search = searchParams.get("search") || undefined;
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const status = searchParams.get("status") as "Active" | "Inactive" | undefined;
+    const platform = searchParams.get("platform") || undefined;
+    const createdMethod = searchParams.get("createdMethod") as "Manually" | "API" | undefined;
+    const sortBy = searchParams.get("sortBy") || undefined;
+    const sortOrder = searchParams.get("sortOrder") as "asc" | "desc" || undefined;
 
     try {
-        const data = await listPublishers({ search });
-        return NextResponse.json({ data });
+        const result = await listPublishers({
+            search,
+            page,
+            limit,
+            status,
+            platform,
+            createdMethod,
+            sortBy,
+            sortOrder
+        });
+        return NextResponse.json(result);
     } catch (err: unknown) {
         return handleApiError(err);
     }

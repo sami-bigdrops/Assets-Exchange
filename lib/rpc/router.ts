@@ -2541,6 +2541,11 @@ export const adminRouter = {
       }),
 
     clearDummyData: os
+      .input(
+        z.object({
+          confirmText: z.string(),
+        })
+      )
       .output(
         z.object({
           success: z.boolean(),
@@ -2549,10 +2554,30 @@ export const adminRouter = {
           deletedCreativeRequests: z.number(),
         })
       )
-      .handler(async () => {
+      .handler(async ({ input }) => {
         const session = await requireRpcAdmin();
 
-        logger.rpc.info(`Clearing dummy data - userId: ${session.user.id}`);
+        const environment = process.env.NODE_ENV || "development";
+
+        logger.rpc.info(
+          `Attempting to clear dummy data - userId: ${session.user.id}, env: ${environment}`
+        );
+
+        if (environment === "production") {
+          logger.rpc.error(
+            `Blocked clear dummy data attempt in production - userId: ${session.user.id}`
+          );
+          throw new Error("This action is strictly prohibited in production.");
+        }
+
+        if (input.confirmText !== "OFFLINE_DATABASE_RESET") {
+          logger.rpc.warn(
+            `Invalid confirmation text for clear dummy data - userId: ${session.user.id}, received: ${input.confirmText}`
+          );
+          throw new Error(
+            "Invalid confirmation text. Please provide the correct code to proceed."
+          );
+        }
 
         try {
           // Get counts before deletion

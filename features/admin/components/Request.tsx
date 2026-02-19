@@ -27,7 +27,13 @@ import type {
 
 import { RequestSection } from "./RequestSection";
 
-export function Request() {
+const DEFAULT_TITLE = "Incoming Publisher Requests";
+
+interface RequestProps {
+  title?: string;
+}
+
+export function Request({ title = DEFAULT_TITLE }: RequestProps) {
   const variables = getVariables();
   const [isHovered, setIsHovered] = useState(false);
   const [requests, setRequests] = useState<CreativeRequest[]>([]);
@@ -82,7 +88,7 @@ export function Request() {
             className="xl:text-lg text-sm lg:text-base font-inter font-medium"
             style={{ color: variables.colors.cardHeaderTextColor }}
           >
-            Incoming Publisher Requests
+            {title}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center p-8">
@@ -105,7 +111,7 @@ export function Request() {
             className="xl:text-lg text-sm lg:text-base font-inter font-medium"
             style={{ color: variables.colors.cardHeaderTextColor }}
           >
-            Incoming Publisher Requests
+            {title}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center p-8">
@@ -125,7 +131,7 @@ export function Request() {
           className="xl:text-lg text-sm lg:text-base font-inter font-medium"
           style={{ color: variables.colors.cardHeaderTextColor }}
         >
-          Incoming Publisher Requests
+          {title}
         </CardTitle>
 
         <div className="flex items-center gap-3 flex-1 max-w-md justify-end">

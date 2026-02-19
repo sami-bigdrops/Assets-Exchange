@@ -10,7 +10,8 @@ export default async function OffersPage() {
     redirect("/auth");
   }
 
-  if (user.role !== "admin") {
+  const allowedRoles = ["admin", "administrator", "advertiser"];
+  if (!allowedRoles.includes(user.role)) {
     redirect("/unauthorized");
   }
 

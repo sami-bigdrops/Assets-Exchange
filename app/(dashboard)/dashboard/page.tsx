@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AdminDashboard } from "@/features/admin";
+import { AdvertiserDashboard } from "@/features/advertiser";
 import { getCurrentUser } from "@/lib/get-user";
 
 export default async function DashboardPage() {
@@ -10,8 +11,12 @@ export default async function DashboardPage() {
     redirect("/auth");
   }
 
-  if (user.role === "admin") {
+  if (user.role === "admin" || user.role === "administrator") {
     return <AdminDashboard />;
+  }
+
+  if (user.role === "advertiser") {
+    return <AdvertiserDashboard />;
   }
 
   return (

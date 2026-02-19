@@ -56,21 +56,10 @@ export default async function RequestsPage() {
     redirect("/auth");
   }
 
-  if (user.role === "admin") {
+  if (user.role === "admin" || user.role === "advertiser") {
     return <ManageRequestsPage />;
   }
 
-  /**
-   * TODO: BACKEND - Implement Publisher/Advertiser Views
-   *
-   * For Publisher users:
-   * - Show only their submitted requests
-   * - Filter API calls by publisher_id: GET /api/publisher/requests?publisherId={id}
-   *
-   * For Advertiser users:
-   * - Show only requests forwarded to them
-   * - Filter API calls by advertiser_id: GET /api/advertiser/requests?advertiserId={id}
-   */
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <div className="text-center space-y-4">

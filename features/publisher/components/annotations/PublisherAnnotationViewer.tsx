@@ -8,14 +8,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+type PositionData = {
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+};
+
 interface Annotation {
   id: string;
   creativeId: string;
-  positionData: { x: number; y: number };
+  positionData: PositionData;
   content: string;
   status: "active" | "resolved";
   adminId: string;
   createdAt: string;
+}
+
+function isRect(
+  p: PositionData
+): p is { x: number; y: number; width: number; height: number } {
+  const w = p.width ?? 0;
+  const h = p.height ?? 0;
+  return w > 0.5 && h > 0.5;
 }
 
 interface PublisherAnnotationViewerProps {
@@ -134,7 +149,7 @@ export function PublisherAnnotationViewer({
                 />
               )}
 
-              {/* SVG connector lines */}
+              {/* SVG annotation shapes */}
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none"
                 style={{ zIndex: 5, overflow: "visible" }}
@@ -142,38 +157,78 @@ export function PublisherAnnotationViewer({
                 {annotations.map((note) => {
                   const isSelected = selectedAnnotation?.id === note.id;
                   const isResolved = note.status === "resolved";
-                  const lineColor = isResolved
-                    ? "rgba(34,197,94,0.6)"
-                    : "rgba(239,68,68,0.6)";
-                  const selectedColor = isResolved
-                    ? "rgba(34,197,94,1)"
-                    : "rgba(239,68,68,1)";
-                  return (
-                    <line
-                      key={`line-${note.id}`}
-                      x1={`${note.positionData.x}%`}
-                      y1={`${note.positionData.y}%`}
-                      x2="100%"
-                      y2={`${note.positionData.y}%`}
-                      stroke={isSelected ? selectedColor : lineColor}
-                      strokeWidth={isSelected ? 2.5 : 1.5}
-                      strokeDasharray={isSelected ? "none" : "6 3"}
-                    />
-                  );
+                  const fillColor = isResolved
+                    ? "rgba(34,197,94,0.2)"
+                    : "rgba(239,68,68,0.2)";
+                  const strokeColor = isResolved
+                    ? isSelected
+                      ? "rgba(34,197,94,1)"
+                      : "rgba(34,197,94,0.6)"
+                    : isSelected
+                      ? "rgba(239,68,68,1)"
+                      : "rgba(239,68,68,0.6)";
+                  if (isRect(note.positionData)) {
+                    const pd = note.positionData;
+                    return (
+                      <rect
+                        key={note.id}
+                        x={`${pd.x}%`}
+                        y={`${pd.y}%`}
+                        width={`${pd.width}%`}
+                        height={`${pd.height}%`}
+                        fill={fillColor}
+                        stroke={strokeColor}
+                        strokeWidth={isSelected ? 2.5 : 1.5}
+                        strokeDasharray={isSelected ? "none" : "6 3"}
+                      />
+                    );
+                  }
+                  return null;
                 })}
               </svg>
 
-              {/* Annotation pins */}
+              {/* Annotation markers (rect buttons or pins) */}
               {annotations.map((note, index) => {
                 const isSelected = selectedAnnotation?.id === note.id;
                 const isResolved = note.status === "resolved";
+                const pd = note.positionData;
+                if (isRect(pd)) {
+                  return (
+                    <button
+                      key={note.id}
+                      type="button"
+                      onClick={() => setSelectedAnnotation(note)}
+                      className="absolute flex items-center justify-center shadow-md hover:opacity-90 transition-opacity"
+                      style={{
+                        left: `${pd.x}%`,
+                        top: `${pd.y}%`,
+                        width: `${Math.max(pd.width ?? 0, 4)}%`,
+                        height: `${Math.max(pd.height ?? 0, 4)}%`,
+                        minWidth: "24px",
+                        minHeight: "24px",
+                        backgroundColor: isResolved ? "#22c55e" : "#ef4444",
+                        border: `2px solid ${isResolved ? "#15803d" : "#b91c1c"}`,
+                        color: "white",
+                        fontSize: "13px",
+                        fontWeight: "bold",
+                        zIndex: 10,
+                        opacity: isSelected ? 1 : 0.85,
+                        boxShadow: isSelected
+                          ? `0 0 0 3px ${isResolved ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.5)"}`
+                          : "0 2px 4px rgba(0,0,0,0.2)",
+                      }}
+                    >
+                      {index + 1}
+                    </button>
+                  );
+                }
                 return (
                   <div key={note.id}>
                     <div
                       className="absolute rounded-full pointer-events-none transition-all duration-200"
                       style={{
-                        left: `${note.positionData.x}%`,
-                        top: `${note.positionData.y}%`,
+                        left: `${pd.x}%`,
+                        top: `${pd.y}%`,
                         transform: "translate(-50%, -50%)",
                         width: isSelected ? "60px" : "48px",
                         height: isSelected ? "60px" : "48px",
@@ -185,13 +240,14 @@ export function PublisherAnnotationViewer({
                       }}
                     />
                     <button
+                      type="button"
                       onClick={() => setSelectedAnnotation(note)}
                       className="absolute rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-110"
                       style={{
                         width: "32px",
                         height: "32px",
-                        left: `${note.positionData.x}%`,
-                        top: `${note.positionData.y}%`,
+                        left: `${pd.x}%`,
+                        top: `${pd.y}%`,
                         transform: `translate(-50%, -50%) ${isSelected ? "scale(1.15)" : ""}`,
                         backgroundColor: isResolved ? "#22c55e" : "#ef4444",
                         border: `2px solid ${isResolved ? "#15803d" : "#b91c1c"}`,
@@ -281,9 +337,10 @@ export function PublisherAnnotationViewer({
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {note.content}
-                        </p>
+                        <div
+                          className="text-sm text-gray-700 prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
+                          dangerouslySetInnerHTML={{ __html: note.content }}
+                        />
                       </div>
                     </div>
                   );

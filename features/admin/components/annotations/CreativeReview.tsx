@@ -3,38 +3,57 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-
-import { AnnotationLayer, type Annotation } from "./AnnotationLayer";
-import { AnnotationSidebar } from "./AnnotationSidebar";
+import { AnnotateCreative } from "./AnnotateCreative";
+import type { Annotation, AnnotationPositionData } from "./AnnotationLayer";
 
 interface CreativeReviewProps {
   creativeId: string;
   creativeUrl: string;
   creativeType: "image" | "html";
+  fileName?: string;
+  fileTypeLabel?: string;
+  fileSize?: number;
   actionLabel?: string;
   onAction?: () => void;
   isSubmitting?: boolean;
+  hideHeader?: boolean;
+  readOnly?: boolean;
 }
 
 export function CreativeReview({
   creativeId,
   creativeUrl,
   creativeType,
+  fileName,
+  fileTypeLabel,
+  fileSize = 0,
   actionLabel,
   onAction,
   isSubmitting,
+  hideHeader = false,
+  readOnly = false,
 }: CreativeReviewProps) {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [htmlContent, setHtmlContent] = useState("");
 
   const [isAddingMode, setIsAddingMode] = useState(false);
-  const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(
-    null
-  );
+  const [pendingAnnotation, setPendingAnnotation] =
+    useState<AnnotationPositionData | null>(null);
   const [selectedAnnotation, setSelectedAnnotation] =
     useState<Annotation | null>(null);
+  const [hoveredAnnotationId, setHoveredAnnotationId] = useState<string | null>(
+    null
+  );
+
+  const sortByCreatedAtAsc = useCallback(
+    (list: Annotation[]) =>
+      [...list].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ),
+    []
+  );
 
   const fetchHtmlContent = useCallback(async () => {
     if (creativeType !== "html" || !creativeUrl) return;
@@ -72,7 +91,7 @@ export function CreativeReview({
       );
       const data = await res.json();
       if (data.success) {
-        setAnnotations(data.data);
+        setAnnotations(sortByCreatedAtAsc(data.data));
       }
     } catch (error) {
       console.error("Failed to load annotations", error);
@@ -80,32 +99,38 @@ export function CreativeReview({
     } finally {
       setIsLoading(false);
     }
-  }, [creativeId]);
+  }, [creativeId, sortByCreatedAtAsc]);
 
   useEffect(() => {
     fetchAnnotations();
   }, [fetchAnnotations]);
 
-  const handlePinDrop = (position: { x: number; y: number }) => {
-    setPendingPin(position);
+  const handleAddAnnotation = (position: AnnotationPositionData) => {
+    setPendingAnnotation(position);
     setSelectedAnnotation(null);
   };
+
+  const handleToggleAddingMode = () => {
+    setIsAddingMode((prev) => !prev);
+    setPendingAnnotation(null);
+  };
+
   const handleSaveAnnotation = async (content: string) => {
-    if (!pendingPin) return;
+    if (!pendingAnnotation) return;
 
     const tempId = Math.random().toString();
     const newNote: Annotation = {
       id: tempId,
       creativeId,
       adminId: "me",
-      positionData: pendingPin,
+      positionData: pendingAnnotation,
       content,
       status: "active",
       createdAt: new Date().toISOString(),
     };
 
-    setAnnotations((prev) => [newNote, ...prev]);
-    setPendingPin(null);
+    setAnnotations((prev) => sortByCreatedAtAsc([...prev, newNote]));
+    setPendingAnnotation(null);
     setIsAddingMode(false);
 
     try {
@@ -114,7 +139,7 @@ export function CreativeReview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           creativeId,
-          positionData: pendingPin,
+          positionData: pendingAnnotation,
           content,
         }),
       });
@@ -124,7 +149,9 @@ export function CreativeReview({
       const savedData = await res.json();
 
       setAnnotations((prev) =>
-        prev.map((a) => (a.id === tempId ? savedData.data : a))
+        sortByCreatedAtAsc(
+          prev.map((a) => (a.id === tempId ? savedData.data : a))
+        )
       );
       toast.success("Annotation saved");
     } catch {
@@ -163,79 +190,71 @@ export function CreativeReview({
     }
   };
 
+  const handleUpdate = async (id: string, content: string) => {
+    setAnnotations((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, content } : a))
+    );
+
+    try {
+      const res = await fetch(`/api/admin/annotations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      toast.success("Annotation updated");
+    } catch {
+      toast.error("Failed to update");
+      fetchAnnotations();
+    }
+  };
+
+  const displayFileName = fileName ?? "Creative";
+  const displayFileTypeLabel =
+    fileTypeLabel ?? (creativeType === "image" ? "Image" : "HTML");
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-gray-500">Loading annotations...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full w-full bg-white overflow-hidden">
-      <div className="flex-1 relative overflow-auto flex items-center justify-center p-8 bg-gray-50 border-r border-gray-200">
-        <div className="absolute top-4 left-4 z-10 bg-white p-2 rounded shadow flex gap-2">
-          <button
-            onClick={() => {
-              setIsAddingMode(!isAddingMode);
-              setPendingPin(null);
-            }}
-            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-              isAddingMode
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {isAddingMode ? "Cancel Pin" : "+ Add Comment"}
-          </button>
-        </div>
-
-        {isLoading ? (
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <p className="text-sm text-gray-500">Loading annotations...</p>
-          </div>
-        ) : (
-          <AnnotationLayer
-            creativeUrl={creativeUrl}
-            type={creativeType}
-            annotations={annotations}
-            isAddingMode={isAddingMode}
-            onAddAnnotation={handlePinDrop}
-            onSelectAnnotation={(note) => {
-              setSelectedAnnotation(note);
-              setPendingPin(null);
-            }}
-            htmlContent={creativeType === "html" ? htmlContent : undefined}
-            selectedAnnotationId={selectedAnnotation?.id}
-            pendingPin={pendingPin}
-          />
-        )}
-      </div>
-
-      <div className="w-[400px] bg-white flex flex-col h-full border-l border-gray-200 shadow-xl z-10">
-        <div className="flex-1 overflow-hidden">
-          <AnnotationSidebar
-            annotations={annotations}
-            pendingAnnotation={pendingPin}
-            selectedAnnotation={selectedAnnotation}
-            onSave={handleSaveAnnotation}
-            onCancel={() => setPendingPin(null)}
-            onResolve={handleResolve}
-            onDelete={handleDelete}
-          />
-        </div>
-
-        {onAction && (
-          <div className="p-4 border-t bg-gray-50">
-            <Button
-              className="w-full"
-              variant="destructive"
-              onClick={onAction}
-              disabled={isSubmitting}
-            >
-              {isSubmitting
-                ? "Processing..."
-                : actionLabel || "Complete Review"}
-            </Button>
-            <p className="text-xs text-center text-gray-500 mt-2">
-              This will send the request back with these notes.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+    <AnnotateCreative
+      fileName={displayFileName}
+      fileTypeLabel={displayFileTypeLabel}
+      fileSize={fileSize}
+      creativeUrl={creativeUrl}
+      creativeType={creativeType}
+      htmlContent={creativeType === "html" ? htmlContent : undefined}
+      annotations={annotations}
+      pendingAnnotation={pendingAnnotation}
+      selectedAnnotation={selectedAnnotation}
+      hoveredAnnotationId={hoveredAnnotationId}
+      onSaveAnnotation={handleSaveAnnotation}
+      onCancelPin={() => setPendingAnnotation(null)}
+      onResolve={handleResolve}
+      onDelete={handleDelete}
+      onUpdate={handleUpdate}
+      onAddAnnotation={handleAddAnnotation}
+      onSelectAnnotation={(note) => {
+        setSelectedAnnotation(note);
+        setPendingAnnotation(null);
+      }}
+      onHoverAnnotation={setHoveredAnnotationId}
+      onLeaveAnnotation={() => setHoveredAnnotationId(null)}
+      isAddingMode={isAddingMode}
+      onToggleAddingMode={handleToggleAddingMode}
+      actionLabel={actionLabel}
+      onAction={onAction}
+      isSubmitting={isSubmitting}
+      hideHeader={hideHeader}
+      readOnly={readOnly}
+    />
   );
 }

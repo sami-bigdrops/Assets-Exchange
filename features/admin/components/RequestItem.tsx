@@ -36,7 +36,6 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import MultipleCreativesModal from "@/features/publisher/components/form/_modals/MultipleCreativesModal";
 import SingleCreativeViewModal from "@/features/publisher/components/form/_modals/SingleCreativeViewModal";
 
-
 import {
   getRequestViewData,
   type RequestViewData,
@@ -48,8 +47,6 @@ import {
   returnRequest,
 } from "../services/adminRequests.client";
 import type { CreativeRequest } from "../types/request.types";
-
-import { ReviewActionModal } from "./modals/ReviewActionModal";
 
 const MAX_COMMENT_LENGTH = 5000;
 
@@ -280,13 +277,6 @@ export function RequestItem({
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isViewLoading, setIsViewLoading] = useState(false);
 
-  // Review Action Modal State
-  const [reviewModal, setReviewModal] = useState<{
-    isOpen: boolean;
-    action: "reject" | "send-back";
-    creative: { id: string; url: string; type: string };
-  } | null>(null);
-
   // Character count for comments
   const rejectCommentsLength = useMemo(() => {
     const text = rejectComments.replace(/<[^>]*>/g, "");
@@ -408,23 +398,11 @@ export function RequestItem({
         return;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const isImage = !!(mainCreative as any).previewUrl;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const creativeUrl = (mainCreative as any).previewUrl || mainCreative.url;
-      const creativeType = isImage ? "image" : "html";
-
-      setReviewModal({
-        isOpen: true,
-        action,
-        creative: {
-          id: mainCreative.id,
-          url: creativeUrl,
-          type: creativeType,
-        },
-      });
       setRejectPopoverOpen(false);
       setSendBackPopoverOpen(false);
+      router.push(
+        `/annotate/${mainCreative.id}?requestId=${request.id}&action=${action}`
+      );
     } catch {
       toast.error("Failed to load creative for review");
     } finally {
@@ -1492,31 +1470,6 @@ export function RequestItem({
           creatives={viewData.creatives}
           onRemoveCreative={() => {}}
           creativeType={viewData.creativeType}
-        />
-      )}
-
-      {/* Review Action Modal */}
-      {reviewModal && (
-        <ReviewActionModal
-          isOpen={reviewModal.isOpen}
-          onClose={() => setReviewModal(null)}
-          title={
-            reviewModal.action === "send-back"
-              ? "Review & Send Back"
-              : "Review & Reject Request"
-          }
-          actionType={reviewModal.action}
-          requestId={request.id}
-          creative={reviewModal.creative}
-          onSuccess={() => {
-            setReviewModal(null);
-            onStatusUpdate?.(
-              request.id,
-              reviewModal.action === "send-back" ? "sent-back" : "rejected",
-              "admin"
-            );
-            router.refresh();
-          }}
         />
       )}
     </Accordion.Item>

@@ -13,10 +13,8 @@ export async function fetchAdminRequests(params: {
     }
   });
 
-  // Add cache-busting timestamp
   q.set("_t", Date.now().toString());
 
-  // Ensure query params are properly encoded
   const queryString = q.toString();
   const url = `/api/admin/requests${queryString ? `?${queryString}` : ""}`;
 

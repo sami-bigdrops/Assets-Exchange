@@ -9,7 +9,7 @@ import {
   FileCheck,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export type SubmissionType = "single" | "multiple" | "fromSubjectLines" | null;
 
@@ -30,38 +30,78 @@ export interface SubmissionInfo {
   iconColor: string;
 }
 
+type _MeResponse = {
+  hasConnectedTelegram?: boolean;
+  telegramId?: string | null;
+  telegramChatId?: string | number | null;
+  telegramConnected?: boolean;
+  telegramVerified?: boolean;
+  user?: {
+    hasConnectedTelegram?: boolean;
+    telegramId?: string | null;
+    telegramChatId?: string | number | null;
+    telegramConnected?: boolean;
+    telegramVerified?: boolean;
+  };
+} | null;
+
 export const useThankYouPage = () => {
   const searchParams = useSearchParams();
+
   const [submissionType, setSubmissionType] = useState<SubmissionType>(null);
   const [fileCount, setFileCount] = useState<number>(0);
-
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
 
+  // ✅ This must come from user profile state (/api/me)
+  const [hasConnectedTelegram, setHasConnectedTelegram] = useState(false);
+
   useEffect(() => {
-    // Get submission type from URL parameters
     const type = searchParams.get("type") as SubmissionType;
     const count = searchParams.get("count")
-      ? parseInt(searchParams.get("count")!)
+      ? parseInt(searchParams.get("count")!, 10)
       : 0;
     const code = searchParams.get("trackingCode");
 
-    if (code) {
-      setTrackingCode(code);
-    }
+    if (code) setTrackingCode(code);
 
-    // If no URL params, try to get from localStorage (fallback)
     if (!type) {
       const storedType = localStorage.getItem(
         "creativeSubmissionType"
       ) as SubmissionType;
       const storedCount = localStorage.getItem("creativeFileCount");
       setSubmissionType(storedType || "single");
-      setFileCount(storedCount ? parseInt(storedCount) : 1);
+      setFileCount(storedCount ? parseInt(storedCount, 10) : 1);
     } else {
       setSubmissionType(type);
       setFileCount(count || (type === "multiple" ? 5 : 1));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/me", { credentials: "include" });
+        if (!res.ok) {
+          if (!cancelled) setHasConnectedTelegram(false);
+          return;
+        }
+
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
+
+        // Your /api/me returns hasConnectedTelegram at root level ✅
+        setHasConnectedTelegram(data?.hasConnectedTelegram === true);
+      } catch {
+        if (!cancelled) setHasConnectedTelegram(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const statuses: StatusItem[] = useMemo(
     () => [
@@ -139,21 +179,12 @@ export const useThankYouPage = () => {
     }
   }, [submissionType, fileCount]);
 
-  const handleBackToHome = () => {
-    window.location.href = "/";
-  };
-
-  const handleContactSupport = () => {
-    window.open("mailto:support@example.com", "_blank");
-  };
-
   return {
     submissionType,
     fileCount,
     trackingCode,
+    hasConnectedTelegram,
     statuses,
     submissionInfo,
-    handleBackToHome,
-    handleContactSupport,
   };
 };

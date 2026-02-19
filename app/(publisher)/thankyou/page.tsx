@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, File } from "lucide-react";
+import { Mail, File, Smartphone } from "lucide-react";
 import Image from "next/image";
 import React, { Suspense } from "react";
 
@@ -71,6 +71,15 @@ function ThankYouPageContent() {
                     <p className="text-xl font-mono font-bold text-blue-700 tracking-wider">
                       {viewModel.trackingCode}
                     </p>
+                  </div>
+                )}
+                {viewModel.trackingCode && viewModel.hasConnectedTelegram && (
+                  <div className="mt-2 flex items-center justify-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 w-full max-w-sm">
+                    <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      We&apos;ve also sent this Tracking Link to your connected
+                      Telegram account!
+                    </span>
                   </div>
                 )}
               </div>

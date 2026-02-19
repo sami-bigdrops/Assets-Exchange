@@ -144,6 +144,7 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
                     validation.hasUploadedFiles,
                     validation.hasFromSubjectLines
                   );
+
                   if (result.valid) {
                     await handleSubmit();
                   } else {

@@ -27,6 +27,7 @@ export const createPublisherSchema = z.object({
     name: z.string().min(1, "Name is required").max(100),
     contactEmail: z.string().email().optional().or(z.literal("")),
     status: z.string().optional(),
+    platform: z.string().optional(),
 });
 
 export const updatePublisherSchema = createPublisherSchema.partial().extend({

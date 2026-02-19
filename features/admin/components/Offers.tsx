@@ -1068,6 +1068,7 @@ export function Offers() {
           onOpenChange={setIsBulkEditModalOpen}
           onSuccess={() => {
             setIsBulkEditModalOpen(false);
+            refresh();
           }}
         />
       </div>

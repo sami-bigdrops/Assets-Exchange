@@ -266,124 +266,6 @@ export function BulkEditModal({
     return Object.keys(errors).length === 0;
   };
 
-  /**
-   * TODO: BACKEND - Implement Bulk Update Offers API
-   *
-   * This function handles bulk updating of multiple offers with the same changes.
-   *
-   * Endpoint: POST /api/admin/offers/bulk-update
-   *
-   * Request Body:
-   * {
-   *   offerIds: string[],                    // Array of offer IDs to update
-   *   updates: {
-   *     visibility?: "Public" | "Internal" | "Hidden",
-   *     brandGuidelines?: {
-   *       type: "url" | "file" | "text",
-   *       url?: string,                       // If type is "url"
-   *       file?: File,                        // If type is "file" - use FormData
-   *       text?: string,                      // If type is "text"
-   *       notes?: string                      // Brand guidelines notes
-   *     }
-   *   }
-   * }
-   *
-   * For file uploads:
-   * - Use multipart/form-data
-   * - Validate file size (max 10MB)
-   * - Validate file type (only .doc, .docx, .pdf)
-   * - Store file in secure storage (S3, Azure Blob, etc.)
-   * - Return file URL or file ID for reference
-   * - Apply the same file to all selected offers OR create separate file per offer
-   *
-   * Response:
-   * {
-   *   success: boolean,
-   *   updated: number,                        // Number of offers successfully updated
-   *   failed: number,                         // Number of offers that failed to update
-   *   results: {
-   *     successful: string[],                 // Array of offer IDs that were updated
-   *     failed: {                            // Array of offers that failed
-   *       offerId: string,
-   *       error: string
-   *     }[]
-   *   },
-   *   message: string
-   * }
-   *
-   * Error Handling:
-   * - 400: Validation errors
-   *   - Empty offerIds array
-   *   - Invalid offer IDs
-   *   - Invalid visibility value
-   *   - Invalid file type/size for brand guidelines
-   *   - Invalid URL format for brand guidelines
-   *   - Return field-specific errors
-   *
-   * - 401: Unauthorized - redirect to login
-   * - 403: Forbidden - show permission denied
-   * - 404: One or more offers not found - return which offers failed
-   * - 413: File too large - show specific error
-   * - 500: Server error - show error with retry option
-   *
-   * Business Rules:
-   * - All selected offers must exist
-   * - If any offer fails, return partial success with details
-   * - Brand guidelines file: Decide if same file applies to all or separate files
-   * - Brand guidelines URL: Can be same for all offers
-   * - Brand guidelines text: Can be same for all offers
-   * - Brand guidelines notes: Can be same for all offers
-   * - Log all bulk update actions in audit trail
-   * - Track which user performed the bulk update
-   *
-   * Performance Considerations:
-   * - For large batches (100+ offers), consider:
-   *   - Processing in chunks
-   *   - Background job processing
-   *   - Progress updates via WebSocket/SSE
-   *   - Show progress bar to user
-   *
-   * Implementation Example:
-   * ```typescript
-   * const formDataToSend = new FormData();
-   * formDataToSend.append('offerIds', JSON.stringify(Array.from(selectedOfferIds)));
-   * formDataToSend.append('visibility', formData.visibility);
-   *
-   * if (formData.brandGuidelinesType === 'file' && formData.brandGuidelinesFile) {
-   *   formDataToSend.append('brandGuidelinesFile', formData.brandGuidelinesFile);
-   *   formDataToSend.append('brandGuidelinesType', 'file');
-   * } else if (formData.brandGuidelinesType === 'url') {
-   *   formDataToSend.append('brandGuidelinesUrl', formData.brandGuidelinesUrl);
-   *   formDataToSend.append('brandGuidelinesType', 'url');
-   * } else if (formData.brandGuidelinesType === 'text') {
-   *   formDataToSend.append('brandGuidelinesText', formData.brandGuidelinesText);
-   *   formDataToSend.append('brandGuidelinesType', 'text');
-   * }
-   *
-   * if (formData.brandGuidelinesNotes) {
-   *   formDataToSend.append('brandGuidelinesNotes', formData.brandGuidelinesNotes);
-   * }
-   *
-   * const response = await fetch('/api/admin/offers/bulk-update', {
-   *   method: 'POST',
-   *   headers: {
-   *     'Authorization': `Bearer ${getAuthToken()}`
-   *   },
-   *   body: formDataToSend
-   * });
-   *
-   * if (!response.ok) {
-   *   const error = await response.json();
-   *   throw new Error(error.message || 'Failed to update offers');
-   * }
-   *
-   * const result = await response.json();
-   * // Handle partial success if needed
-   * if (result.failed > 0) {
-   *   // Show warning with failed offer IDs
-   * }
-   * ```
-   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -404,7 +286,6 @@ export function BulkEditModal({
       setIsSubmitting(true);
       setError(null);
 
-      // TODO: BACKEND - Replace with actual API call
       // Prepare updates object
       const updates: {
         visibility?: "Public" | "Internal" | "Hidden";

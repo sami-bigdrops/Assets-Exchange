@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { bulkUpdateOffers } from "@/features/admin/services/offer.service";
 import { auth } from "@/lib/auth";
+import { saveBuffer } from "@/lib/fileStorage";
 import { getRateLimitKey } from "@/lib/getRateLimitKey";
 import { ratelimit } from "@/lib/ratelimit";
 
@@ -89,12 +90,20 @@ export async function POST(req: Request) {
         const text = formData.get("brandGuidelinesText") as string | null;
         if (text) brandGuidelines.text = text;
       } else if (brandGuidelinesType === "file") {
-        const fileUrl = formData.get("brandGuidelinesFileUrl") as string | null;
-        const fileName = formData.get("brandGuidelinesFileName") as
-          | string
-          | null;
-        if (fileUrl) brandGuidelines.fileUrl = fileUrl;
-        if (fileName) brandGuidelines.fileName = fileName;
+        const file = formData.get("brandGuidelinesFile") as File | null;
+        if (file && file.size > 0) {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          const saved = await saveBuffer(buffer, file.name);
+          brandGuidelines.fileUrl = saved.url;
+          brandGuidelines.fileName = saved.fileName;
+        } else {
+          const fileUrl = formData.get("brandGuidelinesFileUrl") as string | null;
+          const fileName = formData.get("brandGuidelinesFileName") as
+            | string
+            | null;
+          if (fileUrl) brandGuidelines.fileUrl = fileUrl;
+          if (fileName) brandGuidelines.fileName = fileName;
+        }
       }
 
       updates.brandGuidelines = brandGuidelines;

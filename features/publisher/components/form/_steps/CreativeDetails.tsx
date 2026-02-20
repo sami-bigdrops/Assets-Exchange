@@ -17,11 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type CreativeDetailsProps } from "@/features/publisher/types/form.types";
-import {
-  loadFilesState,
-  saveFilesState,
-  clearFilesState,
-} from "@/features/publisher/utils/autoSave";
+import { clearFilesState } from "@/features/publisher/utils/autoSave";
+import type { SavedFileMeta } from "@/features/publisher/utils/autoSave";
 
 import FileUploadModal from "../_modals/FileUploadModal";
 import FromSubjectLinesModal from "../_modals/FromSubjectLinesModal";
@@ -91,6 +88,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   onDataChange,
   validation,
   initialFiles,
+  creativeFilesRef,
 }) => {
   const variables = getVariables();
   const [offerSearchTerm, setOfferSearchTerm] = useState("");
@@ -145,7 +143,6 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileMeta[]>([]);
   const [uploadedZipFileName, setUploadedZipFileName] = useState<string>("");
-  const [isInitialMount, setIsInitialMount] = useState(true);
 
   const [_uploading, setUploading] = useState(false);
   const [selectedCreative, setSelectedCreative] =
@@ -155,16 +152,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   >([]);
 
   useEffect(() => {
-    const savedFilesState = loadFilesState();
-    if (savedFilesState && savedFilesState.files.length > 0) {
-      setUploadedFiles(savedFilesState.files as UploadedFileMeta[]);
-      setUploadedZipFileName(savedFilesState.uploadedZipFileName || "");
-      setHasUploadedFiles(true);
-      validation.updateFileUploadState(true);
-    }
-    const timer = setTimeout(() => setIsInitialMount(false), 200);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    clearFilesState();
   }, []);
 
   const appliedInitialFilesRef = useRef(false);
@@ -191,7 +179,6 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     setUploadedFiles(mapped);
     setHasUploadedFiles(true);
     validation.updateFileUploadState(true);
-    saveFilesState(mapped, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFiles]);
 
@@ -243,23 +230,27 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     }
   }, [uploadedFiles.length, formData.creativeType, uploadedFiles]);
 
-  // Auto-save files state whenever uploadedFiles changes (but not on initial mount)
-  // Use debouncing to reduce save frequency and prevent quota errors
   useEffect(() => {
-    // Skip saving on initial mount to avoid overwriting loaded data
-    if (!isInitialMount) {
-      // Debounce the save operation to avoid excessive writes
-      const timeoutId = setTimeout(() => {
-        try {
-          saveFilesState(uploadedFiles, uploadedZipFileName);
-        } catch (error) {
-          console.error("Failed to auto-save files state:", error);
-        }
-      }, 500); // Wait 500ms after last change before saving
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [uploadedFiles, uploadedZipFileName, isInitialMount]);
+    if (!creativeFilesRef) return;
+    const mapped: SavedFileMeta[] = uploadedFiles.map((f) => ({
+      id: f.id,
+      name: f.name,
+      url: f.url,
+      size: f.size,
+      type: f.type,
+      source: f.source ?? "single",
+      html: f.html,
+      isHidden: f.isHidden,
+      previewUrl: f.previewUrl,
+      assetCount: f.assetCount,
+      hasAssets: f.hasAssets,
+      fromLines: f.fromLines,
+      subjectLines: f.subjectLines,
+      additionalNotes: f.additionalNotes,
+      metadata: f.metadata,
+    }));
+    creativeFilesRef.current = { files: mapped, uploadedZipFileName };
+  }, [uploadedFiles, uploadedZipFileName, creativeFilesRef]);
 
   const { updateFileUploadState, updateFromSubjectLinesState } = validation;
 

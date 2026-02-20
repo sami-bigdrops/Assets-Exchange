@@ -7,6 +7,7 @@ import {
   saveFormState,
   clearFormState,
   loadFilesState,
+  saveFilesState,
 } from "../utils/autoSave";
 import { type SavedFileMeta } from "../utils/autoSave";
 
@@ -63,6 +64,10 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
   const [formData, setFormData] =
     useState<PublisherFormData>(INITIAL_FORM_DATA);
   const hasRestoredRef = useRef(false);
+  const currentCreativeFilesRef = useRef<{
+    files: SavedFileMeta[];
+    uploadedZipFileName: string;
+  } | null>(null);
 
   useEffect(() => {
     if (editingRequestId) {
@@ -145,8 +150,13 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const savedFilesState = loadFilesState();
-      const files = savedFilesState?.files || [];
+      const fromRef = currentCreativeFilesRef.current;
+      const files: SavedFileMeta[] =
+        fromRef?.files ?? loadFilesState()?.files ?? [];
+      const uploadedZipFileName = fromRef?.uploadedZipFileName ?? "";
+      if (files.length > 0) {
+        saveFilesState(files, uploadedZipFileName);
+      }
 
       if (editingRequestId && editData) {
         const response = await fetch("/api/submit/update", {
@@ -273,5 +283,6 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
     handleSubmit,
     editingRequestId: editingRequestId ?? null,
     editData,
+    currentCreativeFilesRef,
   };
 };

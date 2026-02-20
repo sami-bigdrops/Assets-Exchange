@@ -27,4 +27,24 @@ export interface CreativeDetailsProps {
     format?: string | null;
     metadata?: Record<string, unknown>;
   }> | null;
+  creativeFilesRef?: React.MutableRefObject<{
+    files: Array<{
+      id: string;
+      name: string;
+      url: string;
+      size: number;
+      type: string;
+      source?: "single" | "zip";
+      html?: boolean;
+      isHidden?: boolean;
+      previewUrl?: string;
+      assetCount?: number;
+      hasAssets?: boolean;
+      fromLines?: string;
+      subjectLines?: string;
+      additionalNotes?: string;
+      metadata?: Record<string, unknown>;
+    }>;
+    uploadedZipFileName: string;
+  } | null>;
 }

@@ -37,6 +37,7 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
     isSubmitting,
     handleSubmit,
     editData,
+    currentCreativeFilesRef,
   } = usePublisherForm(requestId ?? null);
 
   const validation = useFormValidation(formData);
@@ -149,6 +150,7 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
             {renderStep({
               step: currentStep,
               formData,
+              creativeFilesRef: currentCreativeFilesRef,
               onDataChange,
               validation,
               editData,

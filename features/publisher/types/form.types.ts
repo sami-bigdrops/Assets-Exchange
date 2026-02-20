@@ -5,6 +5,7 @@ export interface PersonalDetailProps {
   formData: PublisherFormData;
   onDataChange: (data: Partial<PublisherFormData>) => void;
   validation: ReturnType<typeof useFormValidation>;
+  onNextOrSubmit?: () => void;
 }
 
 export interface ContactDetailsProps {

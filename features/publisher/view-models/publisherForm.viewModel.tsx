@@ -15,6 +15,7 @@ interface RenderStepProps {
   onDataChange: (data: Partial<PublisherFormData>) => void;
   validation: ReturnType<typeof useFormValidation>;
   editData?: EditRequestData | null;
+  onNextOrSubmit?: () => void;
 }
 
 export const getStepLabel = (step: number): string => {
@@ -36,6 +37,7 @@ export const renderStep = ({
   onDataChange,
   validation,
   editData,
+  onNextOrSubmit,
 }: RenderStepProps): ReactNode => {
   switch (step) {
     case 1:
@@ -44,6 +46,7 @@ export const renderStep = ({
           formData={formData}
           onDataChange={onDataChange}
           validation={validation}
+          onNextOrSubmit={onNextOrSubmit}
         />
       );
     case 2:

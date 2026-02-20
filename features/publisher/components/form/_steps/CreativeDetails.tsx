@@ -696,7 +696,9 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
             {validation.hasFieldError("offerId") &&
               validation.isFieldTouched("offerId") && (
                 <p
-                  className="text-xs font-inter"
+                  id="offerId-error"
+                  role="alert"
+                  className="text-xs font-inter mt-1.5 min-h-5"
                   style={{ color: variables.colors.inputErrorColor }}
                 >
                   {validation.getFieldErrorMessage("offerId")}
@@ -724,7 +726,9 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                 style={{
                   borderColor:
                     validation.hasFieldError("creativeType") &&
-                    validation.isFieldTouched("creativeType")
+                    validation.isFieldTouched("creativeType") &&
+                    validation.getFieldErrorMessage("creativeType") ===
+                      "Please select a creative type"
                       ? variables.colors.inputErrorColor
                       : variables.colors.inputBorderColor,
                 }}
@@ -744,22 +748,18 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
               </SelectContent>
             </Select>
             {validation.hasFieldError("creativeType") &&
-              validation.isFieldTouched("creativeType") && (
+              validation.isFieldTouched("creativeType") &&
+              validation.getFieldErrorMessage("creativeType") ===
+                "Please select a creative type" && (
                 <p
-                  className="text-xs font-inter"
+                  id="creativeType-error"
+                  role="alert"
+                  className="text-xs font-inter mt-1.5 min-h-5"
                   style={{ color: variables.colors.inputErrorColor }}
                 >
                   {validation.getFieldErrorMessage("creativeType")}
                 </p>
               )}
-            {!hasUploadedFiles && validation.hasFieldError("creativeType") && (
-              <p
-                className="text-xs font-inter"
-                style={{ color: variables.colors.inputErrorColor }}
-              >
-                Please upload at least one creative file
-              </p>
-            )}
           </div>
         </div>
 
@@ -1036,33 +1036,37 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
               )}
             </div>
           )}
-          {formData.creativeType === "email" &&
+          {!hasUploadedFiles &&
             !hasFromSubjectLines &&
-            !hasUploadedFiles && (
-              <div className="space-y-2 mt-2">
-                {(validation.hasFieldError("fromLines") ||
-                  validation.hasFieldError("subjectLines")) && (
-                  <div className="space-y-1">
-                    {validation.hasFieldError("fromLines") && (
-                      <p
-                        className="text-xs font-inter"
-                        style={{ color: variables.colors.inputErrorColor }}
-                      >
-                        {validation.getFieldErrorMessage("fromLines")}
-                      </p>
-                    )}
-                    {validation.hasFieldError("subjectLines") && (
-                      <p
-                        className="text-xs font-inter"
-                        style={{ color: variables.colors.inputErrorColor }}
-                      >
-                        {validation.getFieldErrorMessage("subjectLines")}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            (() => {
+              const creativeTypeMsg =
+                validation.getFieldErrorMessage("creativeType");
+              const isUploadRelatedError =
+                validation.hasFieldError("creativeType") &&
+                creativeTypeMsg !== "Please select a creative type";
+              const hasFromSubjectError =
+                validation.hasFieldError("fromLines") ||
+                validation.hasFieldError("subjectLines");
+              if (!isUploadRelatedError && !hasFromSubjectError) return null;
+              const message = isUploadRelatedError
+                ? creativeTypeMsg
+                : validation.hasFieldError("fromLines") &&
+                    validation.hasFieldError("subjectLines")
+                  ? "Please add from lines and subject lines, or upload a creative."
+                  : validation.hasFieldError("fromLines")
+                    ? validation.getFieldErrorMessage("fromLines")
+                    : validation.getFieldErrorMessage("subjectLines");
+              return (
+                <p
+                  id="upload-creatives-error"
+                  role="alert"
+                  className="text-xs font-inter"
+                  style={{ color: variables.colors.inputErrorColor }}
+                >
+                  {message}
+                </p>
+              );
+            })()}
         </div>
 
         <div className="space-y-2">

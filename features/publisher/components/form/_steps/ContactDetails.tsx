@@ -207,11 +207,23 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
                   ? variables.colors.inputErrorColor
                   : variables.colors.inputBorderColor,
             }}
+            aria-invalid={
+              validation.hasFieldError("email") &&
+              validation.isFieldTouched("email")
+            }
+            aria-describedby={
+              validation.hasFieldError("email") &&
+              validation.isFieldTouched("email")
+                ? "email-error"
+                : undefined
+            }
           />
           {validation.hasFieldError("email") &&
             validation.isFieldTouched("email") && (
               <p
-                className="text-xs font-inter"
+                id="email-error"
+                role="alert"
+                className="text-xs font-inter mt-1.5 min-h-5"
                 style={{ color: variables.colors.inputErrorColor }}
               >
                 {validation.getFieldErrorMessage("email")}
@@ -248,11 +260,23 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({
                     ? variables.colors.inputErrorColor
                     : variables.colors.inputBorderColor,
               }}
+              aria-invalid={
+                validation.hasFieldError("telegramId") &&
+                validation.isFieldTouched("telegramId")
+              }
+              aria-describedby={
+                validation.hasFieldError("telegramId") &&
+                validation.isFieldTouched("telegramId")
+                  ? "telegramId-error"
+                  : undefined
+              }
             />
             {validation.hasFieldError("telegramId") &&
               validation.isFieldTouched("telegramId") && (
                 <p
-                  className="text-xs font-inter mt-1"
+                  id="telegramId-error"
+                  role="alert"
+                  className="text-xs font-inter mt-1.5 min-h-5"
                   style={{ color: variables.colors.inputErrorColor }}
                 >
                   {validation.getFieldErrorMessage("telegramId")}

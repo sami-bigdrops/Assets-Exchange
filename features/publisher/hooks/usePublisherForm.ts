@@ -1,5 +1,5 @@
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 
 import {
@@ -40,28 +40,42 @@ export interface EditRequestData {
   formDataPatch: Partial<PublisherFormData>;
 }
 
+const INITIAL_FORM_DATA: PublisherFormData = {
+  affiliateId: "",
+  companyName: "",
+  firstName: "",
+  lastName: "",
+  email: "",
+  telegramId: "",
+  offerId: "",
+  creativeType: "",
+  additionalNotes: "",
+  fromLines: "",
+  subjectLines: "",
+  priority: "medium",
+};
+
 export const usePublisherForm = (editingRequestId?: string | null) => {
   const router = useRouter();
-  const savedState = loadFormState();
-  const [currentStep, setCurrentStep] = useState(savedState?.currentStep || 1);
+  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editData, setEditData] = useState<EditRequestData | null>(null);
-  const [formData, setFormData] = useState<PublisherFormData>(
-    savedState?.formData || {
-      affiliateId: "",
-      companyName: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      telegramId: "",
-      offerId: "",
-      creativeType: "",
-      additionalNotes: "",
-      fromLines: "",
-      subjectLines: "",
-      priority: "medium",
+  const [formData, setFormData] =
+    useState<PublisherFormData>(INITIAL_FORM_DATA);
+  const hasRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (editingRequestId) {
+      hasRestoredRef.current = true;
+      return;
     }
-  );
+    const saved = loadFormState();
+    if (saved?.formData && saved?.currentStep) {
+      setFormData(saved.formData);
+      setCurrentStep(saved.currentStep);
+    }
+    hasRestoredRef.current = true;
+  }, [editingRequestId]);
 
   useEffect(() => {
     if (!editingRequestId) return;
@@ -102,8 +116,9 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
   }, [editingRequestId]);
 
   useEffect(() => {
+    if (!editingRequestId && !hasRestoredRef.current) return;
     saveFormState(formData, currentStep);
-  }, [formData, currentStep]);
+  }, [formData, currentStep, editingRequestId]);
 
   const onDataChange = useCallback((data: Partial<PublisherFormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
@@ -163,6 +178,8 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
           throw new Error(err.error ?? "Failed to resubmit");
         }
         clearFormState();
+        setFormData(INITIAL_FORM_DATA);
+        setCurrentStep(1);
         toast.success("Resubmitted successfully");
         router.push("/thankyou?type=resubmit");
         return;
@@ -216,6 +233,8 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
       const result = await response.json();
 
       clearFormState();
+      setFormData(INITIAL_FORM_DATA);
+      setCurrentStep(1);
 
       const fileCount = files.length;
       let submissionType = "single";

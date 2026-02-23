@@ -5,7 +5,8 @@ export type WorkflowEvent = {
     | "request.rejected_by_admin"
     | "request.sent_back_by_admin"
     | "response.approved_by_advertiser"
-    | "response.sent_back_by_advertiser";
+    | "response.sent_back_by_advertiser"
+    | "response.rejected_by_advertiser";
   requestId: string;
   offerName: string;
   fromStatus: string;

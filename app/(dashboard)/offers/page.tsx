@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { Offers } from "@/features/admin";
+import { Offers } from "@/features/admin/components/Offers";
 import { getCurrentUser } from "@/lib/get-user";
 
 export default async function OffersPage() {
@@ -17,7 +17,7 @@ export default async function OffersPage() {
 
   return (
     <div>
-      <Offers />
+      <Offers userRole={user.role} />
     </div>
   );
 }

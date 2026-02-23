@@ -44,7 +44,10 @@ export async function DELETE(
 ) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || session.user.role !== "admin") {
+    if (
+      !session ||
+      (session.user.role !== "admin" && session.user.role !== "advertiser")
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

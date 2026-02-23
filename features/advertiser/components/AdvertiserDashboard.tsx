@@ -1,9 +1,10 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { Request } from "@/features/admin";
-import { StatsCard } from "@/features/dashboard";
+import { Request } from "@/features/admin/components/Request";
+import { StatsCard } from "@/features/dashboard/components/StatsCard";
 
+import { fetchAdvertiserRequests } from "../services/requests.client";
 import { useAdvertiserDashboardViewModel } from "../view-models/useAdvertiserDashboardViewModel";
 
 import { AdvertiserPerformanceChart } from "./AdvertiserPerformanceChart";
@@ -37,7 +38,14 @@ export function AdvertiserDashboard() {
         </div>
       )}
       {!isLoading && <AdvertiserPerformanceChart />}
-      {!isLoading && <Request title="Incoming Admin Requests" />}
+      {!isLoading && (
+        <Request
+          title="Incoming Admin Requests"
+          fetcher={fetchAdvertiserRequests}
+          viewAllLink="/advertiser/requests"
+          isAdvertiserView={true}
+        />
+      )}
     </div>
   );
 }

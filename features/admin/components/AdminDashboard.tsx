@@ -1,12 +1,14 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { AdminPerformanceChart } from "@/features/admin";
-import { Request } from "@/features/admin";
-import { Response } from "@/features/admin";
-import { StatsCard } from "@/features/dashboard";
+import { StatsCard } from "@/features/dashboard/components/StatsCard";
 
 import { useAdminDashboardViewModel } from "../view-models/useAdminDashboardViewModel";
+
+import { AdminPerformanceChart } from "./AdminPerformanceChart";
+import { Request } from "./Request";
+import { Response } from "./Response";
+
 
 export function AdminDashboard() {
   const { data, isLoading, error } = useAdminDashboardViewModel();

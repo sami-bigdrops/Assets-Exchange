@@ -1,39 +1,10 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import type { DashboardStats } from "@/features/admin/types/dashboard.types";
+import { getDashboardStats } from "@/features/advertiser/services/dashboard.service";
 import { auth } from "@/lib/auth";
 
-
 export const dynamic = "force-dynamic";
-
-function createEmptyDashboardStats(): DashboardStats {
-  const zero = { today: 0, yesterday: 0 };
-  const hist = { yesterday: 0, currentMonth: 0, lastMonth: 0 };
-  return {
-    totals: {
-      totalAssets: 0,
-      newRequests: 0,
-      approved: 0,
-      rejected: 0,
-      pending: 0,
-    },
-    trends: {
-      totalAssets: zero,
-      newRequests: zero,
-      approved: zero,
-      rejected: zero,
-      pending: zero,
-    },
-    historicalData: {
-      totalAssets: hist,
-      newRequests: hist,
-      approved: hist,
-      rejected: hist,
-      pending: hist,
-    },
-  };
-}
 
 export async function GET() {
   const session = await auth.api.getSession({
@@ -45,7 +16,7 @@ export async function GET() {
   }
 
   try {
-    const stats = createEmptyDashboardStats();
+    const stats = await getDashboardStats(session.user.id);
     return NextResponse.json(stats);
   } catch (error: unknown) {
     const message =

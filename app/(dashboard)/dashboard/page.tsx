@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
 
-import { AdminDashboard } from "@/features/admin";
-import { AdvertiserDashboard } from "@/features/advertiser";
+import { AdminDashboard } from "@/features/admin/components/AdminDashboard";
+import { AdvertiserDashboard } from "@/features/advertiser/components/AdvertiserDashboard";
 import { getCurrentUser } from "@/lib/get-user";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-
   if (!user) {
     redirect("/auth");
   }

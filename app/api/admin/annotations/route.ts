@@ -42,7 +42,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || session.user.role !== "admin") {
+    if (
+      !session ||
+      (session.user.role !== "admin" && session.user.role !== "advertiser")
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

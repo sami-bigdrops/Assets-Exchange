@@ -58,12 +58,13 @@ export function EntityDataTable<T>({
           {columns.map((column, index) => (
             <div
               key={index}
-              className={`font-inter font-semibold text-xs xl:text-sm tracking-wide ${column.align === "left"
-                ? "text-left"
-                : column.align === "right"
-                  ? "text-right"
-                  : "text-center"
-                }`}
+              className={`font-inter font-semibold text-xs xl:text-sm tracking-wide ${
+                column.align === "left"
+                  ? "text-left"
+                  : column.align === "right"
+                    ? "text-right"
+                    : "text-center"
+              }`}
               style={{ color: variables.colors.cardHeaderTextColor }}
             >
               {column.header}
@@ -233,19 +234,22 @@ export const EntityDataCard = memo(
               <div className="font-mono text-xs space-y-1">
                 <p>{id}</p>
                 {displayId && displayId !== id && (
-                  <p className="text-muted-foreground text-[10px]">Internal ID: {displayId}</p>
+                  <p className="text-muted-foreground text-[10px]">
+                    Internal ID: {displayId}
+                  </p>
                 )}
               </div>
             </TooltipContent>
           </Tooltip>
 
           <div
-            className={`font-inter text-xs xl:text-sm leading-relaxed ${nameAlign === "center"
-              ? "text-center"
-              : nameAlign === "right"
-                ? "text-right"
-                : "text-left"
-              }`}
+            className={`font-inter text-xs xl:text-sm leading-relaxed ${
+              nameAlign === "center"
+                ? "text-center"
+                : nameAlign === "right"
+                  ? "text-right"
+                  : "text-left"
+            }`}
             style={{ color: variables.colors.requestCardTextColor }}
           >
             {name}
@@ -273,7 +277,8 @@ export const EntityDataCard = memo(
                   status.toLowerCase() === "active"
                     ? variables.colors.approvedAssetsBackgroundColor
                     : variables.colors.rejectedAssetsBackgroundColor,
-                borderColor: status.toLowerCase() === "active" ? "#86EFAC" : "#FFC2A3",
+                borderColor:
+                  status.toLowerCase() === "active" ? "#86EFAC" : "#FFC2A3",
                 color:
                   status.toLowerCase() === "active"
                     ? variables.colors.approvedAssetsIconColor
@@ -294,31 +299,35 @@ export const EntityDataCard = memo(
           <div
             className={`flex ${actionButtonsLayout === "row" ? "flex-row" : "flex-col"} gap-2.5 items-center justify-center`}
           >
-            <Button
-              variant="outline"
-              className="h-9 w-36 font-inter text-xs xl:text-sm font-medium rounded-md border shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"
-              style={{
-                color: variables.colors.requestCardViewButtonTextColor,
-                borderColor: variables.colors.requestCardViewButtonBorderColor,
-                backgroundColor:
-                  variables.colors.requestCardViewButtonBackgroundColor,
-              }}
-              onClick={onEditDetails}
-            >
-              Edit Details
-            </Button>
-            <Button
-              className="h-9 w-36 font-inter text-xs xl:text-sm font-medium rounded-md border-0 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"
-              style={{
-                color: variables.colors.requestCardApproveButtonTextColor,
-                backgroundColor:
-                  variables.colors.requestCardApproveButtonBackgroundColor,
-              }}
-              onClick={onBrandGuidelines}
-            >
-              Brand Guidelines
-            </Button>
-
+            {onEditDetails && (
+              <Button
+                variant="outline"
+                className="h-9 w-36 font-inter text-xs xl:text-sm font-medium rounded-md border shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"
+                style={{
+                  color: variables.colors.requestCardViewButtonTextColor,
+                  borderColor:
+                    variables.colors.requestCardViewButtonBorderColor,
+                  backgroundColor:
+                    variables.colors.requestCardViewButtonBackgroundColor,
+                }}
+                onClick={onEditDetails}
+              >
+                Edit Details
+              </Button>
+            )}
+            {onBrandGuidelines && (
+              <Button
+                className="h-9 w-36 font-inter text-xs xl:text-sm font-medium rounded-md border-0 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"
+                style={{
+                  color: variables.colors.requestCardApproveButtonTextColor,
+                  backgroundColor:
+                    variables.colors.requestCardApproveButtonBackgroundColor,
+                }}
+                onClick={onBrandGuidelines}
+              >
+                Brand Guidelines
+              </Button>
+            )}
           </div>
         </div>
       </div>

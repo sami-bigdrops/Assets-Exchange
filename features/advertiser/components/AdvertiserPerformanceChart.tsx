@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { PerformanceChart } from "@/features/dashboard";
+import { PerformanceChart } from "@/features/dashboard/components/PerformanceChart";
 import type {
   ComparisonType,
   MetricType,

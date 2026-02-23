@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CreativeReview } from "@/features/admin";
+import { CreativeReview } from "@/features/admin/components/annotations/CreativeReview";
 
 interface RequestCreativeRow {
   id: string;

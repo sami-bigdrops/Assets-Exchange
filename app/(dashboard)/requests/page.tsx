@@ -32,7 +32,8 @@
 
 import { redirect } from "next/navigation";
 
-import { ManageRequestsPage } from "@/features/admin";
+import { ManageRequestsPage } from "@/features/admin/components/ManageRequestsPage";
+import { ManageResponsesPage } from "@/features/admin/components/ManageResponsesPage";
 import { getCurrentUser } from "@/lib/get-user";
 
 export default async function RequestsPage() {
@@ -56,8 +57,12 @@ export default async function RequestsPage() {
     redirect("/auth");
   }
 
-  if (user.role === "admin" || user.role === "advertiser") {
+  if (user.role === "admin") {
     return <ManageRequestsPage />;
+  }
+
+  if (user.role === "advertiser") {
+    return <ManageResponsesPage isAdvertiserView={true} />;
   }
 
   return (

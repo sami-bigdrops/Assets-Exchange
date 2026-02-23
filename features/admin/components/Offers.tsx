@@ -106,7 +106,12 @@ type FilterCategory =
   | "sortBy"
   | null;
 
-export function Offers() {
+interface OffersProps {
+  userRole?: string;
+}
+
+export function Offers({ userRole }: OffersProps) {
+  const isAdmin = userRole === "admin" || userRole === "administrator";
   const variables = getVariables();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -137,7 +142,6 @@ export function Offers() {
   const syncProgress = offersSync.progress;
   const syncTotal = offersSync.total;
 
-
   const { offers, isLoading, error, refresh } = useOffersViewModel();
 
   useEffect(() => {
@@ -149,7 +153,6 @@ export function Offers() {
       refresh(debouncedSearchQuery);
     }
   }, [isSyncActive, syncStatus, refresh, debouncedSearchQuery]);
-
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -195,8 +198,7 @@ export function Offers() {
             !creationMethodFilter ||
             (creationMethodFilter === "Manually" &&
               offer.createdMethod === "Manually") ||
-            (creationMethodFilter === "API" &&
-              offer.createdMethod === "API");
+            (creationMethodFilter === "API" && offer.createdMethod === "API");
 
           return (
             matchesSearch &&
@@ -283,12 +285,10 @@ export function Offers() {
     return pages;
   }, [currentPage, totalPages]);
 
-
   const handleEditDetails = useCallback((id: string) => {
     setSelectedOfferId(id);
     setIsEditDetailsModalOpen(true);
   }, []);
-
 
   const handleBrandGuidelines = useCallback(
     (id: string) => {
@@ -349,7 +349,6 @@ export function Offers() {
     []
   );
 
-
   const clearAllFilters = useCallback(() => {
     setStatusFilter(null);
     setVisibilityFilter(null);
@@ -369,36 +368,38 @@ export function Offers() {
   return (
     <div className="w-full">
       <div className="space-y-6">
-
-
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3 flex-wrap">
-            <Button
-              className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
-              style={{
-                color: variables.colors.buttonOutlineTextColor,
-                borderColor: variables.colors.buttonOutlineBorderColor,
-                backgroundColor: variables.colors.cardBackground,
-              }}
-              onClick={() => setIsNewOfferModalOpen(true)}
-            >
-              <Plus className="h-5 w-5" />
-              Create New Manually
-            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:bg-transparent hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
+                  style={{
+                    color: variables.colors.buttonOutlineTextColor,
+                    borderColor: variables.colors.buttonOutlineBorderColor,
+                    backgroundColor: variables.colors.cardBackground,
+                  }}
+                  onClick={() => setIsNewOfferModalOpen(true)}
+                >
+                  <Plus className="h-5 w-5" />
+                  Create New Manually
+                </Button>
 
-            <Button
-              variant="outline"
-              className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
-              style={{
-                color: variables.colors.buttonOutlineTextColor,
-                borderColor: variables.colors.buttonOutlineBorderColor,
-                backgroundColor: variables.colors.cardBackground,
-              }}
-              onClick={() => setIsBulkEditModalOpen(true)}
-            >
-              <Edit className="h-5 w-5" />
-              Bulk Edit
-            </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
+                  style={{
+                    color: variables.colors.buttonOutlineTextColor,
+                    borderColor: variables.colors.buttonOutlineBorderColor,
+                    backgroundColor: variables.colors.cardBackground,
+                  }}
+                  onClick={() => setIsBulkEditModalOpen(true)}
+                >
+                  <Edit className="h-5 w-5" />
+                  Bulk Edit
+                </Button>
+              </>
+            )}
 
             {/* 
             TODO: BACKEND - Implement Pull Via API Functionality
@@ -472,85 +473,95 @@ export function Offers() {
                - Options: API wins, Manual wins, or prompt user
                - Log all conflicts for review
           */}
-            <div className="flex items-center gap-2">
-              {isSyncActive ? (
-                <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm border border-indigo-100 rounded-lg pl-3 pr-2 h-12 shadow-sm animate-in fade-in slide-in-from-right-4 duration-300 ring-1 ring-indigo-50/50">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-indigo-500 rounded-full blur-[2px] opacity-20 animate-pulse"></div>
-                    <Spinner className="h-4 w-4 text-indigo-600 relative z-10" />
-                  </div>
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                {isSyncActive ? (
+                  <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm border border-indigo-100 rounded-lg pl-3 pr-2 h-12 shadow-sm animate-in fade-in slide-in-from-right-4 duration-300 ring-1 ring-indigo-50/50">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-indigo-500 rounded-full blur-[2px] opacity-20 animate-pulse"></div>
+                      <Spinner className="h-4 w-4 text-indigo-600 relative z-10" />
+                    </div>
 
-                  <div className="flex flex-col min-w-[200px] gap-1.5">
-                    <div className="flex justify-between items-end text-xs gap-4">
-                      <span className="font-semibold text-indigo-950 whitespace-nowrap">
-                        {syncStatus === "pending" ? (
-                          <span className="animate-pulse">Initializing...</span>
-                        ) : (
-                          <span className="flex items-center gap-1">
-                            Syncing
-                            <span className="text-indigo-600 font-bold">
-                              {Math.round((syncProgress / (syncTotal || 1)) * 100)}%
+                    <div className="flex flex-col min-w-[200px] gap-1.5">
+                      <div className="flex justify-between items-end text-xs gap-4">
+                        <span className="font-semibold text-indigo-950 whitespace-nowrap">
+                          {syncStatus === "pending" ? (
+                            <span className="animate-pulse">
+                              Initializing...
                             </span>
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-slate-500 text-[10px] font-mono tabular-nums tracking-tight whitespace-nowrap">
-                        {syncProgress.toLocaleString()} / {syncTotal > 0 ? syncTotal.toLocaleString() : "--"}
-                      </span>
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              Syncing
+                              <span className="text-indigo-600 font-bold">
+                                {Math.round(
+                                  (syncProgress / (syncTotal || 1)) * 100
+                                )}
+                                %
+                              </span>
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-slate-500 text-[10px] font-mono tabular-nums tracking-tight whitespace-nowrap">
+                          {syncProgress.toLocaleString()} /{" "}
+                          {syncTotal > 0 ? syncTotal.toLocaleString() : "--"}
+                        </span>
+                      </div>
+
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-50">
+                        <div
+                          className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(99,102,241,0.4)]"
+                          style={{
+                            width: `${Math.min(100, Math.max(0, (syncProgress / (syncTotal || 1)) * 100))}%`,
+                          }}
+                        />
+                      </div>
                     </div>
 
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-50">
-                      <div
-                        className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 bg-[length:200%_100%] animate-[shimmer_2s_infinite] rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(99,102,241,0.4)]"
-                        style={{ width: `${Math.min(100, Math.max(0, (syncProgress / (syncTotal || 1)) * 100))}%` }}
-                      />
-                    </div>
-                  </div>
+                    <div className="h-6 w-[1px] bg-slate-200 mx-1"></div>
 
-                  <div className="h-6 w-[1px] bg-slate-200 mx-1"></div>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors duration-200"
-                    onClick={async () => {
-                      if (isSyncActive) {
-                        try {
-                          await cancelSync("everflow_sync");
-                          toast.info("Cancelling sync...");
-                        } catch (e) {
-                          console.error(e);
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors duration-200"
+                      onClick={async () => {
+                        if (isSyncActive) {
+                          try {
+                            await cancelSync("everflow_sync");
+                            toast.info("Cancelling sync...");
+                          } catch (e) {
+                            console.error(e);
+                          }
                         }
+                      }}
+                      title="Cancel Sync"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
+                    style={{
+                      color: variables.colors.buttonOutlineTextColor,
+                      borderColor: variables.colors.buttonOutlineBorderColor,
+                      backgroundColor: variables.colors.cardBackground,
+                    }}
+                    onClick={async () => {
+                      try {
+                        await startSync("everflow_sync");
+                      } catch (err) {
+                        toast.error("Failed to start sync");
+                        console.error(err);
                       }
                     }}
-                    title="Cancel Sync"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <Download className="h-5 w-5 mr-2" />
+                    Sync Everflow
                   </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="h-10 font-inter font-medium rounded-md border shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_0_rgba(0,0,0,0.15)] transition-shadow duration-200"
-                  style={{
-                    color: variables.colors.buttonOutlineTextColor,
-                    borderColor: variables.colors.buttonOutlineBorderColor,
-                    backgroundColor: variables.colors.cardBackground,
-                  }}
-                  onClick={async () => {
-                    try {
-                      await startSync("everflow_sync");
-                    } catch (err) {
-                      toast.error("Failed to start sync");
-                      console.error(err);
-                    }
-                  }}
-                >
-                  <Download className="h-5 w-5 mr-2" />
-                  Sync Everflow
-                </Button>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             <Popover
               open={isFilterOpen}
@@ -585,10 +596,11 @@ export function Offers() {
                   >
                     <button
                       onClick={() => setActiveCategory("status")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "status"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
+                        activeCategory === "status"
+                          ? "bg-gray-100 text-gray-900 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
                     >
                       <span>Status</span>
                       <div className="flex items-center gap-2">
@@ -618,10 +630,11 @@ export function Offers() {
                     </button>
                     <button
                       onClick={() => setActiveCategory("visibility")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "visibility"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
+                        activeCategory === "visibility"
+                          ? "bg-gray-100 text-gray-900 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
                     >
                       <span>Visibility</span>
                       <div className="flex items-center gap-2">
@@ -651,10 +664,11 @@ export function Offers() {
                     </button>
                     <button
                       onClick={() => setActiveCategory("creationMethod")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "creationMethod"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
+                        activeCategory === "creationMethod"
+                          ? "bg-gray-100 text-gray-900 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
                     >
                       <span>Creation Method</span>
                       <div className="flex items-center gap-2">
@@ -684,10 +698,11 @@ export function Offers() {
                     </button>
                     <button
                       onClick={() => setActiveCategory("sortBy")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "sortBy"
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
+                        activeCategory === "sortBy"
+                          ? "bg-gray-100 text-gray-900 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
                     >
                       <span>Sort By</span>
                       <ChevronRight className="h-4 w-4 text-gray-400" />
@@ -705,12 +720,16 @@ export function Offers() {
                                 setStatusFilter(status as StatusFilter);
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
-                                refresh(debouncedSearchQuery, status as "Active" | "Inactive");
+                                refresh(
+                                  debouncedSearchQuery,
+                                  status as "Active" | "Inactive"
+                                );
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${statusFilter === status
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                                }`}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
+                                statusFilter === status
+                                  ? "bg-gray-100 text-gray-900 font-medium"
+                                  : "text-gray-600 hover:bg-gray-50"
+                              }`}
                             >
                               {status}
                             </button>
@@ -720,24 +739,27 @@ export function Offers() {
 
                       {activeCategory === "visibility" && (
                         <div className="space-y-1">
-                          {["Public", "Internal", "Hidden"].map((visibility) => (
-                            <button
-                              key={visibility}
-                              onClick={() => {
-                                setVisibilityFilter(
-                                  visibility as VisibilityFilter
-                                );
-                                setIsFilterOpen(false);
-                                setActiveCategory(null);
-                              }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${visibilityFilter === visibility
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
+                          {["Public", "Internal", "Hidden"].map(
+                            (visibility) => (
+                              <button
+                                key={visibility}
+                                onClick={() => {
+                                  setVisibilityFilter(
+                                    visibility as VisibilityFilter
+                                  );
+                                  setIsFilterOpen(false);
+                                  setActiveCategory(null);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
+                                  visibilityFilter === visibility
+                                    ? "bg-gray-100 text-gray-900 font-medium"
+                                    : "text-gray-600 hover:bg-gray-50"
                                 }`}
-                            >
-                              {visibility}
-                            </button>
-                          ))}
+                              >
+                                {visibility}
+                              </button>
+                            )
+                          )}
                         </div>
                       )}
 
@@ -753,10 +775,11 @@ export function Offers() {
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${creationMethodFilter === method
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                                }`}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
+                                creationMethodFilter === method
+                                  ? "bg-gray-100 text-gray-900 font-medium"
+                                  : "text-gray-600 hover:bg-gray-50"
+                              }`}
                             >
                               {method}
                             </button>
@@ -774,10 +797,11 @@ export function Offers() {
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${sortByFilter === sort
-                                ? "bg-gray-100 text-gray-900 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
-                                }`}
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
+                                sortByFilter === sort
+                                  ? "bg-gray-100 text-gray-900 font-medium"
+                                  : "text-gray-600 hover:bg-gray-50"
+                              }`}
                             >
                               {sort}
                             </button>
@@ -873,10 +897,15 @@ export function Offers() {
                 gridTemplateColumns={columns
                   .map((col) => col.width || "1fr")
                   .join(" ")}
-                onEditDetails={() => handleEditDetails(offer.id)}
+                onEditDetails={
+                  isAdmin ? () => handleEditDetails(offer.id) : undefined
+                }
                 onBrandGuidelines={() => handleBrandGuidelines(offer.id)}
-                onVisibilityChange={(visibility) =>
-                  handleVisibilityChange(offer.id, visibility)
+                onVisibilityChange={
+                  isAdmin
+                    ? (visibility) =>
+                        handleVisibilityChange(offer.id, visibility)
+                    : undefined
                 }
               />
             )}
@@ -929,10 +958,11 @@ export function Offers() {
                           setCurrentPage((prev) => prev - 1);
                         }
                       }}
-                      className={`transition-all duration-200 ${currentPage === 1
-                        ? "pointer-events-none opacity-40 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-gray-100"
-                        }`}
+                      className={`transition-all duration-200 ${
+                        currentPage === 1
+                          ? "pointer-events-none opacity-40 cursor-not-allowed"
+                          : "cursor-pointer hover:bg-gray-100"
+                      }`}
                       style={{
                         color:
                           currentPage === 1
@@ -952,10 +982,11 @@ export function Offers() {
                             setCurrentPage(page);
                           }}
                           isActive={currentPage === page}
-                          className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${currentPage === page
-                            ? "cursor-default"
-                            : "cursor-pointer hover:bg-gray-100"
-                            }`}
+                          className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${
+                            currentPage === page
+                              ? "cursor-default"
+                              : "cursor-pointer hover:bg-gray-100"
+                          }`}
                           style={{
                             backgroundColor:
                               currentPage === page
@@ -984,10 +1015,11 @@ export function Offers() {
                           setCurrentPage((prev) => prev + 1);
                         }
                       }}
-                      className={`transition-all duration-200 ${currentPage === totalPages
-                        ? "pointer-events-none opacity-40 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-gray-100"
-                        }`}
+                      className={`transition-all duration-200 ${
+                        currentPage === totalPages
+                          ? "pointer-events-none opacity-40 cursor-not-allowed"
+                          : "cursor-pointer hover:bg-gray-100"
+                      }`}
                       style={{
                         color:
                           currentPage === totalPages
@@ -1007,8 +1039,7 @@ export function Offers() {
                 </span>
                 <Select
                   value={itemsPerPage.toString()}
-                  onValueChange={(_value) => {
-                  }}
+                  onValueChange={(_value) => {}}
                 >
                   <SelectTrigger
                     className="h-8 w-20 text-xs font-inter border rounded-md"
@@ -1071,6 +1102,6 @@ export function Offers() {
           }}
         />
       </div>
-    </div >
+    </div>
   );
 }

@@ -19,9 +19,10 @@ interface ReviewActionModalProps {
   onClose: () => void;
   title: string;
   creative: { id: string; url: string; type: string };
-  actionType: "reject" | "send-back";
+  actionType: "reject" | "send-back" | "view";
   requestId: string;
   onSuccess: () => void;
+  isAdvertiserView?: boolean;
 }
 
 export function ReviewActionModal({
@@ -32,22 +33,42 @@ export function ReviewActionModal({
   actionType,
   requestId,
   onSuccess,
+  isAdvertiserView = false,
 }: ReviewActionModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleConfirmAction = async () => {
     setIsSubmitting(true);
     try {
-      const endpoint =
-        actionType === "send-back"
-          ? `/api/admin/requests/${requestId}/return`
-          : `/api/admin/requests/${requestId}/reject`;
+      let endpoint = "";
+      let body = {};
+
+      if (isAdvertiserView) {
+        endpoint = `/api/advertiser/responses/${requestId}/send-back`;
+        body = {
+          reason: "Please review the specific annotations added to the file.",
+        };
+      } else {
+        endpoint =
+          actionType === "send-back"
+            ? `/api/admin/requests/${requestId}/return`
+            : `/api/admin/requests/${requestId}/reject`;
+        if (actionType === "send-back") {
+          body = {
+            feedback:
+              "Please review the specific annotations added to the file.",
+          };
+        } else {
+          body = {
+            reason: "Please review the specific annotations added to the file.",
+          };
+        }
+      }
+
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          feedback: "Please review the specific annotations added to the file.",
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) throw new Error("Action failed");
@@ -86,12 +107,15 @@ export function ReviewActionModal({
             creativeUrl={creative.url}
             creativeType={creative.type.includes("image") ? "image" : "html"}
             actionLabel={
-              actionType === "send-back"
-                ? "Confirm Send Back"
-                : "Confirm Rejection"
+              actionType === "view"
+                ? undefined
+                : actionType === "send-back"
+                  ? "Confirm Send Back"
+                  : "Confirm Rejection"
             }
-            onAction={handleConfirmAction}
+            onAction={actionType === "view" ? undefined : handleConfirmAction}
             isSubmitting={isSubmitting}
+            isReadOnly={actionType === "view"}
           />
         </div>
       </DialogContent>

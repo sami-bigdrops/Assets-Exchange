@@ -83,7 +83,13 @@ type SortOption =
   | "advertiser-desc";
 type PriorityFilter = "all" | "high" | "medium";
 
-export function ManageResponsesPage() {
+export interface ManageResponsesPageProps {
+  isAdvertiserView?: boolean;
+}
+
+export function ManageResponsesPage({
+  isAdvertiserView = false,
+}: ManageResponsesPageProps) {
   const variables = getVariables();
   const { responses, isLoading, error, refresh, updateRequestStatus } =
     useManageResponsesViewModel();
@@ -169,23 +175,16 @@ export function ManageResponsesPage() {
       } else if (activeTab === "rejected") {
         // Rejected by advertiser
         filtered = filtered.filter(
-          (response) =>
-            response.status.toLowerCase() === "rejected" &&
-            response.approvalStage?.toLowerCase() === "advertiser"
+          (response) => response.advertiserStatus === "rejected"
         );
       } else if (activeTab === "approved") {
-        // Fully approved (both admin and advertiser approved)
         filtered = filtered.filter(
-          (response) =>
-            response.status.toLowerCase() === "approved" &&
-            response.approvalStage?.toLowerCase() === "completed"
+          (response) => response.advertiserStatus === "approved"
         );
       } else if (activeTab === "sent-back") {
         // Sent back by advertiser
         filtered = filtered.filter(
-          (response) =>
-            response.status.toLowerCase() === "sent-back" &&
-            response.approvalStage?.toLowerCase() === "advertiser"
+          (response) => response.advertiserStatus === "sent_back"
         );
       } else {
         // Other statuses - filter by status (for advertiser actions)
@@ -304,19 +303,13 @@ export function ManageResponsesPage() {
         r.approvalStage?.toLowerCase() === "advertiser"
     ).length;
     const approved = responses.filter(
-      (r) =>
-        r.status.toLowerCase() === "approved" &&
-        r.approvalStage?.toLowerCase() === "completed"
+      (r) => r.advertiserStatus === "approved"
     ).length;
     const rejected = responses.filter(
-      (r) =>
-        r.status.toLowerCase() === "rejected" &&
-        r.approvalStage?.toLowerCase() === "advertiser"
+      (r) => r.advertiserStatus === "rejected"
     ).length;
     const sentBack = responses.filter(
-      (r) =>
-        r.status.toLowerCase() === "sent-back" &&
-        r.approvalStage?.toLowerCase() === "advertiser"
+      (r) => r.advertiserStatus === "sent_back"
     ).length;
     return { all, pendingApprovals, approved, rejected, sentBack };
   }, [responses]);
@@ -881,7 +874,7 @@ export function ManageResponsesPage() {
                 requests={paginatedResponses}
                 startIndex={startIndex}
                 viewButtonText="View Response"
-                isAdvertiserView={true}
+                isAdvertiserView={isAdvertiserView}
                 onRefresh={refresh}
                 onStatusUpdate={updateRequestStatus}
               />

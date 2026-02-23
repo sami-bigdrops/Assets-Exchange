@@ -452,6 +452,8 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                           subjectLines,
                           status,
                           grammarFeedback,
+                          GrammarStatus: (data.metadata?.GrammarStatus ||
+                            data.GrammarStatus) as Status,
                           metadata: {
                             ...f.metadata,
                             // preserve existing metadata, and also keep a copy for consistency

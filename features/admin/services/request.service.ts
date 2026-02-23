@@ -69,6 +69,9 @@ export async function getAdminRequests({
         clientId: creativeRequests.clientId,
         clientName: creativeRequests.clientName,
         advertiserEverflowId: advertisers.everflowAdvertiserId,
+        advertiserStatus: creativeRequests.advertiserStatus,
+        advertiserComments: creativeRequests.advertiserComments,
+        advertiserRespondedAt: creativeRequests.advertiserRespondedAt,
       })
       .from(creativeRequests)
       .leftJoin(offers, eq(creativeRequests.offerId, offers.id))

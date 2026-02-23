@@ -12,6 +12,7 @@ export interface CreativeRequest {
   id: string;
   date: string;
   offerId: string;
+  everflowOfferId?: string | null;
   offerName: string;
   creativeType: string;
   creativeCount: number;
@@ -25,6 +26,9 @@ export interface CreativeRequest {
   priority: string;
   status: RequestStatus;
   approvalStage: ApprovalStage;
+  advertiserStatus?: string | null;
+  advertiserRespondedAt?: Date | string | null;
+  advertiserComments?: string | null;
 
   parentRequestId?: string;
   childResponseId?: string;

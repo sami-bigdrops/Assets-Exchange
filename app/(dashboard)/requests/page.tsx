@@ -32,7 +32,8 @@
 
 import { redirect } from "next/navigation";
 
-import { ManageRequestsPage } from "@/features/admin";
+import { ManageRequestsPage } from "@/features/admin/components/ManageRequestsPage";
+import { ManageResponsesPage } from "@/features/admin/components/ManageResponsesPage";
 import { getCurrentUser } from "@/lib/get-user";
 
 export default async function RequestsPage() {
@@ -60,17 +61,10 @@ export default async function RequestsPage() {
     return <ManageRequestsPage />;
   }
 
-  /**
-   * TODO: BACKEND - Implement Publisher/Advertiser Views
-   *
-   * For Publisher users:
-   * - Show only their submitted requests
-   * - Filter API calls by publisher_id: GET /api/publisher/requests?publisherId={id}
-   *
-   * For Advertiser users:
-   * - Show only requests forwarded to them
-   * - Filter API calls by advertiser_id: GET /api/advertiser/requests?advertiserId={id}
-   */
+  if (user.role === "advertiser") {
+    return <ManageResponsesPage isAdvertiserView={true} />;
+  }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <div className="text-center space-y-4">

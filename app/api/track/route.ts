@@ -57,12 +57,14 @@ export async function GET(req: NextRequest) {
       fromLines: requestData.fromLines || null,
       subjectLines: requestData.subjectLines || null,
       additionalNotes: requestData.additionalNotes || null,
-      files: requestData.creatives.map((file) => ({
+      creatives: requestData.creatives.map((file) => ({
         id: file.id,
         name: file.name,
         url: file.url,
         status: file.status,
         type: file.type,
+        size: file.size,
+        createdAt: file.createdAt,
       })),
     };
 

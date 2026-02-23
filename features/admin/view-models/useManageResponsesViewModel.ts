@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 
-import { fetchRequests } from "../services/requests.client";
+import { fetchRequests } from "@/features/admin/services/requests.client";
+import { fetchAdvertiserRequests } from "@/features/advertiser/services/requests.client";
+
 import type { CreativeRequest, RequestStatus } from "../types/request.types";
 
-export function useManageResponsesViewModel() {
+export function useManageResponsesViewModel(isAdvertiserView: boolean = false) {
   const [responses, setResponses] = useState<CreativeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,12 +16,21 @@ export function useManageResponsesViewModel() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const res = await fetchRequests({
+
+      const fetcher = isAdvertiserView
+        ? fetchAdvertiserRequests
+        : fetchRequests;
+      const res = await fetcher({
         page: 1,
         limit: 1000,
-        approvalStage: "advertiser",
       });
-      setResponses([...(res.data || [])]);
+      const advertiserResponses = (res.data || []).filter(
+        (req) =>
+          req.approvalStage === "advertiser" ||
+          req.approvalStage === "completed" ||
+          req.advertiserStatus != null
+      );
+      setResponses(advertiserResponses);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch responses"
@@ -28,7 +39,7 @@ export function useManageResponsesViewModel() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAdvertiserView]);
 
   const refresh = useCallback(async () => {
     refreshCounter.current += 1;

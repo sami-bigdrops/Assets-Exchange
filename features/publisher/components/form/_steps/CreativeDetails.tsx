@@ -17,11 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type CreativeDetailsProps } from "@/features/publisher/types/form.types";
-import {
-  loadFilesState,
-  saveFilesState,
-  clearFilesState,
-} from "@/features/publisher/utils/autoSave";
+import { clearFilesState } from "@/features/publisher/utils/autoSave";
+import type { SavedFileMeta } from "@/features/publisher/utils/autoSave";
 
 import FileUploadModal from "../_modals/FileUploadModal";
 import FromSubjectLinesModal from "../_modals/FromSubjectLinesModal";
@@ -272,6 +269,7 @@ type UploadedFileMeta = {
      */
     grammar_feedback?: GrammarFeedbackInput;
     grammarFeedback?: GrammarFeedbackInput;
+    GrammarStatus?: Status;
     status?: Status;
   };
 };
@@ -303,6 +301,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   onDataChange,
   validation,
   initialFiles,
+  creativeFilesRef,
 }) => {
   const variables = getVariables();
   const [offerSearchTerm, setOfferSearchTerm] = useState("");
@@ -357,7 +356,6 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileMeta[]>([]);
   const [uploadedZipFileName, setUploadedZipFileName] = useState<string>("");
-  const [isInitialMount, setIsInitialMount] = useState(true);
 
   const [_uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -368,16 +366,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   >([]);
 
   useEffect(() => {
-    const savedFilesState = loadFilesState();
-    if (savedFilesState && savedFilesState.files.length > 0) {
-      setUploadedFiles(savedFilesState.files as UploadedFileMeta[]);
-      setUploadedZipFileName(savedFilesState.uploadedZipFileName || "");
-      setHasUploadedFiles(true);
-      validation.updateFileUploadState(true);
-    }
-    const timer = setTimeout(() => setIsInitialMount(false), 200);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    clearFilesState();
   }, []);
 
   const appliedInitialFilesRef = useRef(false);
@@ -404,7 +393,6 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     setUploadedFiles(mapped);
     setHasUploadedFiles(true);
     validation.updateFileUploadState(true);
-    saveFilesState(mapped, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFiles]);
 
@@ -490,23 +478,27 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     }
   }, [uploadedFiles.length, formData.creativeType, uploadedFiles]);
 
-  // Auto-save files state whenever uploadedFiles changes (but not on initial mount)
-  // Use debouncing to reduce save frequency and prevent quota errors
   useEffect(() => {
-    // Skip saving on initial mount to avoid overwriting loaded data
-    if (!isInitialMount) {
-      // Debounce the save operation to avoid excessive writes
-      const timeoutId = setTimeout(() => {
-        try {
-          saveFilesState(uploadedFiles, uploadedZipFileName);
-        } catch (error) {
-          console.error("Failed to auto-save files state:", error);
-        }
-      }, 500); // Wait 500ms after last change before saving
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [uploadedFiles, uploadedZipFileName, isInitialMount]);
+    if (!creativeFilesRef) return;
+    const mapped: SavedFileMeta[] = uploadedFiles.map((f) => ({
+      id: f.id,
+      name: f.name,
+      url: f.url,
+      size: f.size,
+      type: f.type,
+      source: f.source ?? "single",
+      html: f.html,
+      isHidden: f.isHidden,
+      previewUrl: f.previewUrl,
+      assetCount: f.assetCount,
+      hasAssets: f.hasAssets,
+      fromLines: f.fromLines,
+      subjectLines: f.subjectLines,
+      additionalNotes: f.additionalNotes,
+      metadata: f.metadata,
+    }));
+    creativeFilesRef.current = { files: mapped, uploadedZipFileName };
+  }, [uploadedFiles, uploadedZipFileName, creativeFilesRef]);
 
   const { updateFileUploadState, updateFromSubjectLinesState } = validation;
 
@@ -866,8 +858,8 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     (singleFile.status === "rejected" ||
       singleFile.metadata?.status === "rejected" ||
       // support your existing typo/field attempt if you had it
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (singleFile as any).GrammarStatus === "rejected");
+       
+      singleFile.GrammarStatus === "rejected");
 
   const rejectionIssues: GrammarIssue[] =
     isRejectedSingle && singleFile
@@ -989,7 +981,9 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
             {validation.hasFieldError("offerId") &&
               validation.isFieldTouched("offerId") && (
                 <p
-                  className="text-xs font-inter"
+                  id="offerId-error"
+                  role="alert"
+                  className="text-xs font-inter mt-1.5 min-h-5"
                   style={{ color: variables.colors.inputErrorColor }}
                 >
                   {validation.getFieldErrorMessage("offerId")}
@@ -1017,7 +1011,9 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                 style={{
                   borderColor:
                     validation.hasFieldError("creativeType") &&
-                    validation.isFieldTouched("creativeType")
+                    validation.isFieldTouched("creativeType") &&
+                    validation.getFieldErrorMessage("creativeType") ===
+                      "Please select a creative type"
                       ? variables.colors.inputErrorColor
                       : variables.colors.inputBorderColor,
                 }}
@@ -1044,22 +1040,18 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
               </SelectContent>
             </Select>
             {validation.hasFieldError("creativeType") &&
-              validation.isFieldTouched("creativeType") && (
+              validation.isFieldTouched("creativeType") &&
+              validation.getFieldErrorMessage("creativeType") ===
+                "Please select a creative type" && (
                 <p
-                  className="text-xs font-inter"
+                  id="creativeType-error"
+                  role="alert"
+                  className="text-xs font-inter mt-1.5 min-h-5"
                   style={{ color: variables.colors.inputErrorColor }}
                 >
                   {validation.getFieldErrorMessage("creativeType")}
                 </p>
               )}
-            {!hasUploadedFiles && validation.hasFieldError("creativeType") && (
-              <p
-                className="text-xs font-inter"
-                style={{ color: variables.colors.inputErrorColor }}
-              >
-                Please upload at least one creative file
-              </p>
-            )}
           </div>
         </div>
 
@@ -1438,33 +1430,37 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
               )}
             </div>
           )}
-          {formData.creativeType === "email" &&
+          {!hasUploadedFiles &&
             !hasFromSubjectLines &&
-            !hasUploadedFiles && (
-              <div className="space-y-2 mt-2">
-                {(validation.hasFieldError("fromLines") ||
-                  validation.hasFieldError("subjectLines")) && (
-                  <div className="space-y-1">
-                    {validation.hasFieldError("fromLines") && (
-                      <p
-                        className="text-xs font-inter"
-                        style={{ color: variables.colors.inputErrorColor }}
-                      >
-                        {validation.getFieldErrorMessage("fromLines")}
-                      </p>
-                    )}
-                    {validation.hasFieldError("subjectLines") && (
-                      <p
-                        className="text-xs font-inter"
-                        style={{ color: variables.colors.inputErrorColor }}
-                      >
-                        {validation.getFieldErrorMessage("subjectLines")}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            (() => {
+              const creativeTypeMsg =
+                validation.getFieldErrorMessage("creativeType");
+              const isUploadRelatedError =
+                validation.hasFieldError("creativeType") &&
+                creativeTypeMsg !== "Please select a creative type";
+              const hasFromSubjectError =
+                validation.hasFieldError("fromLines") ||
+                validation.hasFieldError("subjectLines");
+              if (!isUploadRelatedError && !hasFromSubjectError) return null;
+              const message = isUploadRelatedError
+                ? creativeTypeMsg
+                : validation.hasFieldError("fromLines") &&
+                    validation.hasFieldError("subjectLines")
+                  ? "Please add from lines and subject lines, or upload a creative."
+                  : validation.hasFieldError("fromLines")
+                    ? validation.getFieldErrorMessage("fromLines")
+                    : validation.getFieldErrorMessage("subjectLines");
+              return (
+                <p
+                  id="upload-creatives-error"
+                  role="alert"
+                  className="text-xs font-inter"
+                  style={{ color: variables.colors.inputErrorColor }}
+                >
+                  {message}
+                </p>
+              );
+            })()}
         </div>
 
         <div className="space-y-2">
@@ -1560,24 +1556,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
               setIsSingleCreativeDialogOpen(false);
               setSelectedCreative(null);
             }}
-            creative={
-              {
-                id: selectedCreative.id,
-                name: selectedCreative.name,
-                url: selectedCreative.url,
-                size: selectedCreative.size,
-                type: selectedCreative.type,
-                previewUrl: selectedCreative.previewUrl,
-                html: selectedCreative.html,
-
-                // ADD-ON fields (safe cast below)
-                status: selectedCreative.status,
-                grammarFeedback:
-                  selectedCreative.grammarFeedback ??
-                  selectedCreative.metadata?.grammar_feedback ??
-                  selectedCreative.metadata?.grammarFeedback,
-              } as unknown as typeof selectedCreative
-            }
+            creative={selectedCreative}
             onFileNameChange={(fileId, newFileName) => {
               setUploadedFiles((prev) =>
                 prev.map((file) =>

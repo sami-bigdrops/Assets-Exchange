@@ -67,11 +67,43 @@ export const adminMenuConfig: SidebarMenuConfig = [
       //   icon: "Settings",
       //   href: "/ai-settings",
       // },
+      // {
+      //   id: "test-email",
+      //   label: "Test Email",
+      //   icon: "Mail",
+      //   href: "/email-test",
+      // },
       {
         id: "settings",
         label: "Settings",
         icon: "Settings2",
         href: "/settings",
+      },
+    ],
+  },
+];
+
+export const advertiserMenuConfig: SidebarMenuConfig = [
+  {
+    id: "main",
+    items: [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: "LayoutDashboard",
+        href: "/dashboard",
+      },
+      {
+        id: "manage-requests",
+        label: "Manage Requests",
+        icon: "ClipboardList",
+        href: "/requests",
+      },
+      {
+        id: "offers",
+        label: "Offers",
+        icon: "Target",
+        href: "/offers",
       },
     ],
   },

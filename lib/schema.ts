@@ -220,16 +220,15 @@ export const annotations = pgTable("annotations", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
-  creativeRequestId: text("creative_request_id")
+  creativeId: text("creative_id")
     .notNull()
-    .references(() => creativeRequests.id, { onDelete: "cascade" }),
-  type: text("type").notNull(),
-  shape: text("shape"),
-  coordinates: text("coordinates"),
-  comment: text("comment"),
-  createdBy: text("created_by").notNull(),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+    .references(() => creatives.id, { onDelete: "cascade" }),
+  adminId: text("admin_id").notNull(),
+  positionData: jsonb("position_data").notNull(),
+  content: text("content").notNull(),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const offers = pgTable(
@@ -602,10 +601,22 @@ export const creatives = pgTable(
   })
 );
 
-export const creativesRelations = relations(creatives, ({ one }) => ({
+export const creativesRelations = relations(creatives, ({ one, many }) => ({
   request: one(creativeRequests, {
     fields: [creatives.requestId],
     references: [creativeRequests.id],
+  }),
+  annotations: many(annotations),
+}));
+
+export const annotationsRelations = relations(annotations, ({ one }) => ({
+  creative: one(creatives, {
+    fields: [annotations.creativeId],
+    references: [creatives.id],
+  }),
+  admin: one(user, {
+    fields: [annotations.adminId],
+    references: [user.id],
   }),
 }));
 

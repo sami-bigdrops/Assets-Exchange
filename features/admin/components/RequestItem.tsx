@@ -19,6 +19,7 @@
 
 import * as Accordion from "@radix-ui/react-accordion";
 import { ChevronDown, ChevronUp, Download, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
@@ -35,6 +36,11 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import MultipleCreativesModal from "@/features/publisher/components/form/_modals/MultipleCreativesModal";
 import SingleCreativeViewModal from "@/features/publisher/components/form/_modals/SingleCreativeViewModal";
 
+import {
+  approveResponse,
+  rejectResponse,
+  returnResponse,
+} from "../../advertiser/services/responses.client";
 import {
   getRequestViewData,
   type RequestViewData,
@@ -185,6 +191,11 @@ const shouldShowActionButtons = (
     return true;
   }
 
+  // Show buttons for advertiser pending requests
+  if (normalizedStatus === "pending" && normalizedStage === "advertiser") {
+    return true;
+  }
+
   return false;
 };
 
@@ -196,6 +207,20 @@ const shouldShowRejectButtonOnly = (
   const normalizedStage = approvalStage.toLowerCase();
 
   return normalizedStatus === "sent-back" && normalizedStage === "advertiser";
+};
+
+const shouldShowViewAnnotationsButton = (
+  status: string,
+  advertiserStatus?: string | null
+) => {
+  const normalizedStatus = status.toLowerCase();
+  const normalizedAdvStatus = advertiserStatus?.toLowerCase();
+  return (
+    normalizedStatus === "sent-back" ||
+    normalizedStatus === "rejected" ||
+    normalizedAdvStatus === "sent_back" ||
+    normalizedAdvStatus === "rejected"
+  );
 };
 
 const shouldShowNotifyButton = (
@@ -248,6 +273,7 @@ export function RequestItem({
   onStatusUpdate,
   isAdvertiserView = false,
 }: RequestItemProps) {
+  const router = useRouter();
   const variables = getVariables();
   const accordionColors = getAccordionColors(colorVariant, variables.colors);
 
@@ -286,7 +312,7 @@ export function RequestItem({
     return text.length;
   }, [sendBackComments]);
 
-  const isRejectCommentsValid = rejectCommentsLength <= MAX_COMMENT_LENGTH;
+  const _isRejectCommentsValid = rejectCommentsLength <= MAX_COMMENT_LENGTH;
   const isSendBackCommentsValid = sendBackCommentsLength <= MAX_COMMENT_LENGTH;
 
   // Check if popover has unsaved changes
@@ -353,6 +379,67 @@ export function RequestItem({
     },
     [hasUnsavedSendBackComments]
   );
+
+  const handleViewRequest = async () => {
+    setIsViewLoading(true);
+    try {
+      const data = await getRequestViewData(request.id);
+      if (data) {
+        setViewData(data);
+        setIsViewModalOpen(true);
+      } else {
+        toast.error("Failed to load request details");
+      }
+    } catch {
+      toast.error("Failed to load request details");
+    } finally {
+      setIsViewLoading(false);
+    }
+  };
+
+  const handleOpenReview = async (action: "reject" | "send-back" | "view") => {
+    setIsViewLoading(true);
+    try {
+      let data = viewData;
+      if (!data) {
+        data = await getRequestViewData(request.id);
+      }
+
+      if (!data) {
+        toast.error("Failed to load request data");
+        return;
+      }
+
+      let mainCreative;
+      if (data.type === "single") {
+        mainCreative = data.creative;
+      } else if (data.type === "multiple" && data.creatives.length > 0) {
+        mainCreative = data.creatives[0];
+      }
+
+      if (!mainCreative) {
+        toast.error("No creatives found to review");
+        return;
+      }
+
+      setRejectPopoverOpen(false);
+      setSendBackPopoverOpen(false);
+      const queryParams = new URLSearchParams({
+        requestId: request.id,
+      });
+      if (action === "view") {
+        queryParams.set("mode", "view");
+      } else {
+        queryParams.set("action", action);
+      }
+
+      router.push(`/annotate/${mainCreative.id}?${queryParams.toString()}`);
+    } catch {
+      toast.error("Failed to load creative for review");
+    } finally {
+      setIsViewLoading(false);
+    }
+  };
 
   const meta = [
     `Creative Type: ${request.creativeType}`,
@@ -446,7 +533,7 @@ export function RequestItem({
             }}
           >
             <span style={{ color: accordionColors.offerIdTextColor }}>
-              Offer ID: {request.offerId}
+              Offer ID: {request.everflowOfferId || request.offerId}
             </span>
           </span>
           <span className="font-inter text-xs xl:text-sm">
@@ -484,28 +571,7 @@ export function RequestItem({
             border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
           }}
           disabled={isViewLoading}
-          onClick={async () => {
-            setIsViewLoading(true);
-            setError(null);
-            try {
-              const data = await getRequestViewData(request.id);
-              if (!data) {
-                toast.error("No creatives found", {
-                  description: "This request has no creative files.",
-                });
-                return;
-              }
-              setViewData(data);
-              setIsViewModalOpen(true);
-            } catch (err) {
-              const msg =
-                err instanceof Error ? err.message : "Failed to load request";
-              setError(msg);
-              toast.error("Failed to load request", { description: msg });
-            } finally {
-              setIsViewLoading(false);
-            }
-          }}
+          onClick={handleViewRequest}
         >
           {isViewLoading ? (
             <>
@@ -655,7 +721,7 @@ export function RequestItem({
                           .requestCardApproveButtonBackgroundColor,
                     }}
                   >
-                    Approve / Forward
+                    {isAdvertiserView ? "Approve" : "Approve / Forward"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -688,12 +754,17 @@ export function RequestItem({
                           setIsApproving(true);
                           setError(null);
                           try {
-                            await approveRequest(request.id);
-                            onStatusUpdate?.(
-                              request.id,
-                              "approved",
-                              "completed"
-                            );
+                            if (isAdvertiserView) {
+                              await approveResponse(request.id);
+                              onStatusUpdate?.(request.id, "pending", "admin");
+                            } else {
+                              await approveRequest(request.id);
+                              onStatusUpdate?.(
+                                request.id,
+                                "approved",
+                                "completed"
+                              );
+                            }
                             toast.success("Request approved", {
                               description:
                                 "The request has been successfully approved.",
@@ -722,56 +793,58 @@ export function RequestItem({
                           "Approve"
                         )}
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full font-inter text-xs xl:text-sm font-medium"
-                        style={{
-                          color:
-                            variables.colors.requestCardViewButtonTextColor,
-                          borderColor:
-                            variables.colors.requestCardViewButtonBorderColor,
-                        }}
-                        disabled={isApproving || isForwarding}
-                        onClick={async () => {
-                          setApprovePopoverOpen(false);
-                          setIsForwarding(true);
-                          setError(null);
+                      {!isAdvertiserView && (
+                        <Button
+                          variant="outline"
+                          className="w-full font-inter text-xs xl:text-sm font-medium"
+                          style={{
+                            color:
+                              variables.colors.requestCardViewButtonTextColor,
+                            borderColor:
+                              variables.colors.requestCardViewButtonBorderColor,
+                          }}
+                          disabled={isApproving || isForwarding}
+                          onClick={async () => {
+                            setApprovePopoverOpen(false);
+                            setIsForwarding(true);
+                            setError(null);
 
-                          try {
-                            await forwardRequest(request.id);
-                            onStatusUpdate?.(
-                              request.id,
-                              "pending",
-                              "advertiser"
-                            );
-                            toast.success("Request forwarded to advertiser", {
-                              description:
-                                "The request has been forwarded for advertiser review.",
-                            });
-                          } catch (err) {
-                            const errorMessage =
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to forward request. Please try again.";
-                            setError(errorMessage);
-                            toast.error("Failed to forward request", {
-                              description: errorMessage,
-                            });
-                          } finally {
-                            setIsForwarding(false);
-                          }
-                        }}
-                        aria-label="Forward this creative request to advertiser"
-                      >
-                        {isForwarding ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Forwarding...
-                          </>
-                        ) : (
-                          "Forward to Advertiser"
-                        )}
-                      </Button>
+                            try {
+                              await forwardRequest(request.id);
+                              onStatusUpdate?.(
+                                request.id,
+                                "pending",
+                                "advertiser"
+                              );
+                              toast.success("Request forwarded to advertiser", {
+                                description:
+                                  "The request has been forwarded for advertiser review.",
+                              });
+                            } catch (err) {
+                              const errorMessage =
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to forward request. Please try again.";
+                              setError(errorMessage);
+                              toast.error("Failed to forward request", {
+                                description: errorMessage,
+                              });
+                            } finally {
+                              setIsForwarding(false);
+                            }
+                          }}
+                          aria-label="Forward this creative request to advertiser"
+                        >
+                          {isForwarding ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Forwarding...
+                            </>
+                          ) : (
+                            "Forward to Advertiser"
+                          )}
+                        </Button>
+                      )}
                     </div>
                     {error && (
                       <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20">
@@ -812,153 +885,45 @@ export function RequestItem({
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <h4 className="font-inter font-medium text-sm">
-                        What would you like to do?
+                        Review Request
                       </h4>
                       <p className="font-inter text-xs text-muted-foreground">
-                        Add comments and choose an action for this creative
-                        request.
+                        Enter Visual Review Mode to provide specific feedback on
+                        this creative.
                       </p>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label
-                          className="font-inter text-xs font-medium"
-                          htmlFor="reject-comments"
-                        >
-                          Comments{" "}
-                          <span className="text-muted-foreground">
-                            (Optional)
-                          </span>
-                        </label>
-                        <span
-                          className={`text-xs font-inter ${
-                            isRejectCommentsValid
-                              ? "text-muted-foreground"
-                              : "text-destructive"
-                          }`}
-                        >
-                          {rejectCommentsLength} / {MAX_COMMENT_LENGTH}
-                        </span>
-                      </div>
-                      <RichTextEditor
-                        value={rejectComments}
-                        onChange={setRejectComments}
-                        placeholder="Enter comments or reason for rejection..."
-                        className="min-h-[200px]"
-                        style={{
-                          backgroundColor:
-                            variables.colors.inputBackgroundColor,
-                          borderColor: isRejectCommentsValid
-                            ? variables.colors.inputBorderColor
-                            : "#dc2626",
-                        }}
-                        aria-label="Comments for rejection or send back action"
-                        aria-invalid={!isRejectCommentsValid}
-                      />
-                      {!isRejectCommentsValid && (
-                        <p className="text-xs text-destructive font-inter">
-                          Comments exceed maximum length of {MAX_COMMENT_LENGTH}{" "}
-                          characters.
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-row gap-2 pt-2">
-                      <Button
-                        className="flex-1 font-inter text-xs xl:text-sm font-medium"
-                        style={{
-                          color:
-                            variables.colors.requestCardRejectedButtonTextColor,
-                          backgroundColor:
-                            variables.colors
-                              .requestCardRejectedButtonBackgroundColor,
-                          border: `1px solid ${variables.colors.requestCardRejectedButtonBorderColor}`,
-                        }}
-                        disabled={
-                          isRejecting || isSendingBack || !isRejectCommentsValid
-                        }
-                        onClick={async () => {
-                          setRejectPopoverOpen(false);
-                          setIsRejecting(true);
-                          setError(null);
-                          try {
-                            await rejectRequest(request.id, rejectComments);
-                            onStatusUpdate?.(
-                              request.id,
-                              "rejected",
-                              "completed"
-                            );
-                            toast.success("Request rejected", {
-                              description:
-                                "The request has been rejected successfully.",
-                            });
-                            setRejectComments("");
-                          } catch (err) {
-                            const errorMessage =
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to reject request. Please try again.";
-                            setError(errorMessage);
-                            toast.error("Failed to reject request", {
-                              description: errorMessage,
-                            });
-                          } finally {
-                            setIsRejecting(false);
-                          }
-                        }}
-                        aria-label="Reject this creative request"
-                      >
-                        {isRejecting ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Rejecting...
-                          </>
-                        ) : (
-                          "Reject"
-                        )}
-                      </Button>
+
+                    <div className="flex flex-col gap-2 pt-2">
                       <Button
                         variant="destructive"
-                        className="flex-1 font-inter text-xs xl:text-sm font-medium bg-destructive! text-destructive-foreground! hover:bg-destructive/90!"
-                        disabled={
-                          isRejecting || isSendingBack || !isRejectCommentsValid
-                        }
-                        onClick={async () => {
-                          setRejectPopoverOpen(false);
-                          setIsSendingBack(true);
-                          setError(null);
-
-                          try {
-                            await returnRequest(request.id, rejectComments);
-                            onStatusUpdate?.(request.id, "sent-back", "admin");
-                            toast.success("Request sent back to publisher", {
-                              description:
-                                "The request has been sent back to the publisher for revision.",
-                            });
-                            setRejectComments("");
-                          } catch (err) {
-                            const errorMessage =
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to send back request. Please try again.";
-                            setError(errorMessage);
-                            toast.error("Failed to send back request", {
-                              description: errorMessage,
-                            });
-                          } finally {
-                            setIsSendingBack(false);
-                          }
-                        }}
-                        aria-label="Send back this creative request to publisher"
+                        className="w-full font-inter text-xs xl:text-sm font-medium"
+                        disabled={isViewLoading}
+                        onClick={() => handleOpenReview("reject")}
                       >
-                        {isSendingBack ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Sending...
-                          </>
+                        {isViewLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         ) : (
-                          "Send Back to Publisher"
+                          "Review & Reject"
                         )}
                       </Button>
+
+                      {!shouldShowRejectButtonOnly(
+                        request.status,
+                        request.approvalStage
+                      ) && (
+                        <Button
+                          variant="outline"
+                          className="w-full font-inter text-xs xl:text-sm font-medium border-destructive/30 text-destructive hover:bg-destructive/5"
+                          disabled={isViewLoading}
+                          onClick={() => handleOpenReview("send-back")}
+                        >
+                          {isViewLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            "Review & Send Back"
+                          )}
+                        </Button>
+                      )}
                     </div>
                     {error && (
                       <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20">
@@ -1190,12 +1155,24 @@ export function RequestItem({
                           setError(null);
 
                           try {
-                            await rejectRequest(request.id, sendBackComments);
-                            onStatusUpdate?.(
-                              request.id,
-                              "rejected",
-                              "completed"
-                            );
+                            if (isAdvertiserView) {
+                              await rejectResponse(
+                                request.id,
+                                sendBackComments
+                              );
+                              onStatusUpdate?.(
+                                request.id,
+                                "rejected",
+                                "advertiser"
+                              );
+                            } else {
+                              await rejectRequest(request.id, sendBackComments);
+                              onStatusUpdate?.(
+                                request.id,
+                                "rejected",
+                                "completed"
+                              );
+                            }
                             toast.success("Request rejected", {
                               description:
                                 "The request has been rejected successfully.",
@@ -1238,8 +1215,24 @@ export function RequestItem({
                           setIsSendingBack(true);
                           setError(null);
                           try {
-                            await returnRequest(request.id, sendBackComments);
-                            onStatusUpdate?.(request.id, "sent-back", "admin");
+                            if (isAdvertiserView) {
+                              await returnResponse(
+                                request.id,
+                                sendBackComments
+                              );
+                              onStatusUpdate?.(
+                                request.id,
+                                "sent-back",
+                                "advertiser"
+                              );
+                            } else {
+                              await returnRequest(request.id, sendBackComments);
+                              onStatusUpdate?.(
+                                request.id,
+                                "sent-back",
+                                "admin"
+                              );
+                            }
                             toast.success("Request sent back to publisher", {
                               description:
                                 "The request has been sent back to the publisher for revision.",
@@ -1396,124 +1389,153 @@ export function RequestItem({
                 </Button>
               )}
             </div>
-          ) : showDownloadButton ? (
+          ) : showDownloadButton ||
+            shouldShowViewAnnotationsButton(
+              request.status,
+              request.advertiserStatus
+            ) ? (
             <div className="flex flex-col gap-4 xl:gap-4 justify-self-end">
-              <Button
-                variant="outline"
-                className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2"
-                style={{
-                  color: variables.colors.requestCardViewButtonTextColor,
-                  backgroundColor:
-                    variables.colors.requestCardViewButtonBackgroundColor,
-                  border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
-                }}
-                disabled={isDownloading}
-                onClick={async () => {
-                  setIsDownloading(true);
-                  setError(null);
+              {shouldShowViewAnnotationsButton(
+                request.status,
+                request.advertiserStatus
+              ) && (
+                <Button
+                  variant="outline"
+                  className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"
+                  style={{
+                    color: variables.colors.requestCardViewButtonTextColor,
+                    backgroundColor:
+                      variables.colors.requestCardViewButtonBackgroundColor,
+                    border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
+                  }}
+                  disabled={isViewLoading}
+                  onClick={() => handleOpenReview("view")}
+                >
+                  {isViewLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    "Check Annotations"
+                  )}
+                </Button>
+              )}
+              {showDownloadButton && (
+                <Button
+                  variant="outline"
+                  className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2"
+                  style={{
+                    color: variables.colors.requestCardViewButtonTextColor,
+                    backgroundColor:
+                      variables.colors.requestCardViewButtonBackgroundColor,
+                    border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
+                  }}
+                  disabled={isDownloading}
+                  onClick={async () => {
+                    setIsDownloading(true);
+                    setError(null);
 
-                  try {
-                    // TODO: BACKEND - Implement Creative File Download (UNIFIED MODEL)
-                    //
-                    // Backend API Endpoint:
-                    // GET /api/admin/creative-requests/:id/download
-                    //
-                    // Backend should handle file type based on creative_type field:
-                    // - "Email" → .zip or .xlsx (if multiple creatives)
-                    // - "Display" → .zip (images/assets)
-                    // - "Social" → .zip (images/videos)
-                    // - Other types → appropriate file format
-                    //
-                    // Backend Implementation:
-                    // 1. Retrieve the creative file(s) associated with the request ID
-                    // 2. Determine file type based on creative_type field
-                    // 3. If multiple files, create a ZIP archive
-                    // 4. Set appropriate Content-Type header
-                    // 5. Set Content-Disposition header for download
-                    // 6. Stream file(s) to client
-                    //
-                    // Response Headers:
-                    // - Content-Type: application/zip | application/vnd.openxmlformats-officedocument.spreadsheetml.sheet | image/* | etc.
-                    // - Content-Disposition: attachment; filename="creative-{requestId}-{creativeType}.{ext}"
-                    // - Content-Length: {fileSize}
-                    //
-                    // Implementation Example:
-                    // try {
-                    //   const response = await fetch(`/api/admin/creative-requests/${request.id}/download`, {
-                    //     method: 'GET',
-                    //     headers: {
-                    //       'Authorization': `Bearer ${getAuthToken()}`
-                    //     }
-                    //   });
-                    //
-                    //   if (!response.ok) {
-                    //     throw new Error('Failed to download creative');
-                    //   }
-                    //
-                    //   const blob = await response.blob();
-                    //   const url = window.URL.createObjectURL(blob);
-                    //   const a = document.createElement('a');
-                    //   a.href = url;
-                    //   a.download = `creative-${request.id}-${request.creativeType.toLowerCase()}.${getFileExtension(blob.type)}`;
-                    //   document.body.appendChild(a);
-                    //   a.click();
-                    //   window.URL.revokeObjectURL(url);
-                    //   document.body.removeChild(a);
-                    // } catch (error) {
-                    //   console.error('Error downloading creative:', error);
-                    //   toast.error('Failed to download creative. Please try again.');
-                    // }
-                    //
-                    // Database Schema Addition Needed:
-                    // ALTER TABLE creative_requests ADD COLUMN file_url VARCHAR(500);
-                    // ALTER TABLE creative_requests ADD COLUMN file_type VARCHAR(50);
-                    // ALTER TABLE creative_requests ADD COLUMN file_name VARCHAR(255);
-                    // ALTER TABLE creative_requests ADD COLUMN file_size BIGINT;
-                    //
-                    // OR if multiple files per creative:
-                    // CREATE TABLE creative_files (
-                    //   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                    //   request_id VARCHAR(255) NOT NULL,
-                    //   file_url VARCHAR(500) NOT NULL,
-                    //   file_type VARCHAR(50) NOT NULL,
-                    //   file_name VARCHAR(255) NOT NULL,
-                    //   file_size BIGINT NOT NULL,
-                    //   file_order INT DEFAULT 0,
-                    //   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    //   FOREIGN KEY (request_id) REFERENCES creative_requests(id) ON DELETE CASCADE,
-                    //   INDEX idx_request_id (request_id)
-                    // };
+                    try {
+                      // TODO: BACKEND - Implement Creative File Download (UNIFIED MODEL)
+                      //
+                      // Backend API Endpoint:
+                      // GET /api/admin/creative-requests/:id/download
+                      //
+                      // Backend should handle file type based on creative_type field:
+                      // - "Email" → .zip or .xlsx (if multiple creatives)
+                      // - "Display" → .zip (images/assets)
+                      // - "Social" → .zip (images/videos)
+                      // - Other types → appropriate file format
+                      //
+                      // Backend Implementation:
+                      // 1. Retrieve the creative file(s) associated with the request ID
+                      // 2. Determine file type based on creative_type field
+                      // 3. If multiple files, create a ZIP archive
+                      // 4. Set appropriate Content-Type header
+                      // 5. Set Content-Disposition header for download
+                      // 6. Stream file(s) to client
+                      //
+                      // Response Headers:
+                      // - Content-Type: application/zip | application/vnd.openxmlformats-officedocument.spreadsheetml.sheet | image/* | etc.
+                      // - Content-Disposition: attachment; filename="creative-{requestId}-{creativeType}.{ext}"
+                      // - Content-Length: {fileSize}
+                      //
+                      // Implementation Example:
+                      // try {
+                      //   const response = await fetch(`/api/admin/creative-requests/${request.id}/download`, {
+                      //     method: 'GET',
+                      //     headers: {
+                      //       'Authorization': `Bearer ${getAuthToken()}`
+                      //     }
+                      //   });
+                      //
+                      //   if (!response.ok) {
+                      //     throw new Error('Failed to download creative');
+                      //   }
+                      //
+                      //   const blob = await response.blob();
+                      //   const url = window.URL.createObjectURL(blob);
+                      //   const a = document.createElement('a');
+                      //   a.href = url;
+                      //   a.download = `creative-${request.id}-${request.creativeType.toLowerCase()}.${getFileExtension(blob.type)}`;
+                      //   document.body.appendChild(a);
+                      //   a.click();
+                      //   window.URL.revokeObjectURL(url);
+                      //   document.body.removeChild(a);
+                      // } catch (error) {
+                      //   console.error('Error downloading creative:', error);
+                      //   toast.error('Failed to download creative. Please try again.');
+                      // }
+                      //
+                      // Database Schema Addition Needed:
+                      // ALTER TABLE creative_requests ADD COLUMN file_url VARCHAR(500);
+                      // ALTER TABLE creative_requests ADD COLUMN file_type VARCHAR(50);
+                      // ALTER TABLE creative_requests ADD COLUMN file_name VARCHAR(255);
+                      // ALTER TABLE creative_requests ADD COLUMN file_size BIGINT;
+                      //
+                      // OR if multiple files per creative:
+                      // CREATE TABLE creative_files (
+                      //   id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                      //   request_id VARCHAR(255) NOT NULL,
+                      //   file_url VARCHAR(500) NOT NULL,
+                      //   file_type VARCHAR(50) NOT NULL,
+                      //   file_name VARCHAR(255) NOT NULL,
+                      //   file_size BIGINT NOT NULL,
+                      //   file_order INT DEFAULT 0,
+                      //   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                      //   FOREIGN KEY (request_id) REFERENCES creative_requests(id) ON DELETE CASCADE,
+                      //   INDEX idx_request_id (request_id)
+                      // };
 
-                    toast.success("Download started", {
-                      description: "Your creative file download has started.",
-                    });
-                  } catch (err) {
-                    const errorMessage =
-                      err instanceof Error
-                        ? err.message
-                        : "Failed to download creative. Please try again.";
-                    setError(errorMessage);
-                    toast.error("Download failed", {
-                      description: errorMessage,
-                    });
-                  } finally {
-                    setIsDownloading(false);
-                  }
-                }}
-                aria-label="Download creative file"
-              >
-                {isDownloading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Download
-                  </>
-                )}
-              </Button>
+                      toast.success("Download started", {
+                        description: "Your creative file download has started.",
+                      });
+                    } catch (err) {
+                      const errorMessage =
+                        err instanceof Error
+                          ? err.message
+                          : "Failed to download creative. Please try again.";
+                      setError(errorMessage);
+                      toast.error("Download failed", {
+                        description: errorMessage,
+                      });
+                    } finally {
+                      setIsDownloading(false);
+                    }
+                  }}
+                  aria-label="Download creative file"
+                >
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Download
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           ) : null}
         </div>

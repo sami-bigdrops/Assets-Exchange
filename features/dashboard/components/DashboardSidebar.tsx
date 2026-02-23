@@ -11,6 +11,7 @@ import {
   Settings2,
   FileText,
   MessageSquareReply,
+  Mail,
   type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -48,6 +49,7 @@ const iconMap: Record<IconName, LucideIcon> = {
   Settings,
   Settings2,
   FileText,
+  Mail,
 };
 
 interface DashboardSidebarProps {

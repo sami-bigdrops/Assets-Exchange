@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { Advertiser } from "@/features/admin";
+import { Advertiser } from "@/features/admin/components/Advertiser";
 import { getCurrentUser } from "@/lib/get-user";
 
 export default async function AdvertisersPage() {

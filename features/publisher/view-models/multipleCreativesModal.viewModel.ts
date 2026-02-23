@@ -14,6 +14,7 @@ export interface CreativeFile {
   source?: "single" | "zip";
   uploadId?: string;
   embeddedHtml?: string;
+  isHidden?: boolean;
   metadata?: {
     fromLines?: string;
     subjectLines?: string;
@@ -179,8 +180,8 @@ export const useMultipleCreativesModal = ({
         );
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, creatives]);
+     
+  }, [isOpen, creatives, htmlContent]);
 
   const openSingleCreativeView = useCallback((creative: CreativeFile) => {
     setSelectedCreative(creative);

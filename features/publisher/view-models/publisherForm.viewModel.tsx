@@ -15,6 +15,27 @@ interface RenderStepProps {
   onDataChange: (data: Partial<PublisherFormData>) => void;
   validation: ReturnType<typeof useFormValidation>;
   editData?: EditRequestData | null;
+  onNextOrSubmit?: () => void;
+  creativeFilesRef?: React.MutableRefObject<{
+    files: Array<{
+      id: string;
+      name: string;
+      url: string;
+      size: number;
+      type: string;
+      source?: "single" | "zip";
+      html?: boolean;
+      isHidden?: boolean;
+      previewUrl?: string;
+      assetCount?: number;
+      hasAssets?: boolean;
+      fromLines?: string;
+      subjectLines?: string;
+      additionalNotes?: string;
+      metadata?: Record<string, unknown>;
+    }>;
+    uploadedZipFileName: string;
+  } | null>;
 }
 
 export const getStepLabel = (step: number): string => {
@@ -36,6 +57,8 @@ export const renderStep = ({
   onDataChange,
   validation,
   editData,
+  onNextOrSubmit,
+  creativeFilesRef,
 }: RenderStepProps): ReactNode => {
   switch (step) {
     case 1:
@@ -44,6 +67,7 @@ export const renderStep = ({
           formData={formData}
           onDataChange={onDataChange}
           validation={validation}
+          onNextOrSubmit={onNextOrSubmit}
         />
       );
     case 2:
@@ -61,6 +85,7 @@ export const renderStep = ({
           onDataChange={onDataChange}
           validation={validation}
           initialFiles={editData?.initialFiles}
+          creativeFilesRef={creativeFilesRef}
         />
       );
     default:

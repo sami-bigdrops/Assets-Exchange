@@ -1,6 +1,9 @@
 import type { UserRole } from "@/features/auth/types/auth.types";
 
-import { adminMenuConfig } from "../models/sidebar.config";
+import {
+  adminMenuConfig,
+  advertiserMenuConfig,
+} from "../models/sidebar.config";
 import type { SidebarMenuConfig } from "../types/sidebar.types";
 
 /**
@@ -11,11 +14,9 @@ export function getSidebarMenuConfig(role: UserRole): SidebarMenuConfig {
     case "admin":
       return adminMenuConfig;
     case "advertiser":
-      // TODO: Add advertiser menu config when ready
-      return [];
+      return advertiserMenuConfig;
     case "administrator":
-      // TODO: Add administrator menu config when ready
-      return [];
+      return adminMenuConfig;
     default:
       return [];
   }

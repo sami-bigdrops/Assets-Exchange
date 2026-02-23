@@ -22,19 +22,13 @@ export type {
 export type {
   CreativeRequest as RequestType,
   RequestStatus,
-  ApprovalStage
+  ApprovalStage,
 } from "./types/request.types";
 
-export type {
-  Advertiser as AdvertiserType
-} from "./types/advertiser.types";
+export type { Advertiser as AdvertiserType } from "./types/advertiser.types";
 
-export type {
-  Publisher as PublisherType
-} from "./types/publisher.types";
+export type { Publisher as PublisherType } from "./types/publisher.types";
 
-export type {
-  Offer as OfferType
-} from "./types/offer.types";
+export type { Offer as OfferType } from "./types/offer.types";
 
-
+export { CreativeReview } from "./components/annotations/CreativeReview";

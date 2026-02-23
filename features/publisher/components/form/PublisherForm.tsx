@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "sonner";
+
 import { getVariables } from "@/components/_variables/variables";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -35,10 +37,44 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
     isSubmitting,
     handleSubmit,
     editData,
+    currentCreativeFilesRef,
   } = usePublisherForm(requestId ?? null);
 
   const validation = useFormValidation(formData);
   const inputRingColor = variables.colors.inputRingColor;
+
+  const handleNextOrSubmit = async () => {
+    try {
+      if (currentStep === 3) {
+        const result = validation.validateCompleteFormData(
+          formData,
+          validation.hasUploadedFiles,
+          validation.hasFromSubjectLines
+        );
+        if (result.valid) {
+          await handleSubmit();
+        } else {
+          validation.validateCreativeDetailsStep(
+            formData,
+            validation.hasUploadedFiles,
+            validation.hasFromSubjectLines
+          );
+        }
+      } else if (currentStep === 1) {
+        const result = validation.validatePersonalDetailsStep(formData);
+        if (!result.valid) return;
+        nextStep();
+      } else if (currentStep === 2) {
+        const result = validation.validateContactDetailsStep(formData);
+        if (!result.valid) return;
+        nextStep();
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Something went wrong";
+      toast.error(message);
+    }
+  };
 
   return (
     <>
@@ -114,14 +150,17 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
             {renderStep({
               step: currentStep,
               formData,
+              creativeFilesRef: currentCreativeFilesRef,
               onDataChange,
               validation,
               editData,
+              onNextOrSubmit: handleNextOrSubmit,
             })}
           </CardContent>
           <CardFooter className="flex flex-col justify-between gap-4 w-full">
             {currentStep > 1 && (
               <Button
+                type="button"
                 variant="outline"
                 className="w-full h-14 font-inter font-medium"
                 onClick={previousStep}
@@ -136,46 +175,9 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
               </Button>
             )}
             <Button
+              type="button"
               className="w-full h-14 font-inter font-medium"
-              onClick={async () => {
-                if (currentStep === 3) {
-                  const result = validation.validateCompleteFormData(
-                    formData,
-                    validation.hasUploadedFiles,
-                    validation.hasFromSubjectLines
-                  );
-
-                  if (result.valid) {
-                    await handleSubmit();
-                  } else {
-                    validation.validateCreativeDetailsStep(
-                      formData,
-                      validation.hasUploadedFiles,
-                      validation.hasFromSubjectLines
-                    );
-                  }
-                } else {
-                  let isValid = false;
-                  if (currentStep === 1) {
-                    const result =
-                      validation.validatePersonalDetailsStep(formData);
-                    isValid = result.valid;
-                    if (!isValid) {
-                      return;
-                    }
-                  } else if (currentStep === 2) {
-                    const result =
-                      validation.validateContactDetailsStep(formData);
-                    isValid = result.valid;
-                    if (!isValid) {
-                      return;
-                    }
-                  }
-                  if (isValid) {
-                    nextStep();
-                  }
-                }
-              }}
+              onClick={handleNextOrSubmit}
               disabled={isSubmitting}
               style={{
                 backgroundColor: variables.colors.buttonDefaultBackgroundColor,

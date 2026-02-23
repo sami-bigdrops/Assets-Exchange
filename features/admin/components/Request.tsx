@@ -18,16 +18,34 @@ import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { fetchRequests } from "../services/requests.client";
+import {
+  fetchRequests,
+  type FetchRequestsOptions,
+} from "../services/requests.client";
 import type {
   ApprovalStage,
   CreativeRequest,
+  RequestListResponse,
   RequestStatus,
 } from "../types/request.types";
 
 import { RequestSection } from "./RequestSection";
 
-export function Request() {
+const DEFAULT_TITLE = "Incoming Publisher Requests";
+
+interface RequestProps {
+  title?: string;
+  fetcher?: (options: FetchRequestsOptions) => Promise<RequestListResponse>;
+  viewAllLink?: string;
+  isAdvertiserView?: boolean;
+}
+
+export function Request({
+  title = DEFAULT_TITLE,
+  fetcher = fetchRequests,
+  viewAllLink = "/requests",
+  isAdvertiserView = false,
+}: RequestProps) {
   const variables = getVariables();
   const [isHovered, setIsHovered] = useState(false);
   const [requests, setRequests] = useState<CreativeRequest[]>([]);
@@ -36,7 +54,7 @@ export function Request() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetchRequests({
+        const res = await fetcher({
           page: 1,
           limit: 3,
           sort: "submittedAt:desc",
@@ -50,6 +68,7 @@ export function Request() {
     };
 
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateRequestStatus = useCallback(
@@ -82,7 +101,7 @@ export function Request() {
             className="xl:text-lg text-sm lg:text-base font-inter font-medium"
             style={{ color: variables.colors.cardHeaderTextColor }}
           >
-            Incoming Publisher Requests
+            {title}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center p-8">
@@ -105,7 +124,7 @@ export function Request() {
             className="xl:text-lg text-sm lg:text-base font-inter font-medium"
             style={{ color: variables.colors.cardHeaderTextColor }}
           >
-            Incoming Publisher Requests
+            {title}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center p-8">
@@ -125,11 +144,11 @@ export function Request() {
           className="xl:text-lg text-sm lg:text-base font-inter font-medium"
           style={{ color: variables.colors.cardHeaderTextColor }}
         >
-          Incoming Publisher Requests
+          {title}
         </CardTitle>
 
         <div className="flex items-center gap-3 flex-1 max-w-md justify-end">
-          <Link href="/requests">
+          <Link href={viewAllLink}>
             <Button
               className="md:h-8.5 md:w-20 lg:h-9.5 lg:w-21.5 xl:h-10.5 xl:w-23 font-inter font-medium rounded-[6px] transition-colors"
               style={{
@@ -154,6 +173,7 @@ export function Request() {
         <RequestSection
           requests={requests}
           onStatusUpdate={updateRequestStatus}
+          isAdvertiserView={isAdvertiserView}
         />
       </CardContent>
     </Card>

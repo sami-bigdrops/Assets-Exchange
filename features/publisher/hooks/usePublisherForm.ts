@@ -1,5 +1,5 @@
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 
 import {
@@ -7,6 +7,7 @@ import {
   saveFormState,
   clearFormState,
   loadFilesState,
+  saveFilesState,
 } from "../utils/autoSave";
 import { type SavedFileMeta } from "../utils/autoSave";
 
@@ -40,43 +41,56 @@ export interface EditRequestData {
   formDataPatch: Partial<PublisherFormData>;
 }
 
+const INITIAL_FORM_DATA: PublisherFormData = {
+  affiliateId: "",
+  companyName: "",
+  firstName: "",
+  lastName: "",
+  email: "",
+  telegramId: "",
+  offerId: "",
+  creativeType: "",
+  additionalNotes: "",
+  fromLines: "",
+  subjectLines: "",
+  priority: "medium",
+};
+
 export const usePublisherForm = (editingRequestId?: string | null) => {
   const router = useRouter();
-  const savedState = loadFormState();
-
-  const [currentStep, setCurrentStep] = useState(savedState?.currentStep || 1);
+  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editData, setEditData] = useState<EditRequestData | null>(null);
+  const [formData, setFormData] =
+    useState<PublisherFormData>(INITIAL_FORM_DATA);
+  const hasRestoredRef = useRef(false);
+  const currentCreativeFilesRef = useRef<{
+    files: SavedFileMeta[];
+    uploadedZipFileName: string;
+  } | null>(null);
 
-  const [formData, setFormData] = useState<PublisherFormData>(
-    savedState?.formData || {
-      affiliateId: "",
-      companyName: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      telegramId: "",
-      offerId: "",
-      creativeType: "",
-      additionalNotes: "",
-      fromLines: "",
-      subjectLines: "",
-      priority: "medium",
+  useEffect(() => {
+    if (editingRequestId) {
+      hasRestoredRef.current = true;
+      return;
     }
-  );
+    const saved = loadFormState();
+    if (saved?.formData && saved?.currentStep) {
+      setFormData(saved.formData);
+      setCurrentStep(saved.currentStep);
+    }
+    hasRestoredRef.current = true;
+  }, [editingRequestId]);
 
   useEffect(() => {
     if (!editingRequestId) return;
     let cancelled = false;
-
     (async () => {
       try {
         const res = await fetch(`/api/submit/request/${editingRequestId}`);
         if (!res.ok || cancelled) return;
-
         const data = await res.json();
         if (cancelled) return;
-
         setEditData({
           requestId: data.request.id,
           adminComments: data.request.adminComments ?? null,
@@ -89,7 +103,6 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
             additionalNotes: data.request.additionalNotes ?? "",
           },
         });
-
         setFormData((prev) => ({
           ...prev,
           offerId: data.request.offerId ?? prev.offerId,
@@ -102,40 +115,49 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
         if (!cancelled) console.error("Failed to load request for edit", e);
       }
     })();
-
     return () => {
       cancelled = true;
     };
   }, [editingRequestId]);
 
   useEffect(() => {
+    if (!editingRequestId && !hasRestoredRef.current) return;
     saveFormState(formData, currentStep);
-  }, [formData, currentStep]);
+  }, [formData, currentStep, editingRequestId]);
 
   const onDataChange = useCallback((data: Partial<PublisherFormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
   }, []);
 
   const nextStep = useCallback(() => {
-    if (currentStep < 3) setCurrentStep((prev) => prev + 1);
+    if (currentStep < 3) {
+      setCurrentStep((prev) => prev + 1);
+    }
   }, [currentStep]);
 
   const previousStep = useCallback(() => {
-    if (currentStep > 1) setCurrentStep((prev) => prev - 1);
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
+    }
   }, [currentStep]);
 
   const goToStep = useCallback((step: number) => {
-    if (step >= 1 && step <= 3) setCurrentStep(step);
+    if (step >= 1 && step <= 3) {
+      setCurrentStep(step);
+    }
   }, []);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-
     try {
-      const savedFilesState = loadFilesState();
-      const files = savedFilesState?.files || [];
+      const fromRef = currentCreativeFilesRef.current;
+      const files: SavedFileMeta[] =
+        fromRef?.files ?? loadFilesState()?.files ?? [];
+      const uploadedZipFileName = fromRef?.uploadedZipFileName ?? "";
+      if (files.length > 0) {
+        saveFilesState(files, uploadedZipFileName);
+      }
 
-      // ---- EDIT FLOW ----
       if (editingRequestId && editData) {
         const response = await fetch("/api/submit/update", {
           method: "POST",
@@ -161,26 +183,18 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
             },
           }),
         });
-
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
           throw new Error(err.error ?? "Failed to resubmit");
         }
-
         clearFormState();
+        setFormData(INITIAL_FORM_DATA);
+        setCurrentStep(1);
         toast.success("Resubmitted successfully");
-
-        // Optional: carry telegram flag for resubmit too (if you want)
-        const telegramProvided =
-          !!formData.telegramId?.trim() && formData.telegramId.trim() !== "@";
-
-        router.push(
-          `/thankyou?type=resubmit${telegramProvided ? "&telegram=1" : ""}`
-        );
+        router.push("/thankyou?type=resubmit");
         return;
       }
 
-      // ---- NEW SUBMIT FLOW ----
       const payload = {
         ...formData,
         ...(files.length > 0
@@ -203,7 +217,9 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
 
       const response = await fetch("/api/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
@@ -220,7 +236,6 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
                 )
                 .join("; ")}`
             : errorMessage;
-
         console.error("Submission validation error:", errorData);
         throw new Error(errorDetails);
       }
@@ -228,31 +243,24 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
       const result = await response.json();
 
       clearFormState();
+      setFormData(INITIAL_FORM_DATA);
+      setCurrentStep(1);
 
       const fileCount = files.length;
       let submissionType = "single";
 
-      if (fileCount > 1) submissionType = "multiple";
-      else if (fileCount === 0 && (formData.fromLines || formData.subjectLines))
+      if (fileCount > 1) {
+        submissionType = "multiple";
+      } else if (
+        fileCount === 0 &&
+        (formData.fromLines || formData.subjectLines)
+      ) {
         submissionType = "fromSubjectLines";
+      }
 
       const trackingCode = result.trackingCode;
-
-      // ✅ Telegram badge flag derived from form data (no auth required)
-      const telegramProvided =
-        !!formData.telegramId?.trim() && formData.telegramId.trim() !== "@";
-
       router.push(
-        `/thankyou?type=${submissionType}&count=${fileCount}` +
-          (trackingCode
-            ? `&trackingCode=${encodeURIComponent(trackingCode)}`
-            : "") +
-          (telegramProvided ? `&telegram=1` : "")
-      );
-      const telegramHint = formData.telegramId ? "true" : "false";
-
-      router.push(
-        `/thankyou?type=${submissionType}&count=${fileCount}${trackingCode ? `&trackingCode=${trackingCode}` : ""}${telegramHint === "true" ? "&telegramHint=true" : ""}`
+        `/thankyou?type=${submissionType}&count=${fileCount}${trackingCode ? `&trackingCode=${trackingCode}` : ""}`
       );
 
       return result;
@@ -275,5 +283,6 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
     handleSubmit,
     editingRequestId: editingRequestId ?? null,
     editData,
+    currentCreativeFilesRef,
   };
 };

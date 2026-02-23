@@ -59,17 +59,6 @@ export const validateField = (
       }
       return { valid: true };
 
-    default:
-      if (!isRequired(value)) {
-        return {
-          valid: false,
-          error: ERROR_MESSAGES.VALIDATION.REQUIRED_FIELD,
-        };
-      }
-      break;
-  }
-
-  switch (fieldName) {
     case "email":
       if (!isValidEmail(value)) {
         return {
@@ -84,6 +73,12 @@ export const validateField = (
         return {
           valid: false,
           error: "Affiliate ID must be at least 2 characters",
+        };
+      }
+      if (!/^\d+$/.test(value.trim())) {
+        return {
+          valid: false,
+          error: "Affiliate ID must contain only numbers",
         };
       }
       break;
@@ -133,23 +128,36 @@ export const validateField = (
       }
       break;
 
-    // case 'fromLines':
+    // case "fromLines":
     //   if (!value || value.trim().length === 0) {
     //     return {
     //       valid: false,
-    //       error: 'From lines are required'
+    //       error: "From lines are required",
     //     };
     //   }
     //   break;
 
-    // case 'subjectLines':
+    // case "subjectLines":
     //   if (!value || value.trim().length === 0) {
     //     return {
     //       valid: false,
-    //       error: 'Subject lines are required'
+    //       error: "Subject lines are required",
     //     };
     //   }
     //   break;
+
+    default:
+      if (
+        fieldName !== "fromLines" &&
+        fieldName !== "subjectLines" &&
+        !isRequired(value)
+      ) {
+        return {
+          valid: false,
+          error: ERROR_MESSAGES.VALIDATION.REQUIRED_FIELD,
+        };
+      }
+      break;
   }
 
   return { valid: true };
@@ -225,12 +233,18 @@ export const validateCreativeDetails = (
     errors.creativeType = creativeTypeValidation.error;
   }
 
-  // const fromLinesValidation = validateField('fromLines', formData.fromLines || '');
+  // const fromLinesValidation = validateField(
+  //   "fromLines",
+  //   formData.fromLines || ""
+  // );
   // if (!fromLinesValidation.valid && fromLinesValidation.error) {
   //   errors.fromLines = fromLinesValidation.error;
   // }
 
-  // const subjectLinesValidation = validateField('subjectLines', formData.subjectLines || '');
+  // const subjectLinesValidation = validateField(
+  //   "subjectLines",
+  //   formData.subjectLines || ""
+  // );
   // if (!subjectLinesValidation.valid && subjectLinesValidation.error) {
   //   errors.subjectLines = subjectLinesValidation.error;
   // }

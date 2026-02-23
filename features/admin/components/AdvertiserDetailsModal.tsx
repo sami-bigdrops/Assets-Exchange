@@ -133,15 +133,19 @@ export function AdvertiserDetailsModal({
           const fetchedAdvertiser = await getAdvertiser(advertiserId);
           if (fetchedAdvertiser) {
             setAdvertiser(fetchedAdvertiser);
-            const status = fetchedAdvertiser.status === "active" || fetchedAdvertiser.status === "inactive"
-              ? (fetchedAdvertiser.status.charAt(0).toUpperCase() + fetchedAdvertiser.status.slice(1)) as "Active" | "Inactive"
-              : (fetchedAdvertiser.status as "Active" | "Inactive") || "Active";
+            const status =
+              fetchedAdvertiser.status === "active" ||
+              fetchedAdvertiser.status === "inactive"
+                ? ((fetchedAdvertiser.status.charAt(0).toUpperCase() +
+                    fetchedAdvertiser.status.slice(1)) as "Active" | "Inactive")
+                : (fetchedAdvertiser.status as "Active" | "Inactive") ||
+                  "Active";
             const initialData = {
               advertiserId: fetchedAdvertiser.id,
               advertiserName: fetchedAdvertiser.advertiserName,
               status,
               advPlatform: fetchedAdvertiser.advPlatform,
-              email: (fetchedAdvertiser as Record<string, unknown>).email as string || "",
+              email: fetchedAdvertiser.contactEmail || "",
               password: "",
             };
             setFormData(initialData);
@@ -207,14 +211,20 @@ export function AdvertiserDetailsModal({
       if (!formData.advertiserName.trim()) {
         errors.advertiserName = "Advertiser name is required";
       }
-      if (!formData.email.trim()) {
-        errors.email = "Email is required";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        errors.email = "Please enter a valid email address";
-      }
-      if (isEditingPassword && formData.password.trim() && formData.password.length < 8) {
-        errors.password = "Password must be at least 8 characters";
-      }
+    }
+
+    if (
+      formData.email.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+    ) {
+      errors.email = "Please enter a valid email address";
+    }
+    if (
+      isEditingPassword &&
+      formData.password.trim() &&
+      formData.password.length < 8
+    ) {
+      errors.password = "Password must be at least 8 characters";
     }
 
     if (!formData.advPlatform.trim()) {
@@ -295,18 +305,27 @@ export function AdvertiserDetailsModal({
       // TODO: Validate business rules (e.g., can't edit ID/Name/Status if API-created)
       // TODO: Handle optimistic updates and rollback on error
 
-      const updatePayload: Partial<{ name: string; contactEmail: string; status: "active" | "inactive" }> = {};
+      const updatePayload: Partial<{
+        name: string;
+        contactEmail: string;
+        status: "active" | "inactive";
+        password: string;
+      }> = {};
 
       if (!isApiSource(advertiser.createdMethod)) {
         updatePayload.name = formData.advertiserName;
-        const statusLower = formData.status.toLowerCase() as "active" | "inactive";
+        const statusLower = formData.status.toLowerCase() as
+          | "active"
+          | "inactive";
         updatePayload.status = statusLower;
-        if (formData.email) {
-          updatePayload.contactEmail = formData.email;
-        }
-        if (isEditingPassword && formData.password.trim()) {
-          (updatePayload as Record<string, unknown>).password = formData.password;
-        }
+      }
+
+      // Email/password can be set for ALL advertisers
+      if (formData.email) {
+        updatePayload.contactEmail = formData.email;
+      }
+      if (formData.password?.trim()) {
+        updatePayload.password = formData.password;
       }
 
       const updatedAdvertiser = await updateAdvertiser(
@@ -337,7 +356,8 @@ export function AdvertiserDetailsModal({
       if (!newOpen && hasUnsavedChanges) {
         const confirmed = await confirmDialog({
           title: "Unsaved Changes",
-          description: "You have unsaved changes. Are you sure you want to close?",
+          description:
+            "You have unsaved changes. Are you sure you want to close?",
           confirmText: "Close",
           cancelText: "No, keep editing",
           variant: "default",
@@ -359,7 +379,7 @@ export function AdvertiserDetailsModal({
         onOpenChange(false);
         return;
       }
-      
+
       // If no unsaved changes, allow normal close
       setInternalOpen(newOpen);
       onOpenChange(newOpen);
@@ -759,202 +779,206 @@ export function AdvertiserDetailsModal({
                         </p>
                       )}
                     </div>
-                    {!isApiSource(advertiser.createdMethod) && (
-                      <>
-                        <div className="space-y-1.5">
-                          <Label className="font-inter text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            Email
-                          </Label>
-                          <div className="min-h-10 flex items-center">
-                            {isEditingEmail ? (
-                              <div className="flex items-center gap-2 w-full">
-                                <Input
-                                  type="email"
-                                  value={formData.email}
-                                  onChange={(e) =>
-                                    updateFormField("email", e.target.value)
+                    {/* Email/password fields shown for ALL advertisers */}
+                    <>
+                      <div className="space-y-1.5">
+                        <Label className="font-inter text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Email
+                        </Label>
+                        <div className="min-h-10 flex items-center">
+                          {isEditingEmail ? (
+                            <div className="flex items-center gap-2 w-full">
+                              <Input
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) =>
+                                  updateFormField("email", e.target.value)
+                                }
+                                disabled={isSubmitting}
+                                className="h-10 font-inter edit-advertiser-modal-input flex-1 text-sm"
+                                style={{
+                                  backgroundColor:
+                                    variables.colors.inputBackgroundColor,
+                                  borderColor:
+                                    variables.colors.inputBorderColor,
+                                  color: variables.colors.inputTextColor,
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (advertiser) {
+                                    updateFormField(
+                                      "email",
+                                      advertiser.contactEmail || ""
+                                    );
                                   }
+                                  setIsEditingEmail(false);
+                                }}
+                                disabled={isSubmitting}
+                                className="p-1.5 rounded-md transition-colors shrink-0 border"
+                                style={{
+                                  backgroundColor: "#FEE2E2",
+                                  borderColor: "#EF4444",
+                                  color: "#EF4444",
+                                }}
+                              >
+                                <XIcon size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingEmail(false)}
+                                disabled={isSubmitting}
+                                className="p-1.5 rounded-md transition-colors shrink-0 border"
+                                style={{
+                                  backgroundColor: "#D1FAE5",
+                                  borderColor: "#10B981",
+                                  color: "#10B981",
+                                }}
+                              >
+                                <Check size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="font-inter text-sm flex items-center gap-2 w-full min-h-10 px-3 py-2 rounded-md bg-muted/30">
+                              <span className="flex-1 font-medium">
+                                {formData.email || "Not set"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingEmail(true)}
+                                disabled={isSubmitting}
+                                className="p-1 rounded-md hover:bg-gray-100 transition-colors shrink-0 opacity-60 hover:opacity-100"
+                                style={{
+                                  color: variables.colors.inputTextColor,
+                                }}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {validationErrors.email && (
+                          <p className="text-xs text-destructive font-inter mt-1">
+                            {validationErrors.email}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="font-inter text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Password
+                        </Label>
+                        <div className="min-h-10 flex items-center">
+                          {isEditingPassword ? (
+                            <div className="flex items-center gap-2 w-full">
+                              <div className="relative flex-1">
+                                <Input
+                                  type={showPassword ? "text" : "password"}
+                                  value={formData.password}
+                                  onChange={(e) =>
+                                    updateFormField("password", e.target.value)
+                                  }
+                                  placeholder="Enter new password (min 8 characters)"
                                   disabled={isSubmitting}
-                                  className="h-10 font-inter edit-advertiser-modal-input flex-1 text-sm"
+                                  className="h-10 font-inter edit-advertiser-modal-input pr-10 text-sm"
                                   style={{
                                     backgroundColor:
                                       variables.colors.inputBackgroundColor,
-                                    borderColor: variables.colors.inputBorderColor,
+                                    borderColor:
+                                      variables.colors.inputBorderColor,
                                     color: variables.colors.inputTextColor,
                                   }}
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    if (advertiser) {
-                                      updateFormField(
-                                        "email",
-                                        (advertiser as any).email || ""
-                                      );
-                                    }
-                                    setIsEditingEmail(false);
-                                  }}
+                                  onClick={() => setShowPassword(!showPassword)}
                                   disabled={isSubmitting}
-                                  className="p-1.5 rounded-md transition-colors shrink-0 border"
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100 transition-colors"
                                   style={{
-                                    backgroundColor: "#FEE2E2",
-                                    borderColor: "#EF4444",
-                                    color: "#EF4444",
+                                    color: variables.colors.descriptionColor,
                                   }}
+                                  aria-label={
+                                    showPassword
+                                      ? "Hide password"
+                                      : "Show password"
+                                  }
                                 >
-                                  <XIcon size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsEditingEmail(false)}
-                                  disabled={isSubmitting}
-                                  className="p-1.5 rounded-md transition-colors shrink-0 border"
-                                  style={{
-                                    backgroundColor: "#D1FAE5",
-                                    borderColor: "#10B981",
-                                    color: "#10B981",
-                                  }}
-                                >
-                                  <Check size={16} />
+                                  {showPassword ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
                                 </button>
                               </div>
-                            ) : (
-                              <div className="font-inter text-sm flex items-center gap-2 w-full min-h-10 px-3 py-2 rounded-md bg-muted/30">
-                                <span className="flex-1 font-medium">
-                                  {formData.email || "Not set"}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsEditingEmail(true)}
-                                  disabled={isSubmitting}
-                                  className="p-1 rounded-md hover:bg-gray-100 transition-colors shrink-0 opacity-60 hover:opacity-100"
-                                  style={{
-                                    color: variables.colors.inputTextColor,
-                                  }}
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          {validationErrors.email && (
-                            <p className="text-xs text-destructive font-inter mt-1">
-                              {validationErrors.email}
-                            </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateFormField("password", "");
+                                  setIsEditingPassword(false);
+                                  setShowPassword(false);
+                                }}
+                                disabled={isSubmitting}
+                                className="p-1.5 rounded-md transition-colors shrink-0 border"
+                                style={{
+                                  backgroundColor: "#FEE2E2",
+                                  borderColor: "#EF4444",
+                                  color: "#EF4444",
+                                }}
+                              >
+                                <XIcon size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsEditingPassword(false);
+                                  setShowPassword(false);
+                                }}
+                                disabled={isSubmitting}
+                                className="p-1.5 rounded-md transition-colors shrink-0 border"
+                                style={{
+                                  backgroundColor: "#D1FAE5",
+                                  borderColor: "#10B981",
+                                  color: "#10B981",
+                                }}
+                              >
+                                <Check size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="font-inter text-sm flex items-center gap-2 w-full min-h-10 px-3 py-2 rounded-md bg-muted/30">
+                              <span className="flex-1 font-medium">
+                                ••••••••
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingPassword(true)}
+                                disabled={isSubmitting}
+                                className="p-1 rounded-md hover:bg-gray-100 transition-colors shrink-0 opacity-60 hover:opacity-100"
+                                style={{
+                                  color: variables.colors.inputTextColor,
+                                }}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            </div>
                           )}
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="font-inter text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            Password
-                          </Label>
-                          <div className="min-h-10 flex items-center">
-                            {isEditingPassword ? (
-                              <div className="flex items-center gap-2 w-full">
-                                <div className="relative flex-1">
-                                  <Input
-                                    type={showPassword ? "text" : "password"}
-                                    value={formData.password}
-                                    onChange={(e) =>
-                                      updateFormField("password", e.target.value)
-                                    }
-                                    placeholder="Enter new password (min 8 characters)"
-                                    disabled={isSubmitting}
-                                    className="h-10 font-inter edit-advertiser-modal-input pr-10 text-sm"
-                                    style={{
-                                      backgroundColor:
-                                        variables.colors.inputBackgroundColor,
-                                      borderColor: variables.colors.inputBorderColor,
-                                      color: variables.colors.inputTextColor,
-                                    }}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    disabled={isSubmitting}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100 transition-colors"
-                                    style={{
-                                      color: variables.colors.descriptionColor,
-                                    }}
-                                    aria-label={
-                                      showPassword ? "Hide password" : "Show password"
-                                    }
-                                  >
-                                    {showPassword ? (
-                                      <EyeOff className="h-4 w-4" />
-                                    ) : (
-                                      <Eye className="h-4 w-4" />
-                                    )}
-                                  </button>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    updateFormField("password", "");
-                                    setIsEditingPassword(false);
-                                    setShowPassword(false);
-                                  }}
-                                  disabled={isSubmitting}
-                                  className="p-1.5 rounded-md transition-colors shrink-0 border"
-                                  style={{
-                                    backgroundColor: "#FEE2E2",
-                                    borderColor: "#EF4444",
-                                    color: "#EF4444",
-                                  }}
-                                >
-                                  <XIcon size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setIsEditingPassword(false);
-                                    setShowPassword(false);
-                                  }}
-                                  disabled={isSubmitting}
-                                  className="p-1.5 rounded-md transition-colors shrink-0 border"
-                                  style={{
-                                    backgroundColor: "#D1FAE5",
-                                    borderColor: "#10B981",
-                                    color: "#10B981",
-                                  }}
-                                >
-                                  <Check size={16} />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="font-inter text-sm flex items-center gap-2 w-full min-h-10 px-3 py-2 rounded-md bg-muted/30">
-                                <span className="flex-1 font-medium">
-                                  ••••••••
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsEditingPassword(true)}
-                                  disabled={isSubmitting}
-                                  className="p-1 rounded-md hover:bg-gray-100 transition-colors shrink-0 opacity-60 hover:opacity-100"
-                                  style={{
-                                    color: variables.colors.inputTextColor,
-                                  }}
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          {validationErrors.password && (
-                            <p className="text-xs text-destructive font-inter mt-1">
-                              {validationErrors.password}
-                            </p>
-                          )}
-                          {isEditingPassword && (
-                            <p
-                              className="text-xs font-inter"
-                              style={{ color: variables.colors.descriptionColor }}
-                            >
-                              Leave blank to keep current password. Password must be at least 8 characters.
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    )}
+                        {validationErrors.password && (
+                          <p className="text-xs text-destructive font-inter mt-1">
+                            {validationErrors.password}
+                          </p>
+                        )}
+                        {isEditingPassword && (
+                          <p
+                            className="text-xs font-inter"
+                            style={{ color: variables.colors.descriptionColor }}
+                          >
+                            Leave blank to keep current password. Password must
+                            be at least 8 characters.
+                          </p>
+                        )}
+                      </div>
+                    </>
                     {error && (
                       <div className="rounded-md bg-destructive/10 p-3">
                         <p className="text-sm text-destructive">{error}</p>

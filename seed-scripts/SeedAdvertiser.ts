@@ -1,11 +1,15 @@
+/* eslint-disable no-console */
 import "dotenv/config";
-import { eq } from "drizzle-orm";
 
-import { env } from "../env.js";
-import { auth } from "../lib/auth";
-import { db } from "../lib/db";
-import { logger } from "../lib/logger";
+import { Pool } from "@neondatabase/serverless";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/neon-serverless";
+
+import { env } from "../env";
 import { user } from "../lib/schema";
+
+const pool = new Pool({ connectionString: env.DATABASE_URL });
+const db = drizzle(pool, { schema: { user } });
 
 async function seedAdvertiser() {
   const advertiserEmail =
@@ -14,79 +18,99 @@ async function seedAdvertiser() {
   const advertiserName = env.ADVERTISER_NAME || "Advertiser User";
 
   try {
-    logger.app.info("Starting advertiser seed script...");
-    logger.app.info(`Email: ${advertiserEmail}`);
-    logger.app.info(`Name: ${advertiserName}`);
+    console.log("[APP] Starting advertiser seed script...");
+    console.log(`[APP] Email: ${advertiserEmail}`);
+    console.log(`[APP] Name: ${advertiserName}`);
 
-    // Check if user already exists
-    logger.app.info("Checking if advertiser user exists...");
     const existingUser = await db
       .select()
       .from(user)
       .where(eq(user.email, advertiserEmail))
       .limit(1);
-    logger.app.success("User check completed");
+    console.log("[APP] ✓ User check completed");
 
     if (existingUser.length > 0) {
-      logger.app.warn("Advertiser user already exists!");
+      console.warn("[APP] ⚠ Advertiser user already exists!");
 
-      // Update role to advertiser if not already
       if (existingUser[0].role !== "advertiser") {
-        logger.app.info("Updating user role to advertiser...");
+        console.log("[APP] Updating user role to advertiser...");
         await db
           .update(user)
           .set({ role: "advertiser", updatedAt: new Date() })
           .where(eq(user.id, existingUser[0].id));
-        logger.app.success("User role updated to advertiser");
+        console.log("[APP] ✓ User role updated to advertiser");
       } else {
-        logger.app.success("Advertiser user already has advertiser role");
+        console.log("[APP] ✓ Advertiser user already has advertiser role");
       }
 
-      logger.app.info(
+      console.log(
         `\nℹ️  Info\n\nAdvertiser user already exists!\n\nEmail: ${advertiserEmail}\nRole: advertiser\n`
       );
       return;
     }
 
-    // Create user using BetterAuth API
-    logger.app.info("Creating advertiser user...");
-    const signUpResult = await auth.api.signUpEmail({
-      body: {
+    console.log("[APP] Creating advertiser user via Better Auth API...");
+
+    const baseURL =
+      env.BETTER_AUTH_URL ||
+      process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : "http://localhost:3000");
+
+    console.log(`[APP] Using baseURL: ${baseURL}`);
+
+    const signUpResponse = await fetch(`${baseURL}/api/auth/sign-up/email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         email: advertiserEmail,
         password: advertiserPassword,
         name: advertiserName,
-      },
-      headers: new Headers(),
+      }),
     });
+
+    if (!signUpResponse.ok) {
+      const errorData = await signUpResponse.json().catch(() => ({}));
+      throw new Error(
+        `Signup failed: ${signUpResponse.status} ${signUpResponse.statusText}. ${JSON.stringify(errorData)}`
+      );
+    }
+
+    const signUpResult = await signUpResponse.json();
 
     if (!signUpResult.user) {
       throw new Error("User creation failed: No user data returned");
     }
 
-    // Update user role to advertiser
+    console.log(
+      "[APP] User created via Better Auth, updating role to advertiser..."
+    );
+
     await db
       .update(user)
       .set({ role: "advertiser", updatedAt: new Date() })
       .where(eq(user.id, signUpResult.user.id));
 
-    logger.app.success("Advertiser user created successfully!");
+    console.log("[APP] ✓ Advertiser user created successfully!");
 
-    // Display success message
-    logger.app.info(
+    console.log(
       `\n✅ Advertiser User Created\n\nEmail: ${advertiserEmail}\nPassword: ${advertiserPassword}\n\n⚠️  Please change the password after first login!\n`
     );
 
-    const result = signUpResult;
-    logger.app.info(`User ID: ${result.user.id}`);
-    logger.app.info(`Role: advertiser`);
+    console.log(`[APP] User ID: ${signUpResult.user.id}`);
+    console.log(`[APP] Role: advertiser`);
   } catch (error) {
-    logger.app.error(`Error seeding advertiser user: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      "[APP] ✗ Error seeding advertiser user:",
+      error instanceof Error ? error.message : String(error)
+    );
     process.exit(1);
   } finally {
-    // Close database connection
+    await pool.end();
     process.exit(0);
   }
 }
 
-// Run the seed script
 seedAdvertiser();

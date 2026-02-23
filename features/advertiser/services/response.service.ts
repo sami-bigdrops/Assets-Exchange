@@ -1,11 +1,19 @@
-import { and, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  eq,
+  ilike,
+  or,
+  sql,
+  inArray,
+  isNotNull,
+  type SQL,
+} from "drizzle-orm";
 
 import { logStatusChange } from "@/features/admin/services/statusHistory.service";
 import { notifyWorkflowEvent } from "@/features/notifications/notification.service";
 import type { WorkflowEvent } from "@/features/notifications/types";
 import { db } from "@/lib/db";
-import { logger } from "@/lib/logger";
-import { assetsTable, creativeRequests } from "@/lib/schema";
+import { creativeRequests, offers } from "@/lib/schema";
 
 export async function getAdvertiserResponses({
   advertiserId,
@@ -22,9 +30,29 @@ export async function getAdvertiserResponses({
 }) {
   const where: SQL[] = [
     eq(creativeRequests.advertiserId, advertiserId),
-    eq(creativeRequests.approvalStage, "advertiser"),
+    or(
+      inArray(creativeRequests.approvalStage, ["advertiser", "completed"]),
+      and(
+        eq(creativeRequests.approvalStage, "admin"),
+        isNotNull(creativeRequests.advertiserStatus)
+      )
+    ) as SQL,
   ];
-  if (status) where.push(sql`${creativeRequests.status} = ANY(${status})`);
+  if (status && status.length > 0) {
+    type RequestStatusUnion =
+      | "new"
+      | "pending"
+      | "approved"
+      | "rejected"
+      | "sent-back"
+      | "revised";
+    where.push(
+      inArray(
+        creativeRequests.status,
+        status as unknown as [RequestStatusUnion, ...RequestStatusUnion[]]
+      )
+    );
+  }
   if (search) {
     const searchCondition = or(
       ilike(creativeRequests.offerName, `%${search}%`),
@@ -37,8 +65,29 @@ export async function getAdvertiserResponses({
 
   const [rows, total] = await Promise.all([
     db
-      .select()
+      .select({
+        id: creativeRequests.id,
+        offerName: creativeRequests.offerName,
+        status: creativeRequests.status,
+        approvalStage: creativeRequests.approvalStage,
+        submittedAt: creativeRequests.submittedAt,
+        creativeType: creativeRequests.creativeType,
+        creativeCount: creativeRequests.creativeCount,
+        fromLinesCount: creativeRequests.fromLinesCount,
+        subjectLinesCount: creativeRequests.subjectLinesCount,
+        advertiserName: creativeRequests.advertiserName,
+        priority: creativeRequests.priority,
+        offerId: creativeRequests.offerId,
+        everflowOfferId: offers.everflowOfferId,
+        affiliateId: creativeRequests.affiliateId,
+        clientId: creativeRequests.clientId,
+        clientName: creativeRequests.clientName,
+        advertiserRespondedAt: creativeRequests.advertiserRespondedAt,
+        advertiserStatus: creativeRequests.advertiserStatus,
+        advertiserComments: creativeRequests.advertiserComments,
+      })
       .from(creativeRequests)
+      .leftJoin(offers, eq(creativeRequests.offerId, offers.id))
       .where(and(...where))
       .limit(limit)
       .offset(offset)
@@ -77,25 +126,15 @@ export async function approveResponse(id: string, advertiserId: string) {
       throw new Error("Invalid state transition");
     }
 
-    const now = new Date();
-
     await tx
       .update(creativeRequests)
       .set({
-        status: "approved",
-        approvalStage: "completed",
+        status: "pending",
+        approvalStage: "admin",
         advertiserStatus: "approved",
-        advertiserRespondedAt: now,
+        advertiserRespondedAt: new Date(),
       })
       .where(eq(creativeRequests.id, id));
-
-    await tx
-      .update(assetsTable)
-      .set({
-        status: "APPROVED",
-        approvedAt: now,
-      })
-      .where(eq(assetsTable.id, id));
 
     evt = {
       event: "response.approved_by_advertiser",
@@ -115,11 +154,6 @@ export async function approveResponse(id: string, advertiserId: string) {
       actorId: advertiserId,
     };
   });
-
-  logger.app.info(
-    { requestId: id, advertiserId },
-    "Updated asset status to APPROVED in assets_table"
-  );
 
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
@@ -156,8 +190,8 @@ export async function sendBackResponse(
     await tx
       .update(creativeRequests)
       .set({
-        status: "sent-back",
-        approvalStage: "advertiser",
+        status: "pending",
+        approvalStage: "admin",
         advertiserStatus: "sent_back",
         advertiserComments: reason,
         advertiserRespondedAt: new Date(),
@@ -178,6 +212,69 @@ export async function sendBackResponse(
       requestId: row.id,
       fromStatus: "pending",
       toStatus: "sent-back",
+      actorRole: "advertiser",
+      actorId: advertiserId,
+      reason,
+    };
+  });
+
+  if (evt) await notifyWorkflowEvent(evt);
+  if (historyEntry) await logStatusChange(historyEntry);
+}
+
+export async function rejectResponse(
+  id: string,
+  advertiserId: string,
+  reason: string
+) {
+  let evt: WorkflowEvent | null = null;
+  let historyEntry: Parameters<typeof logStatusChange>[0] | null = null;
+
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(creativeRequests)
+      .where(
+        and(
+          eq(creativeRequests.id, id),
+          eq(creativeRequests.advertiserId, advertiserId)
+        )
+      )
+      .for("update");
+
+    if (!row) {
+      throw new Error("Request not found");
+    }
+
+    if (row.status !== "pending" || row.approvalStage !== "advertiser") {
+      throw new Error("Invalid state transition");
+    }
+
+    await tx
+      .update(creativeRequests)
+      .set({
+        status: "pending",
+        approvalStage: "admin",
+        advertiserStatus: "rejected",
+        advertiserComments: reason,
+        advertiserRespondedAt: new Date(),
+      })
+      .where(eq(creativeRequests.id, id));
+
+    evt = {
+      event: "response.rejected_by_advertiser",
+      requestId: row.id,
+      offerName: row.offerName,
+      fromStatus: "pending",
+      toStatus: "rejected",
+      actor: { role: "advertiser", id: advertiserId },
+      timestamp: new Date().toISOString(),
+    };
+
+    historyEntry = {
+      requestId: row.id,
+      fromStatus: "pending",
+      toStatus: "pending",
       actorRole: "advertiser",
       actorId: advertiserId,
       reason,

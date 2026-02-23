@@ -155,10 +155,6 @@ export function AnnotatePageClient({
           creativeId={creativeId}
           creativeUrl={creativeUrl}
           creativeType={creativeType}
-          fileName={fileName}
-          fileTypeLabel={displayType}
-          fileSize={fileSize}
-          hideHeader
           actionLabel={
             action === "send-back"
               ? "Confirm Send Back"
@@ -168,7 +164,7 @@ export function AnnotatePageClient({
           }
           onAction={hasConfirm ? handleAction : undefined}
           isSubmitting={isSubmitting}
-          readOnly={readOnly}
+          isReadOnly={readOnly}
         />
       </main>
     </div>

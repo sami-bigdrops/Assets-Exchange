@@ -9,7 +9,6 @@ import { AdminPerformanceChart } from "./AdminPerformanceChart";
 import { Request } from "./Request";
 import { Response } from "./Response";
 
-
 export function AdminDashboard() {
   const { data, isLoading, error } = useAdminDashboardViewModel();
 

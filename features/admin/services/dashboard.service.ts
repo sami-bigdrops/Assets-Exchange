@@ -47,6 +47,13 @@ function getLastMonthRangePST(): { start: string; end: string } {
   };
 }
 
+/**
+ * ANALYTICS BUSINESS RULES - See lib/analytics/creative-requests-rules.ts
+ *
+ * Approved Status: status = 'approved' (do NOT check approvalStage - it's redundant)
+ * Time to Approval: admin_approved_at - submitted_at (only for status = 'approved' AND admin_approved_at IS NOT NULL)
+ */
+
 export async function getDashboardStats(): Promise<DashboardStats> {
   const todayPST = getTodayPST();
   const yesterdayPST = getYesterdayPST();

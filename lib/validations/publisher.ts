@@ -1,25 +1,28 @@
 import { z } from "zod";
 
-const FileSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1, "File name is required"),
-  url: z.string().url("Must be a valid URL"),
+export const fileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+  size: z.number(),
   type: z.string(),
-  size: z.number().positive(),
-  metadata: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const PublisherSubmitSchema = z.object({
-  personalDetails: z.object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
-    telegramId: z.string().optional(),
-  }),
-  creativeDetails: z.object({
-    brand_name: z.string().min(1, "Brand name is required"),
-    project_name: z.string().min(1, "Project name is required"),
-    guidelines: z.string().optional(),
-    notes: z.string().optional(),
-  }),
-  files: z.array(FileSchema).min(1, "At least one file is required"),
+export const submitSchema = z.object({
+  affiliateId: z.string().min(1),
+  companyName: z.string().min(5),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email(),
+  telegramId: z.string().optional(),
+  offerId: z.string().min(1),
+  creativeType: z.string().min(1),
+  fromLines: z.string().optional(),
+  subjectLines: z.string().optional(),
+  additionalNotes: z.string().optional(),
+  priority: z.string().optional(),
+  files: z.array(fileSchema).optional(),
 });
+
+export type SubmitPayload = z.infer<typeof submitSchema>;

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import React from "react";
 
+
 import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import {
   DialogTitle,
   DialogBody,
 } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import {
   useFileUploadModal,
   type UploadType,
@@ -30,6 +32,7 @@ interface FileUploadModalProps {
   onClose: () => void;
   uploadType: UploadType;
   onFileUpload: (file: File) => Promise<void> | void;
+  uploadProgress?: number;
 }
 
 const FileUploadModal: React.FC<FileUploadModalProps> = ({
@@ -37,6 +40,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
   onClose,
   uploadType,
   onFileUpload,
+  uploadProgress = 0,
 }) => {
   const variables = getVariables();
   const {
@@ -66,25 +70,27 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
   const getDragDropContent = () => {
     if (uploadStatus === "uploading") {
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Loader2
-            className="h-16 w-16 mx-auto animate-spin"
+            className="h-10 w-10 mx-auto animate-spin"
             style={{ color: variables.colors.titleColor }}
           />
-          <div>
-            <p
-              className="text-sm font-medium"
-              style={{ color: variables.colors.titleColor }}
-            >
-              Uploading...
-            </p>
-            <p
-              className="text-xs"
-              style={{ color: variables.colors.descriptionColor }}
-            >
-              Please wait while your file is being uploaded
-            </p>
-          </div>
+
+          <Progress value={uploadProgress} />
+
+          <p
+            className="text-sm font-medium text-center"
+            style={{ color: variables.colors.titleColor }}
+          >
+            Uploading… {Math.round(uploadProgress)}%
+          </p>
+
+          <p
+            className="text-xs text-center"
+            style={{ color: variables.colors.descriptionColor }}
+          >
+            Please wait while your file is being uploaded
+          </p>
         </div>
       );
     }

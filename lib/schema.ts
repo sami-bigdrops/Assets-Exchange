@@ -8,7 +8,10 @@ import {
   integer,
   pgEnum,
   index,
+  unique,
   jsonb,
+  date,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -418,6 +421,7 @@ export const publishers = pgTable("publishers", {
   name: text("name").notNull(),
   contactEmail: text("contact_email"),
   telegramId: text("telegram_id"),
+  telegramChatId: text("telegram_chat_id"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -582,10 +586,17 @@ export const creatives = pgTable(
     }>(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at"),
+    statusUpdatedAt: timestamp("status_updated_at").notNull().defaultNow(),
+    scanAttempts: integer("scan_attempts").notNull().default(0),
+    lastScanError: text("last_scan_error"),
   },
   (table) => ({
     requestIdIdx: index("idx_creatives_request_id").on(table.requestId),
     statusIdx: index("idx_creatives_status").on(table.status),
+    statusUpdatedAtIdx: index("idx_creatives_status_updated_at").on(
+      table.status,
+      table.statusUpdatedAt
+    ),
     createdAtIdx: index("idx_creatives_created_at").on(table.createdAt),
   })
 );
@@ -626,6 +637,20 @@ export const externalTasks = pgTable(
 
     status: text("status").notNull().default("pending"),
     result: jsonb("result"),
+    grammarFeedback: jsonb("grammar_feedback").$type<
+      Array<{
+        category?: string;
+        message: string;
+        severity?: "info" | "warning" | "error";
+        originalText?: string;
+        suggestedText?: string;
+        location?: {
+          line?: number;
+          column?: number;
+          offset?: number;
+        };
+      }>
+    >(),
 
     startedAt: timestamp("started_at").defaultNow(),
     finishedAt: timestamp("finished_at"),
@@ -637,6 +662,86 @@ export const externalTasks = pgTable(
     sourceIdx: index("idx_external_tasks_source").on(table.source),
     externalTaskIdIdx: index("idx_external_tasks_external_task_id").on(
       table.externalTaskId
+    ),
+  })
+);
+
+export const dailyStats = pgTable(
+  "daily_stats",
+  {
+    date: date("date").primaryKey().notNull(),
+    totalSubmitted: integer("total_submitted").notNull().default(0),
+    totalApproved: integer("total_approved").notNull().default(0),
+    avgApprovalTimeSeconds: doublePrecision("avg_approval_time_seconds"),
+    topPublishers: jsonb("top_publishers").$type<
+      Array<{
+        publisherId: string;
+        publisherName: string;
+        requestCount: number;
+      }>
+    >(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    dateIdx: index("idx_daily_stats_date").on(table.date),
+  })
+);
+
+export const assetsTable = pgTable(
+  "assets_table",
+  {
+    id: text("id").primaryKey().notNull(),
+    publisherId: text("publisher_id").notNull(),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    approvedAt: timestamp("approved_at"),
+  },
+  (table) => ({
+    publisherIdIdx: index("idx_assets_table_publisher_id").on(
+      table.publisherId
+    ),
+    statusIdx: index("idx_assets_table_status").on(table.status),
+    createdAtIdx: index("idx_assets_table_created_at").on(table.createdAt),
+    approvedAtIdx: index("idx_assets_table_approved_at").on(table.approvedAt),
+  })
+);
+
+export const batches = pgTable(
+  "batches",
+  {
+    id: text("id").primaryKey().notNull(),
+    batchLabel: text("batch_label").notNull(),
+    description: text("description"),
+    status: text("status").notNull().default("active"),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    statusIdx: index("idx_batches_status").on(table.status),
+    createdByIdx: index("idx_batches_created_by").on(table.createdBy),
+    createdAtIdx: index("idx_batches_created_at").on(table.createdAt),
+  })
+);
+
+export const batchAssets = pgTable(
+  "batch_assets",
+  {
+    id: text("id").primaryKey().notNull(),
+    batchId: text("batch_id")
+      .notNull()
+      .references(() => batches.id, { onDelete: "cascade" }),
+    assetId: text("asset_id")
+      .notNull()
+      .references(() => assetsTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    batchIdIdx: index("idx_batch_assets_batch_id").on(table.batchId),
+    assetIdIdx: index("idx_batch_assets_asset_id").on(table.assetId),
+    batchAssetUnique: unique("batch_assets_batch_id_asset_id_unique").on(
+      table.batchId,
+      table.assetId
     ),
   })
 );

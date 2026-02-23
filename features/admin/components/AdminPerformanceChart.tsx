@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { DateRange } from "react-day-picker";
 
 import { PerformanceChart } from "@/features/dashboard";
 import type {
@@ -21,18 +22,21 @@ const getLastWeekDayName = (): string => {
     "Saturday",
   ];
   const today = new Date();
-  const dayName = days[today.getDay()];
-  return dayName;
+  return days[today.getDay()];
 };
 
 const normalizeComparisonType = (comparison: string): ComparisonType => {
-  if (comparison.startsWith("Today vs Last")) {
-    return "Today vs Last Week";
-  }
+  if (comparison.startsWith("Today vs Last")) return "Today vs Last Week";
   return comparison as ComparisonType;
 };
 
-export function AdminPerformanceChart() {
+type AdminPerformanceChartProps = {
+  dateRange?: DateRange;
+};
+
+export function AdminPerformanceChart({
+  dateRange,
+}: AdminPerformanceChartProps) {
   const [selectedComparison, setSelectedComparison] =
     useState<string>("Today vs Yesterday");
   const [selectedMetric, setSelectedMetric] =
@@ -40,9 +44,11 @@ export function AdminPerformanceChart() {
 
   const comparisonType = normalizeComparisonType(selectedComparison);
 
+  // IMPORTANT: pass date range into the view model so it can append query params and refetch.
   const { data, isLoading, error } = usePerformanceChartViewModel(
     comparisonType,
-    selectedMetric
+    selectedMetric,
+    dateRange
   );
 
   const handleComparisonChange = (comparison: ComparisonType) => {
@@ -59,9 +65,8 @@ export function AdminPerformanceChart() {
       "Current Week vs Last Week",
       "Current Month vs Last Month",
     ].indexOf(comparison);
-    if (index >= 0) {
-      setSelectedComparison(comparisonOptions[index]);
-    }
+
+    if (index >= 0) setSelectedComparison(comparisonOptions[index]);
   };
 
   const handleMetricChange = (metric: MetricType) => {

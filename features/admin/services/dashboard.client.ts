@@ -11,7 +11,10 @@ import {
 import type { AdminDashboardData, AdminStats } from "../types/admin.types";
 import type { DashboardStats } from "../types/dashboard.types";
 
-function calculateTrendPercentage(today: number, yesterday: number): {
+function calculateTrendPercentage(
+  today: number,
+  yesterday: number
+): {
   percentage: number;
   isPositive: boolean;
 } {
@@ -83,9 +86,18 @@ function transformBackendStatsToFrontend(
         trendIconValue: totalAssetsTrend.isPositive ? TrendingUp : TrendingDown,
       },
       historicalData: [
-        { label: "Yesterday", value: formatNumber(historicalData.totalAssets.yesterday) },
-        { label: "Current Month", value: formatNumber(historicalData.totalAssets.currentMonth) },
-        { label: "Last Month", value: formatNumber(historicalData.totalAssets.lastMonth) },
+        {
+          label: "Yesterday",
+          value: formatNumber(historicalData.totalAssets.yesterday),
+        },
+        {
+          label: "Current Month",
+          value: formatNumber(historicalData.totalAssets.currentMonth),
+        },
+        {
+          label: "Last Month",
+          value: formatNumber(historicalData.totalAssets.lastMonth),
+        },
         { label: "Total", value: formatNumber(totals.totalAssets) },
       ],
     },
@@ -96,14 +108,21 @@ function transformBackendStatsToFrontend(
       trend: {
         trendTextValue: "Today",
         textValue: `${Math.round(newRequestsTrend.percentage)}%`,
-        trendIconValue: newRequestsTrend.isPositive
-          ? TrendingUp
-          : TrendingDown,
+        trendIconValue: newRequestsTrend.isPositive ? TrendingUp : TrendingDown,
       },
       historicalData: [
-        { label: "Yesterday", value: formatNumber(historicalData.newRequests.yesterday) },
-        { label: "Current Month", value: formatNumber(historicalData.newRequests.currentMonth) },
-        { label: "Last Month", value: formatNumber(historicalData.newRequests.lastMonth) },
+        {
+          label: "Yesterday",
+          value: formatNumber(historicalData.newRequests.yesterday),
+        },
+        {
+          label: "Current Month",
+          value: formatNumber(historicalData.newRequests.currentMonth),
+        },
+        {
+          label: "Last Month",
+          value: formatNumber(historicalData.newRequests.lastMonth),
+        },
         { label: "Total", value: formatNumber(totals.newRequests) },
       ],
     },
@@ -117,9 +136,18 @@ function transformBackendStatsToFrontend(
         trendIconValue: approvedTrend.isPositive ? TrendingUp : TrendingDown,
       },
       historicalData: [
-        { label: "Yesterday", value: formatNumber(historicalData.approved.yesterday) },
-        { label: "Current Month", value: formatNumber(historicalData.approved.currentMonth) },
-        { label: "Last Month", value: formatNumber(historicalData.approved.lastMonth) },
+        {
+          label: "Yesterday",
+          value: formatNumber(historicalData.approved.yesterday),
+        },
+        {
+          label: "Current Month",
+          value: formatNumber(historicalData.approved.currentMonth),
+        },
+        {
+          label: "Last Month",
+          value: formatNumber(historicalData.approved.lastMonth),
+        },
         { label: "Total", value: formatNumber(totals.approved) },
       ],
     },
@@ -133,9 +161,18 @@ function transformBackendStatsToFrontend(
         trendIconValue: rejectedTrend.isPositive ? TrendingUp : TrendingDown,
       },
       historicalData: [
-        { label: "Yesterday", value: formatNumber(historicalData.rejected.yesterday) },
-        { label: "Current Month", value: formatNumber(historicalData.rejected.currentMonth) },
-        { label: "Last Month", value: formatNumber(historicalData.rejected.lastMonth) },
+        {
+          label: "Yesterday",
+          value: formatNumber(historicalData.rejected.yesterday),
+        },
+        {
+          label: "Current Month",
+          value: formatNumber(historicalData.rejected.currentMonth),
+        },
+        {
+          label: "Last Month",
+          value: formatNumber(historicalData.rejected.lastMonth),
+        },
         { label: "Total", value: formatNumber(totals.rejected) },
       ],
     },
@@ -149,9 +186,18 @@ function transformBackendStatsToFrontend(
         trendIconValue: pendingTrend.isPositive ? TrendingUp : TrendingDown,
       },
       historicalData: [
-        { label: "Yesterday", value: formatNumber(historicalData.pending.yesterday) },
-        { label: "Current Month", value: formatNumber(historicalData.pending.currentMonth) },
-        { label: "Last Month", value: formatNumber(historicalData.pending.lastMonth) },
+        {
+          label: "Yesterday",
+          value: formatNumber(historicalData.pending.yesterday),
+        },
+        {
+          label: "Current Month",
+          value: formatNumber(historicalData.pending.currentMonth),
+        },
+        {
+          label: "Last Month",
+          value: formatNumber(historicalData.pending.lastMonth),
+        },
         { label: "Total", value: formatNumber(totals.pending) },
       ],
     },

@@ -345,6 +345,234 @@ function applyCorrectionsToHtml(html: string, corrections: unknown[]): string {
   return highlightedHtml;
 }
 
+type GrammarFeedbackItem = {
+  category?: string;
+  message: string;
+  severity?: "info" | "warning" | "error";
+  originalText?: string;
+  suggestedText?: string;
+  location?: {
+    line?: number;
+    column?: number;
+    offset?: number;
+  };
+};
+
+function extractGrammarFeedback(
+  resultData: Record<string, unknown>
+): GrammarFeedbackItem[] {
+  try {
+    const feedback: GrammarFeedbackItem[] = [];
+
+    if (!resultData || typeof resultData !== "object") {
+      console.warn(
+        "[GrammarFeedback] Invalid resultData: not an object",
+        typeof resultData
+      );
+      return feedback;
+    }
+
+    const corrections = Array.isArray(resultData.corrections)
+      ? resultData.corrections
+      : [];
+    const issues = Array.isArray(resultData.issues) ? resultData.issues : [];
+
+    if (!Array.isArray(resultData.corrections) && resultData.corrections) {
+      console.warn(
+        "[GrammarFeedback] Unexpected corrections format:",
+        typeof resultData.corrections,
+        "Expected array, got",
+        Object.keys(resultData.corrections || {}).slice(0, 5)
+      );
+    }
+
+    if (!Array.isArray(resultData.issues) && resultData.issues) {
+      console.warn(
+        "[GrammarFeedback] Unexpected issues format:",
+        typeof resultData.issues,
+        "Expected array, got",
+        Object.keys(resultData.issues || {}).slice(0, 5)
+      );
+    }
+
+    const processItem = (
+      item: unknown,
+      source: "correction" | "issue"
+    ): GrammarFeedbackItem | null => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const correction = item as CorrectionItem & {
+        category?: string;
+        type?: string;
+        severity?: string;
+        message?: string;
+        line?: number;
+        column?: number;
+        offset?: number;
+      };
+
+      const originalText =
+        correction.original ||
+        correction.incorrect ||
+        correction.wrong ||
+        correction.error ||
+        correction.error_text ||
+        correction.original_text ||
+        correction.text ||
+        correction.before;
+
+      const suggestedText =
+        correction.correction ||
+        correction.corrected ||
+        correction.correct ||
+        correction.replacement ||
+        correction.suggested ||
+        correction.suggestion ||
+        correction.corrected_text ||
+        correction.after ||
+        correction.fix;
+
+      if (!originalText && !suggestedText && !correction.message) {
+        return null;
+      }
+
+      let message = correction.message;
+      if (!message) {
+        if (originalText && suggestedText) {
+          message = `"${originalText}" should be "${suggestedText}"`;
+        } else if (originalText) {
+          message = `Issue found: "${originalText}"`;
+        } else if (suggestedText) {
+          message = `Suggestion: "${suggestedText}"`;
+        } else {
+          message = "Grammar issue detected";
+        }
+      }
+
+      let category = correction.category || correction.type;
+      if (!category) {
+        if (source === "correction") {
+          category = "grammar_correction";
+        } else {
+          category = "grammar_issue";
+        }
+      }
+
+      let severity: "info" | "warning" | "error" = "warning";
+      if (correction.severity) {
+        const sev = String(correction.severity).toLowerCase();
+        if (sev === "error" || sev === "critical") {
+          severity = "error";
+        } else if (sev === "info" || sev === "information") {
+          severity = "info";
+        } else {
+          severity = "warning";
+        }
+      } else {
+        severity = source === "correction" ? "warning" : "info";
+      }
+
+      const location: GrammarFeedbackItem["location"] = {};
+      if (typeof correction.line === "number") {
+        location.line = correction.line;
+      }
+      if (typeof correction.column === "number") {
+        location.column = correction.column;
+      }
+      if (typeof correction.offset === "number") {
+        location.offset = correction.offset;
+      }
+
+      return {
+        category,
+        message,
+        severity,
+        originalText: originalText || undefined,
+        suggestedText: suggestedText || undefined,
+        location: Object.keys(location).length > 0 ? location : undefined,
+      };
+    };
+
+    for (const item of corrections) {
+      const feedbackItem = processItem(item, "correction");
+      if (feedbackItem) {
+        feedback.push(feedbackItem);
+      }
+    }
+
+    for (const item of issues) {
+      const feedbackItem = processItem(item, "issue");
+      if (feedbackItem) {
+        feedback.push(feedbackItem);
+      }
+    }
+
+    if (feedback.length > 0) {
+      console.warn(
+        `[GrammarFeedback] Extracted ${feedback.length} grammar issue(s)`
+      );
+    } else if (corrections.length === 0 && issues.length === 0) {
+      console.warn(
+        "[GrammarFeedback] No corrections or issues found in response"
+      );
+    }
+
+    return feedback;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error(
+      "[GrammarFeedback] Error extracting grammar feedback:",
+      errorMessage,
+      {
+        resultDataKeys: resultData
+          ? Object.keys(resultData).slice(0, 10)
+          : "null",
+        errorStack: errorStack?.substring(0, 200),
+      }
+    );
+
+    return [];
+  }
+}
+
+/**
+ * Extracts grammar feedback from result data with business logic rules.
+ *
+ * Business Logic:
+ * - null = not available / not processed (task not completed, no result data, or parsing failed)
+ * - [] = processed successfully, no issues found
+ * - [items] = processed successfully, issues found
+ *
+ * Only extracts feedback for completed tasks. Failed tasks use errorMessage instead.
+ */
+function extractGrammarFeedbackWithBusinessLogic(
+  resultData: Record<string, unknown> | null | undefined,
+  taskStatus: string
+): GrammarFeedbackItem[] | null {
+  if (taskStatus !== "completed") {
+    return null;
+  }
+
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+
+  try {
+    const feedback = extractGrammarFeedback(resultData);
+    return feedback;
+  } catch (error) {
+    console.error(
+      "[GrammarFeedback] Failed to extract feedback (parsing failed, returning null):",
+      error instanceof Error ? error.message : String(error)
+    );
+    return null;
+  }
+}
+
 export const GrammarService = {
   async warmupService(): Promise<{ success: boolean; message: string }> {
     if (!AI_BASE_URL) {
@@ -987,6 +1215,11 @@ Focus on marketing impact, NOT grammar (that's handled separately).`;
               }
             }
 
+            const grammarFeedback = extractGrammarFeedbackWithBusinessLogic(
+              resultData,
+              "completed"
+            );
+
             const [task] = await db
               .insert(externalTasks)
               .values({
@@ -996,6 +1229,7 @@ Focus on marketing impact, NOT grammar (that's handled separately).`;
                 externalTaskId: data.task_id || `sync-${Date.now()}`,
                 status: "completed",
                 result: resultData,
+                grammarFeedback,
                 startedAt: new Date(),
                 finishedAt: new Date(),
               })
@@ -1105,11 +1339,21 @@ Focus on marketing impact, NOT grammar (that's handled separately).`;
           }
         }
 
+        const resultData =
+          data.result && typeof data.result === "object"
+            ? (data.result as Record<string, unknown>)
+            : {};
+        const grammarFeedback = extractGrammarFeedbackWithBusinessLogic(
+          resultData,
+          "completed"
+        );
+
         await db
           .update(externalTasks)
           .set({
             status: "completed",
             result: data.result,
+            grammarFeedback,
             finishedAt: new Date(),
           })
           .where(eq(externalTasks.externalTaskId, externalTaskId));

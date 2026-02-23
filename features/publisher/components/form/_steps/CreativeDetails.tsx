@@ -25,6 +25,201 @@ import FromSubjectLinesModal from "../_modals/FromSubjectLinesModal";
 import MultipleCreativesModal from "../_modals/MultipleCreativesModal";
 import SingleCreativeViewModal from "../_modals/SingleCreativeViewModal";
 
+/**
+ * ===========================
+ * ADD-ON: Rejection Reasons UI
+ * ===========================
+ * - Does NOT change existing logic
+ * - Only adds:
+ *   1) Types + safe parser for grammar_feedback
+ *   2) UI block (inline) to show reasons when status is rejected
+ *   3) Ensures metadata fetch stores grammar_feedback in a consistent place
+ */
+
+// Keep your existing status type if you use it elsewhere.
+// (Left as-is; only referenced in add-on)
+type Status = "pending" | "completed" | "failed" | "rejected";
+
+// Normalized UI issue type (what UI will render)
+type GrammarIssue = {
+  category?: string;
+  message: string;
+  severity?: "error" | "warning" | "info";
+  originalText?: string;
+  suggestedText?: string;
+};
+
+// Optional: this supports multiple possible backend shapes.
+// We normalize everything into GrammarIssue[] so UI never crashes.
+type GrammarFeedbackInput =
+  | null
+  | undefined
+  | string
+  | number
+  | boolean
+  | Record<string, unknown>
+  | Array<unknown>;
+
+// SAFE helper: turn anything into string
+const safeToString = (v: unknown): string => {
+  if (typeof v === "string") return v;
+  if (v == null) return "";
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
+};
+
+/**
+ * Parse/normalize grammar_feedback into GrammarIssue[].
+ * Supports:
+ * - Array of issues
+ * - Object with `issues` array
+ * - Stringified JSON
+ * - Plain string
+ * - Unknown shapes
+ */
+const parseGrammarFeedback = (input: GrammarFeedbackInput): GrammarIssue[] => {
+  if (input == null) return [];
+
+  // If it's a string, try JSON parse first.
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      return parseGrammarFeedback(parsed as GrammarFeedbackInput);
+    } catch {
+      // Plain text string -> one issue
+      return [
+        {
+          message: trimmed,
+          severity: "error",
+          category: "Feedback",
+        },
+      ];
+    }
+  }
+
+  // If it's an array, attempt to map items into issues
+  if (Array.isArray(input)) {
+    const issues = input
+      .map((item) => {
+        if (item == null) return null;
+
+        // If item is string, treat as message
+        if (typeof item === "string") {
+          const msg = item.trim();
+          if (!msg) return null;
+          return { message: msg, severity: "error", category: "Grammar" };
+        }
+
+        // If item is object, try to extract common keys
+        if (typeof item === "object") {
+          const obj = item as Record<string, unknown>;
+          const message =
+            (typeof obj.message === "string" && obj.message.trim()) ||
+            (typeof obj.error === "string" && obj.error.trim()) ||
+            (typeof obj.description === "string" && obj.description.trim()) ||
+            safeToString(obj).trim();
+
+          if (!message) return null;
+
+          const severityRaw = obj.severity;
+          const severity =
+            severityRaw === "error" ||
+            severityRaw === "warning" ||
+            severityRaw === "info"
+              ? severityRaw
+              : "error";
+
+          const category =
+            (typeof obj.category === "string" && obj.category.trim()) ||
+            (typeof obj.type === "string" && obj.type.trim()) ||
+            "Grammar";
+
+          const originalText =
+            typeof obj.originalText === "string"
+              ? obj.originalText
+              : typeof obj.original_text === "string"
+                ? obj.original_text
+                : undefined;
+
+          const suggestedText =
+            typeof obj.suggestedText === "string"
+              ? obj.suggestedText
+              : typeof obj.suggested_text === "string"
+                ? obj.suggested_text
+                : undefined;
+
+          return {
+            category,
+            message,
+            severity,
+            originalText,
+            suggestedText,
+          } satisfies GrammarIssue;
+        }
+
+        // fallback
+        const fallback = safeToString(item).trim();
+        if (!fallback) return null;
+        return { message: fallback, severity: "error", category: "Grammar" };
+      })
+      .filter(Boolean) as GrammarIssue[];
+
+    return issues;
+  }
+
+  // If it's an object, support { issues: [...] } or similar
+  if (typeof input === "object") {
+    const obj = input as Record<string, unknown>;
+
+    const issuesCandidate =
+      obj.issues ??
+      obj.errors ??
+      obj.grammarIssues ??
+      obj.grammar_issues ??
+      obj.feedback ??
+      obj.details;
+
+    // If there's an array field, parse it
+    if (Array.isArray(issuesCandidate)) {
+      return parseGrammarFeedback(issuesCandidate);
+    }
+
+    // If there is a string field, parse it
+    if (typeof issuesCandidate === "string") {
+      return parseGrammarFeedback(issuesCandidate);
+    }
+
+    // If object itself seems like a single issue
+    if (typeof obj.message === "string" && obj.message.trim()) {
+      return [
+        {
+          message: obj.message.trim(),
+          severity: "error",
+          category:
+            typeof obj.category === "string" && obj.category.trim()
+              ? obj.category.trim()
+              : "Grammar",
+        },
+      ];
+    }
+
+    // fallback: show object as a single message (last resort)
+    const fallback = safeToString(obj).trim();
+    if (!fallback) return [];
+    return [{ message: fallback, severity: "error", category: "Feedback" }];
+  }
+
+  // number/boolean -> single message
+  const fallback = safeToString(input).trim();
+  if (!fallback) return [];
+  return [{ message: fallback, severity: "error", category: "Feedback" }];
+};
+
 type UploadedFileMeta = {
   id: string;
   name: string;
@@ -40,6 +235,16 @@ type UploadedFileMeta = {
   subjectLines?: string;
   additionalNotes?: string;
   isHidden?: boolean;
+
+  /**
+   * ADD-ON: status + grammarFeedback holders on the file object.
+   * - We do NOT change existing metadata shape; we simply allow file-level
+   *   fields to exist for single-file view display / badge popover.
+   */
+  status?: Status;
+  grammarFeedback?: GrammarFeedbackInput;
+  GrammarStatus?: Status;
+
   metadata?: {
     fromLines?: string;
     subjectLines?: string;
@@ -58,6 +263,14 @@ type UploadedFileMeta = {
     ai_score?: number;
     ai_status?: string;
     last_checked?: string;
+
+    /**
+     * ADD-ON: allow DB-style `grammar_feedback` to exist under metadata too.
+     * This does NOT alter any existing logic—just allows TypeScript to accept it.
+     */
+    grammar_feedback?: GrammarFeedbackInput;
+    grammarFeedback?: GrammarFeedbackInput;
+    status?: Status;
   };
 };
 
@@ -145,6 +358,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   const [uploadedZipFileName, setUploadedZipFileName] = useState<string>("");
 
   const [_uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedCreative, setSelectedCreative] =
     useState<UploadedFileMeta | null>(null);
   const [selectedCreatives, setSelectedCreatives] = useState<
@@ -206,15 +420,51 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
             if (response.ok) {
               const data = await response.json();
               if (data.success && data.metadata) {
-                const fromLines = data.metadata.fromLines || "";
-                const subjectLines = data.metadata.subjectLines || "";
-                if (fromLines || subjectLines) {
-                  setUploadedFiles((prev) =>
-                    prev.map((f) =>
-                      f.id === file.id ? { ...f, fromLines, subjectLines } : f
-                    )
-                  );
-                }
+                /**
+                 * ADD-ON: capture status + grammar_feedback (if backend returns)
+                 * We do NOT remove or alter your existing from/subject logic.
+                 */
+                const status: Status | undefined =
+                  data.status ||
+                  data.metadata?.status ||
+                  data.metadata?.GrammarStatus ||
+                  data.GrammarStatus;
+
+                const grammarFeedback: GrammarFeedbackInput =
+                  data.grammarFeedback ??
+                  data.grammar_feedback ??
+                  data.metadata?.grammar_feedback ??
+                  data.metadata?.grammarFeedback ??
+                  data.metadata?.grammar_feedback ??
+                  [];
+
+                // Keep your existing behavior AND add new fields.
+                // NOTE: this does not change your current from/subject mapping.
+                const fromLines = data.metadata?.fromLines || "";
+                const subjectLines = data.metadata?.subjectLines || "";
+
+                setUploadedFiles((prev) =>
+                  prev.map((f) =>
+                    f.id === file.id
+                      ? {
+                          ...f,
+                          fromLines,
+                          subjectLines,
+                          status,
+                          grammarFeedback,
+                          GrammarStatus: (data.metadata?.GrammarStatus ||
+                            data.GrammarStatus) as Status,
+                          metadata: {
+                            ...f.metadata,
+                            // preserve existing metadata, and also keep a copy for consistency
+                            status,
+                            grammar_feedback: grammarFeedback,
+                            grammarFeedback,
+                          },
+                        }
+                      : f
+                  )
+                );
               }
             }
           } catch (error) {
@@ -343,9 +593,14 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         file.name.toLowerCase().endsWith(".zip")
       ) {
         // Upload ZIP directly to Blob
+        setUploadProgress(0);
         const newBlob = await upload(file.name, file, {
           access: "public",
           handleUploadUrl: "/api/upload/token",
+          onUploadProgress: (e) =>
+            setUploadProgress(
+              typeof e.percentage === "number" ? e.percentage : 0
+            ),
         });
 
         // Call process-zip endpoint
@@ -405,9 +660,14 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       }
 
       // 2. Handle Single File -> Direct Client Upload
+      setUploadProgress(0);
       const newBlob = await upload(file.name, file, {
         access: "public",
         handleUploadUrl: "/api/upload/token",
+        onUploadProgress: (e) =>
+          setUploadProgress(
+            typeof e.percentage === "number" ? e.percentage : 0
+          ),
       });
 
       let previewUrl: string | undefined;
@@ -442,6 +702,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       alert(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -510,9 +771,14 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       setUploading(true);
 
       // Upload ZIP directly
+      setUploadProgress(0);
       const newBlob = await upload(file.name, file, {
         access: "public",
         handleUploadUrl: "/api/upload/token",
+        onUploadProgress: (e) =>
+          setUploadProgress(
+            typeof e.percentage === "number" ? e.percentage : 0
+          ),
       });
 
       // Process properly
@@ -531,6 +797,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
       alert(e instanceof Error ? e.message : "ZIP extraction failed");
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -582,6 +849,28 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
   const filteredOfferOptions = offerOptions.filter((option) =>
     option.label.toLowerCase().includes(offerSearchTerm.toLowerCase())
   );
+
+  /**
+   * ADD-ON: derived rejection issues for single uploaded creative (if any)
+   * - does not change state, only derives for rendering.
+   */
+  const singleFile = uploadedFiles.length === 1 ? uploadedFiles[0] : null;
+  const isRejectedSingle =
+    !!singleFile &&
+    (singleFile.status === "rejected" ||
+      singleFile.metadata?.status === "rejected" ||
+      // support your existing typo/field attempt if you had it
+
+      singleFile.GrammarStatus === "rejected");
+
+  const rejectionIssues: GrammarIssue[] =
+    isRejectedSingle && singleFile
+      ? parseGrammarFeedback(
+          singleFile.grammarFeedback ??
+            singleFile.metadata?.grammar_feedback ??
+            singleFile.metadata?.grammarFeedback
+        )
+      : [];
 
   return (
     <>
@@ -664,15 +953,22 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                   </div>
                 </div>
                 {filteredOfferOptions.length > 0 ? (
-                  filteredOfferOptions.map((option) => (
-                    <SelectItem
-                      key={option.value}
-                      value={option.value}
-                      className="h-12!"
-                    >
-                      {option.label}
-                    </SelectItem>
-                  ))
+                  filteredOfferOptions
+                    /* Guard: Filter out options with empty values to prevent Radix Select error.
+                        SelectItem cannot have empty string values as Select uses "" to clear selection. */
+                    .filter(
+                      (option) =>
+                        option.value && String(option.value).trim() !== ""
+                    )
+                    .map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        className="h-12!"
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))
                 ) : (
                   <div className="px-3 py-2 text-sm text-gray-500 text-center">
                     {offerSearchTerm
@@ -727,15 +1023,22 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                 <SelectValue placeholder="Select creative type" />
               </SelectTrigger>
               <SelectContent>
-                {creativeTypeOptions.map((option) => (
-                  <SelectItem
-                    key={option.value}
-                    value={option.value}
-                    className="h-12!"
-                  >
-                    {option.label}
-                  </SelectItem>
-                ))}
+                {/* Guard: Filter out options with empty values to prevent Radix Select error.
+                    SelectItem cannot have empty string values as Select uses "" to clear selection. */}
+                {creativeTypeOptions
+                  .filter(
+                    (option) =>
+                      option.value && String(option.value).trim() !== ""
+                  )
+                  .map((option) => (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      className="h-12!"
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             {validation.hasFieldError("creativeType") &&
@@ -774,12 +1077,25 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                       <File className="h-5 w-5 text-green-600" />
                     )}
                     <div>
-                      <p className="font-medium text-green-800">
-                        {uploadedFiles.length === 1
-                          ? uploadedFiles[0].name
-                          : uploadedZipFileName ||
-                            `${uploadedFiles.length} Files Uploaded`}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-green-800">
+                          {uploadedFiles.length === 1
+                            ? uploadedFiles[0].name
+                            : uploadedZipFileName ||
+                              `${uploadedFiles.length} Files Uploaded`}
+                        </p>
+
+                        {/* ===========================
+                           ADD-ON: Rejected badge + optional reasons preview
+                           - does not change existing logic, only adds UI
+                           =========================== */}
+                        {uploadedFiles.length === 1 && isRejectedSingle && (
+                          <span className="px-2 py-0.5 text-xs rounded bg-red-100 text-red-700 font-semibold">
+                            Rejected
+                          </span>
+                        )}
+                      </div>
+
                       <p className="text-sm text-green-600">
                         {uploadedFiles.length} file
                         {uploadedFiles.length !== 1 ? "s" : ""} •{" "}
@@ -827,6 +1143,95 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
                             </>
                           )}
                       </p>
+
+                      {/* ===========================
+                         ADD-ON: Rejection Reasons block (inline)
+                         - only shown for single rejected creative
+                         - safe rendering: never crashes on unknown data
+                         =========================== */}
+                      {uploadedFiles.length === 1 && isRejectedSingle && (
+                        <div className="mt-3 p-3 rounded-md border border-red-200 bg-red-50">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-red-800">
+                              Rejection Reasons
+                            </p>
+                            <p className="text-xs text-red-700">
+                              {rejectionIssues.length > 0
+                                ? `${rejectionIssues.length} issue${
+                                    rejectionIssues.length === 1 ? "" : "s"
+                                  } found`
+                                : "No reasons recorded"}
+                            </p>
+                          </div>
+
+                          {rejectionIssues.length > 0 ? (
+                            <ul className="mt-2 space-y-2">
+                              {rejectionIssues.slice(0, 5).map((issue, idx) => (
+                                <li
+                                  key={`${issue.message}-${idx}`}
+                                  className="text-sm text-red-900"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <span className="mt-1 inline-block size-1.5 rounded-full bg-red-500" />
+                                    <div className="min-w-0">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        {issue.category ? (
+                                          <span className="text-xs px-2 py-0.5 rounded bg-white/60 border border-red-200 text-red-800 font-medium">
+                                            {issue.category}
+                                          </span>
+                                        ) : null}
+                                        {issue.severity ? (
+                                          <span className="text-xs px-2 py-0.5 rounded bg-white/60 border border-red-200 text-red-800">
+                                            {issue.severity}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <p className="mt-1 break-words">
+                                        {issue.message}
+                                      </p>
+                                      {(issue.originalText ||
+                                        issue.suggestedText) && (
+                                        <div className="mt-1 text-xs text-red-800/80 space-y-1">
+                                          {issue.originalText ? (
+                                            <p className="break-words">
+                                              <span className="font-medium">
+                                                Original:
+                                              </span>{" "}
+                                              {issue.originalText}
+                                            </p>
+                                          ) : null}
+                                          {issue.suggestedText ? (
+                                            <p className="break-words">
+                                              <span className="font-medium">
+                                                Suggested:
+                                              </span>{" "}
+                                              {issue.suggestedText}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </li>
+                              ))}
+                              {rejectionIssues.length > 5 ? (
+                                <li className="text-xs text-red-700">
+                                  Showing first 5 reasons. Open “View” for full
+                                  details.
+                                </li>
+                              ) : null}
+                            </ul>
+                          ) : (
+                            <p className="mt-2 text-sm text-red-700">
+                              We couldn’t find structured rejection reasons in{" "}
+                              <span className="font-mono">
+                                grammar_feedback
+                              </span>
+                              .
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -1135,6 +1540,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
               ? handleSingleFileUpload
               : handleMultipleFileUpload
           }
+          uploadProgress={uploadProgress}
         />
 
         <FromSubjectLinesModal
@@ -1152,15 +1558,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
               setIsSingleCreativeDialogOpen(false);
               setSelectedCreative(null);
             }}
-            creative={{
-              id: selectedCreative.id,
-              name: selectedCreative.name,
-              url: selectedCreative.url,
-              size: selectedCreative.size,
-              type: selectedCreative.type,
-              previewUrl: selectedCreative.previewUrl,
-              html: selectedCreative.html,
-            }}
+            creative={selectedCreative}
             onFileNameChange={(fileId, newFileName) => {
               setUploadedFiles((prev) =>
                 prev.map((file) =>

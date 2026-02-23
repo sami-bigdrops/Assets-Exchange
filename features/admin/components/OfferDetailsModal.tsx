@@ -4,7 +4,6 @@ import { Loader2, Pencil, Check, X as XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -32,7 +31,6 @@ import { fetchAdvertisers } from "../services/advertisers.client";
 import { getOffer, updateOffer } from "../services/offers.client";
 import type { Advertiser } from "../types/advertiser.types";
 import type { Offer } from "../types/offer.types";
-
 
 interface EditDetailsModalProps {
   open: boolean;
@@ -152,7 +150,10 @@ export function EditDetailsModal({
             const initialData: EditOfferFormData = {
               offerId: fetchedOffer.id,
               offerName: fetchedOffer.offerName,
-              status: fetchedOffer.status.toLowerCase() === "active" ? "Active" : "Inactive",
+              status:
+                fetchedOffer.status.toLowerCase() === "active"
+                  ? "Active"
+                  : "Inactive",
               visibility: fetchedOffer.visibility,
               advertiserId: matchedAdvertiser?.id || "",
               advertiserName: fetchedOffer.advName || "",
@@ -285,7 +286,9 @@ export function EditDetailsModal({
 
       if (!isApiSource(offer.createdMethod)) {
         updatePayload.name = formData.offerName;
-        updatePayload.status = formData.status.toLowerCase() as "active" | "inactive";
+        updatePayload.status = formData.status.toLowerCase() as
+          | "active"
+          | "inactive";
         updatePayload.advertiserId = formData.advertiserId;
       }
 
@@ -323,7 +326,8 @@ export function EditDetailsModal({
       if (!newOpen && hasUnsavedChanges) {
         const confirmed = await confirmDialog({
           title: "Unsaved Changes",
-          description: "You have unsaved changes. Are you sure you want to close?",
+          description:
+            "You have unsaved changes. Are you sure you want to close?",
           confirmText: "Close",
           cancelText: "No, keep editing",
           variant: "default",
@@ -490,7 +494,7 @@ export function EditDetailsModal({
                       </Label>
                       <div className="min-h-10 flex items-center">
                         {!isApiSource(offer.createdMethod) &&
-                          isEditingOfferId ? (
+                        isEditingOfferId ? (
                           <div className="flex items-center gap-2 w-full">
                             <Input
                               value={formData.offerId}
@@ -602,9 +606,9 @@ export function EditDetailsModal({
                               backgroundColor:
                                 offer.status === "Active"
                                   ? variables.colors
-                                    .approvedAssetsBackgroundColor
+                                      .approvedAssetsBackgroundColor
                                   : variables.colors
-                                    .rejectedAssetsBackgroundColor,
+                                      .rejectedAssetsBackgroundColor,
                               borderColor:
                                 offer.status === "Active"
                                   ? "#86EFAC"
@@ -647,7 +651,8 @@ export function EditDetailsModal({
                           disabled={isSubmitting}
                           className="h-10 font-inter edit-offer-modal-input w-full text-sm"
                           style={{
-                            backgroundColor: variables.colors.inputBackgroundColor,
+                            backgroundColor:
+                              variables.colors.inputBackgroundColor,
                             borderColor: variables.colors.inputBorderColor,
                             color: variables.colors.inputTextColor,
                           }}
@@ -697,8 +702,10 @@ export function EditDetailsModal({
                               setFormData((prev) => ({
                                 ...prev,
                                 advertiserId: selectedAdvertiser.id,
-                                advertiserName: selectedAdvertiser.advertiserName,
-                                advertiserDisplayId: selectedAdvertiser.advertiserId,
+                                advertiserName:
+                                  selectedAdvertiser.advertiserName,
+                                advertiserDisplayId:
+                                  selectedAdvertiser.advertiserId,
                               }));
                               setAdvertiserSearchQuery("");
                               setAdvertiserSelectOpen(false);
@@ -785,42 +792,51 @@ export function EditDetailsModal({
                                   No advertiser found.
                                 </div>
                               ) : (
-                                filteredAdvertisers.map((advertiser) => (
-                                  <SelectItem
-                                    key={advertiser.id}
-                                    value={advertiser.id}
-                                    className="font-inter"
-                                  >
-                                    <span
-                                      className="font-semibold"
-                                      style={{
-                                        color: variables.colors.inputTextColor,
-                                      }}
+                                filteredAdvertisers
+                                  /* Guard: Filter out advertisers with empty/null/undefined ids to prevent Radix Select error.
+                                      SelectItem cannot have empty string values as Select uses "" to clear selection. */
+                                  .filter(
+                                    (advertiser) =>
+                                      advertiser.id &&
+                                      String(advertiser.id).trim() !== ""
+                                  )
+                                  .map((advertiser) => (
+                                    <SelectItem
+                                      key={advertiser.id}
+                                      value={advertiser.id}
+                                      className="font-inter"
                                     >
-                                      {advertiser.advertiserId}
-                                    </span>
-                                    <span
-                                      className="ml-2"
-                                      style={{
-                                        color:
-                                          variables.colors.descriptionColor,
-                                      }}
-                                    >
-                                      - {advertiser.advertiserName}
-                                    </span>
-                                  </SelectItem>
-                                ))
+                                      <span
+                                        className="font-semibold"
+                                        style={{
+                                          color:
+                                            variables.colors.inputTextColor,
+                                        }}
+                                      >
+                                        {advertiser.advertiserId}
+                                      </span>
+                                      <span
+                                        className="ml-2"
+                                        style={{
+                                          color:
+                                            variables.colors.descriptionColor,
+                                        }}
+                                      >
+                                        - {advertiser.advertiserName}
+                                      </span>
+                                    </SelectItem>
+                                  ))
                               )}
                             </div>
                           </SelectContent>
                         </Select>
                         {(validationErrors.advertiserId ||
                           validationErrors.advertiserName) && (
-                            <p className="text-sm text-destructive font-inter">
-                              {validationErrors.advertiserId ||
-                                validationErrors.advertiserName}
-                            </p>
-                          )}
+                          <p className="text-sm text-destructive font-inter">
+                            {validationErrors.advertiserId ||
+                              validationErrors.advertiserName}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <Label

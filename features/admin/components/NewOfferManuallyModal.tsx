@@ -4,7 +4,6 @@ import { File, Loader2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-
 import { getVariables } from "@/components/_variables";
 import { Button } from "@/components/ui/button";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -251,7 +250,8 @@ export function NewOfferManuallyModal({
       if (!newOpen && hasUnsavedChanges) {
         const confirmed = await confirmDialog({
           title: "Unsaved Changes",
-          description: "You have unsaved changes. Are you sure you want to close?",
+          description:
+            "You have unsaved changes. Are you sure you want to close?",
           confirmText: "Close",
           cancelText: "No, keep editing",
           variant: "default",
@@ -578,39 +578,49 @@ export function NewOfferManuallyModal({
                           No advertiser found.
                         </div>
                       ) : (
-                        filteredAdvertisers.map((advertiser) => (
-                          <SelectItem
-                            key={advertiser.id}
-                            value={advertiser.id}
-                            className="font-inter"
-                          >
-                            <span
-                              className="font-semibold"
-                              style={{ color: variables.colors.inputTextColor }}
+                        filteredAdvertisers
+                          /* Guard: Filter out advertisers with empty/null/undefined ids to prevent Radix Select error.
+                              SelectItem cannot have empty string values as Select uses "" to clear selection. */
+                          .filter(
+                            (advertiser) =>
+                              advertiser.id &&
+                              String(advertiser.id).trim() !== ""
+                          )
+                          .map((advertiser) => (
+                            <SelectItem
+                              key={advertiser.id}
+                              value={advertiser.id}
+                              className="font-inter"
                             >
-                              {advertiser.advertiserId}
-                            </span>
-                            <span
-                              className="ml-2"
-                              style={{
-                                color: variables.colors.descriptionColor,
-                              }}
-                            >
-                              - {advertiser.advertiserName}
-                            </span>
-                          </SelectItem>
-                        ))
+                              <span
+                                className="font-semibold"
+                                style={{
+                                  color: variables.colors.inputTextColor,
+                                }}
+                              >
+                                {advertiser.advertiserId}
+                              </span>
+                              <span
+                                className="ml-2"
+                                style={{
+                                  color: variables.colors.descriptionColor,
+                                }}
+                              >
+                                - {advertiser.advertiserName}
+                              </span>
+                            </SelectItem>
+                          ))
                       )}
                     </div>
                   </SelectContent>
                 </Select>
                 {(validationErrors.advertiserId ||
                   validationErrors.advertiserName) && (
-                    <p className="text-sm text-destructive font-inter">
-                      {validationErrors.advertiserId ||
-                        validationErrors.advertiserName}
-                    </p>
-                  )}
+                  <p className="text-sm text-destructive font-inter">
+                    {validationErrors.advertiserId ||
+                      validationErrors.advertiserName}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-4 pt-2 border-t">
@@ -635,19 +645,19 @@ export function NewOfferManuallyModal({
                       style={
                         formData.brandGuidelinesType === "url"
                           ? {
-                            backgroundColor:
-                              variables.colors.buttonDefaultBackgroundColor,
-                            color: variables.colors.buttonDefaultTextColor,
-                            height: "2.25rem",
-                          }
+                              backgroundColor:
+                                variables.colors.buttonDefaultBackgroundColor,
+                              color: variables.colors.buttonDefaultTextColor,
+                              height: "2.25rem",
+                            }
                           : {
-                            backgroundColor:
-                              variables.colors.buttonOutlineBackgroundColor,
-                            borderColor:
-                              variables.colors.buttonOutlineBorderColor,
-                            color: variables.colors.buttonOutlineTextColor,
-                            height: "2.25rem",
-                          }
+                              backgroundColor:
+                                variables.colors.buttonOutlineBackgroundColor,
+                              borderColor:
+                                variables.colors.buttonOutlineBorderColor,
+                              color: variables.colors.buttonOutlineTextColor,
+                              height: "2.25rem",
+                            }
                       }
                     >
                       URL
@@ -668,19 +678,19 @@ export function NewOfferManuallyModal({
                       style={
                         formData.brandGuidelinesType === "upload"
                           ? {
-                            backgroundColor:
-                              variables.colors.buttonDefaultBackgroundColor,
-                            color: variables.colors.buttonDefaultTextColor,
-                            height: "2.25rem",
-                          }
+                              backgroundColor:
+                                variables.colors.buttonDefaultBackgroundColor,
+                              color: variables.colors.buttonDefaultTextColor,
+                              height: "2.25rem",
+                            }
                           : {
-                            backgroundColor:
-                              variables.colors.buttonOutlineBackgroundColor,
-                            borderColor:
-                              variables.colors.buttonOutlineBorderColor,
-                            color: variables.colors.buttonOutlineTextColor,
-                            height: "2.25rem",
-                          }
+                              backgroundColor:
+                                variables.colors.buttonOutlineBackgroundColor,
+                              borderColor:
+                                variables.colors.buttonOutlineBorderColor,
+                              color: variables.colors.buttonOutlineTextColor,
+                              height: "2.25rem",
+                            }
                       }
                     >
                       Upload
@@ -701,19 +711,19 @@ export function NewOfferManuallyModal({
                       style={
                         formData.brandGuidelinesType === "text"
                           ? {
-                            backgroundColor:
-                              variables.colors.buttonDefaultBackgroundColor,
-                            color: variables.colors.buttonDefaultTextColor,
-                            height: "2.25rem",
-                          }
+                              backgroundColor:
+                                variables.colors.buttonDefaultBackgroundColor,
+                              color: variables.colors.buttonDefaultTextColor,
+                              height: "2.25rem",
+                            }
                           : {
-                            backgroundColor:
-                              variables.colors.buttonOutlineBackgroundColor,
-                            borderColor:
-                              variables.colors.buttonOutlineBorderColor,
-                            color: variables.colors.buttonOutlineTextColor,
-                            height: "2.25rem",
-                          }
+                              backgroundColor:
+                                variables.colors.buttonOutlineBackgroundColor,
+                              borderColor:
+                                variables.colors.buttonOutlineBorderColor,
+                              color: variables.colors.buttonOutlineTextColor,
+                              height: "2.25rem",
+                            }
                       }
                     >
                       Direct Input

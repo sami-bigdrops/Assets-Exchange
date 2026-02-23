@@ -23,6 +23,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.995.0",
     "@hookform/resolvers": "^5.2.2",
     "@neondatabase/serverless": "^1.0.2",
     "@orpc/client": "^1.12.2",

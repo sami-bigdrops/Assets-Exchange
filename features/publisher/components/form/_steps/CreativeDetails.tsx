@@ -243,6 +243,7 @@ type UploadedFileMeta = {
    */
   status?: Status;
   grammarFeedback?: GrammarFeedbackInput;
+  GrammarStatus?: Status;
 
   metadata?: {
     fromLines?: string;
@@ -269,7 +270,6 @@ type UploadedFileMeta = {
      */
     grammar_feedback?: GrammarFeedbackInput;
     grammarFeedback?: GrammarFeedbackInput;
-    GrammarStatus?: Status;
     status?: Status;
   };
 };
@@ -858,7 +858,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
     (singleFile.status === "rejected" ||
       singleFile.metadata?.status === "rejected" ||
       // support your existing typo/field attempt if you had it
-       
+
       singleFile.GrammarStatus === "rejected");
 
   const rejectionIssues: GrammarIssue[] =

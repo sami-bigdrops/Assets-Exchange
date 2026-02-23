@@ -1779,7 +1779,7 @@ export default function OpsPage() {
                           <div className="space-y-2">
                             {dailyStats.topPublishers.map((publisher, idx) => (
                               <div
-                                key={publisher.publisherId}
+                                key={`publisher-${publisher.publisherId ?? idx}`}
                                 className="flex items-center justify-between text-sm"
                               >
                                 <span className="text-muted-foreground">

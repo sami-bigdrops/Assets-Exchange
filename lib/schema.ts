@@ -734,37 +734,3 @@ export const batchAssets = pgTable(
     ),
   })
 );
-
-export const impressions = pgTable(
-  "impressions",
-  {
-    id: text("id").primaryKey().notNull(),
-    assetId: text("asset_id").notNull(),
-    batchId: text("batch_id").references(() => batches.id, {
-      onDelete: "set null",
-    }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-  },
-  (table) => ({
-    assetIdIdx: index("idx_impressions_asset_id").on(table.assetId),
-    batchIdIdx: index("idx_impressions_batch_id").on(table.batchId),
-    createdAtIdx: index("idx_impressions_created_at").on(table.createdAt),
-  })
-);
-
-export const clicks = pgTable(
-  "clicks",
-  {
-    id: text("id").primaryKey().notNull(),
-    assetId: text("asset_id").notNull(),
-    batchId: text("batch_id").references(() => batches.id, {
-      onDelete: "set null",
-    }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-  },
-  (table) => ({
-    assetIdIdx: index("idx_clicks_asset_id").on(table.assetId),
-    batchIdIdx: index("idx_clicks_batch_id").on(table.batchId),
-    createdAtIdx: index("idx_clicks_created_at").on(table.createdAt),
-  })
-);

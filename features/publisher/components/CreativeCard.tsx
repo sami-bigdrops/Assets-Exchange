@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import type { CreativeRequest } from "@/features/admin/types/request.types";
 
-
 export interface CreativeCardProps {
   request: CreativeRequest;
   thumbnailUrl?: string | null;

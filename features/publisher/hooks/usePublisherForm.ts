@@ -249,6 +249,11 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
             : "") +
           (telegramProvided ? `&telegram=1` : "")
       );
+      const telegramHint = formData.telegramId ? "true" : "false";
+
+      router.push(
+        `/thankyou?type=${submissionType}&count=${fileCount}${trackingCode ? `&trackingCode=${trackingCode}` : ""}${telegramHint === "true" ? "&telegramHint=true" : ""}`
+      );
 
       return result;
     } catch (error) {

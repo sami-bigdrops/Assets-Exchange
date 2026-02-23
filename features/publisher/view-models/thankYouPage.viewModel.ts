@@ -51,6 +51,7 @@ export const useThankYouPage = () => {
   const [submissionType, setSubmissionType] = useState<SubmissionType>(null);
   const [fileCount, setFileCount] = useState<number>(0);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
+  const [showTelegramHint, setShowTelegramHint] = useState<boolean>(false);
 
   // ✅ This must come from user profile state (/api/me)
   const [hasConnectedTelegram, setHasConnectedTelegram] = useState(false);
@@ -61,9 +62,15 @@ export const useThankYouPage = () => {
       ? parseInt(searchParams.get("count")!, 10)
       : 0;
     const code = searchParams.get("trackingCode");
+    const telegramHint = searchParams.get("telegramHint");
 
     if (code) setTrackingCode(code);
 
+    if (telegramHint === "true") {
+      setShowTelegramHint(true);
+    }
+
+    // If no URL params, try to get from localStorage (fallback)
     if (!type) {
       const storedType = localStorage.getItem(
         "creativeSubmissionType"
@@ -184,6 +191,7 @@ export const useThankYouPage = () => {
     fileCount,
     trackingCode,
     hasConnectedTelegram,
+    showTelegramHint,
     statuses,
     submissionInfo,
   };

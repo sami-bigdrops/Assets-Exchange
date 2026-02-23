@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 
 import { env } from "@/env";
 import { getOffer } from "@/features/admin/services/offer.service";
+import { sendSubmissionTelegramAlert } from "@/features/notifications/notification.service";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { validateRequest } from "@/lib/middleware/validateRequest";
@@ -13,8 +14,6 @@ import { assetsTable, creativeRequests, creatives } from "@/lib/schema";
 import { publishers } from "@/lib/schema";
 import { generateTrackingCode } from "@/lib/utils/tracking";
 import { submitSchema } from "@/lib/validations/publisher";
-
-
 
 function countLines(text: string | undefined): number {
   if (!text || text.trim() === "") return 0;
@@ -188,6 +187,14 @@ export async function POST(req: NextRequest) {
       console.error("Telegram send failed:", telegramError);
     }
     // ===== END TELEGRAM SECTION =====
+
+    if (data.telegramId) {
+      sendSubmissionTelegramAlert(
+        data.telegramId,
+        trackingCode,
+        offer.offerName
+      ).catch((err) => console.error("[TELEGRAM_NOTIFY_ERROR]:", err));
+    }
 
     return NextResponse.json(
       { success: true, requestId: request.id, trackingCode },

@@ -16,19 +16,31 @@ export async function GET() {
   }
 
   const [publisher] = await db
-    .select({ telegramId: publishers.telegramId })
+    .select({
+      telegramId: publishers.telegramId,
+      telegramChatId: publishers.telegramChatId,
+    })
     .from(publishers)
     .where(eq(publishers.contactEmail, session.user.email ?? ""))
     .limit(1);
 
+  // const hasConnectedTelegram =
+  //   !!publisher?.telegramId &&
+  //   publisher.telegramId.trim() !== "" &&
+  //   publisher.telegramId !== "@";
   const hasConnectedTelegram =
-    !!publisher?.telegramId &&
-    publisher.telegramId.trim() !== "" &&
-    publisher.telegramId !== "@";
+    !!publisher?.telegramChatId &&
+    String(publisher.telegramChatId).trim() !== "";
 
+  // return NextResponse.json({
+  //   user: session.user,
+  //   telegramId: publisher?.telegramId ?? null,
+  //   hasConnectedTelegram,
+  // });
   return NextResponse.json({
     user: session.user,
     telegramId: publisher?.telegramId ?? null,
+    telegramChatId: publisher?.telegramChatId ?? null,
     hasConnectedTelegram,
   });
 }

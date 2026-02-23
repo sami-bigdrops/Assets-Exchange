@@ -422,6 +422,7 @@ export const publishers = pgTable("publishers", {
   name: text("name").notNull(),
   contactEmail: text("contact_email"),
   telegramId: text("telegram_id"),
+  telegramChatId: text("telegram_chat_id"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

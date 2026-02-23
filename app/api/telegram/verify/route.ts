@@ -6,7 +6,12 @@ import { db } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import { publishers } from "@/lib/schema";
 
-async function saveTelegramIdToPublisher(telegramId: string, email?: string) {
+//changed
+async function saveTelegramIdToPublisher(
+  telegramId: string,
+  chatId: string | undefined,
+  email?: string
+) {
   try {
     const normalizedTelegramId = telegramId.toLowerCase().trim();
 
@@ -23,6 +28,8 @@ async function saveTelegramIdToPublisher(telegramId: string, email?: string) {
           .update(publishers)
           .set({
             telegramId: normalizedTelegramId,
+            //changed
+            telegramChatId: chatId ?? null,
             updatedAt: new Date(),
           })
           .where(eq(publishers.id, publisher.id));
@@ -53,6 +60,8 @@ async function saveTelegramIdToPublisher(telegramId: string, email?: string) {
     await db.insert(publishers).values({
       name: `Publisher ${normalizedTelegramId}`,
       telegramId: normalizedTelegramId,
+      //changed
+      telegramChatId: chatId ?? null,
       contactEmail: email || null,
       status: "active",
     });
@@ -122,7 +131,12 @@ export async function POST(req: NextRequest) {
       }
 
       if (parsed.verified === true) {
-        await saveTelegramIdToPublisher(normalizedTelegramId, email);
+        //changed
+        await saveTelegramIdToPublisher(
+          normalizedTelegramId,
+          parsed.chatId,
+          email
+        );
         return NextResponse.json({
           verified: true,
           verifiedAt: parsed.verifiedAt,

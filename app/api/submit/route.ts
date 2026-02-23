@@ -1,14 +1,20 @@
 import { createId } from "@paralleldrive/cuid2";
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { env } from "@/env";
 import { getOffer } from "@/features/admin/services/offer.service";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { validateRequest } from "@/lib/middleware/validateRequest";
 import { assetsTable, creativeRequests, creatives } from "@/lib/schema";
+import { publishers } from "@/lib/schema";
 import { generateTrackingCode } from "@/lib/utils/tracking";
 import { submitSchema } from "@/lib/validations/publisher";
+
+
 
 function countLines(text: string | undefined): number {
   if (!text || text.trim() === "") return 0;
@@ -128,6 +134,60 @@ export async function POST(req: NextRequest) {
 
       await db.insert(creatives).values(creativeRecords);
     }
+
+    // ===== SEND TELEGRAM MESSAGE IF CONNECTED =====
+    try {
+      const [publisher] = await db
+        .select({
+          telegramChatId: publishers.telegramChatId,
+          telegramId: publishers.telegramId,
+        })
+        .from(publishers)
+        .where(eq(publishers.contactEmail, data.email))
+        .limit(1);
+
+      if (publisher?.telegramChatId) {
+        const botToken = env.TELEGRAM_BOT_TOKEN;
+        const TELEGRAM_API_BASE = "https://api.telegram.org/bot";
+
+        const h = await headers();
+        const host = h.get("x-forwarded-host") ?? h.get("host");
+        const proto = h.get("x-forwarded-proto") ?? "https";
+
+        const trackingUrl = `${proto}://${host}/track?code=${encodeURIComponent(trackingCode)}`;
+
+        const escapeHtml = (s: string) =>
+          s
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+
+        // const safeTrackingUrl = escapeHtml(trackingUrl);
+        const safeOfferName = escapeHtml(offer.offerName ?? "");
+        const message =
+          `<b>🎉 Submission Received!</b>\n\n` +
+          `Offer Name: ${safeOfferName}\n` +
+          `Offer ID: <code>${offer.offerId}</code>\n` +
+          `Tracking Code: <code>${trackingCode}</code>\n\n` +
+          `<a href="${trackingUrl}">🔗 Track your submission</a>`;
+
+        await fetch(`${TELEGRAM_API_BASE}${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: publisher.telegramChatId,
+            text: message,
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+          }),
+        });
+      }
+    } catch (telegramError) {
+      console.error("Telegram send failed:", telegramError);
+    }
+    // ===== END TELEGRAM SECTION =====
 
     return NextResponse.json(
       { success: true, requestId: request.id, trackingCode },

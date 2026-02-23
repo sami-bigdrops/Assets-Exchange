@@ -37,6 +37,11 @@ import MultipleCreativesModal from "@/features/publisher/components/form/_modals
 import SingleCreativeViewModal from "@/features/publisher/components/form/_modals/SingleCreativeViewModal";
 
 import {
+  approveResponse,
+  rejectResponse,
+  returnResponse,
+} from "../../advertiser/services/responses.client";
+import {
   getRequestViewData,
   type RequestViewData,
 } from "../actions/request.actions";
@@ -183,6 +188,11 @@ const shouldShowActionButtons = (
 
   // Show buttons for revised requests (resubmitted by publisher after being sent back)
   if (normalizedStatus === "revised" && normalizedStage === "admin") {
+    return true;
+  }
+
+  // Show buttons for advertiser pending requests
+  if (normalizedStatus === "pending" && normalizedStage === "advertiser") {
     return true;
   }
 
@@ -523,7 +533,7 @@ export function RequestItem({
             }}
           >
             <span style={{ color: accordionColors.offerIdTextColor }}>
-              Offer ID: {request.offerId}
+              Offer ID: {request.everflowOfferId || request.offerId}
             </span>
           </span>
           <span className="font-inter text-xs xl:text-sm">
@@ -744,12 +754,21 @@ export function RequestItem({
                           setIsApproving(true);
                           setError(null);
                           try {
-                            await approveRequest(request.id);
-                            onStatusUpdate?.(
-                              request.id,
-                              "approved",
-                              "completed"
-                            );
+                            if (isAdvertiserView) {
+                              await approveResponse(request.id);
+                              onStatusUpdate?.(
+                                request.id,
+                                "pending",
+                                "admin"
+                              );
+                            } else {
+                              await approveRequest(request.id);
+                              onStatusUpdate?.(
+                                request.id,
+                                "approved",
+                                "completed"
+                              );
+                            }
                             toast.success("Request approved", {
                               description:
                                 "The request has been successfully approved.",
@@ -896,19 +915,19 @@ export function RequestItem({
                         request.status,
                         request.approvalStage
                       ) && (
-                        <Button
-                          variant="outline"
-                          className="w-full font-inter text-xs xl:text-sm font-medium border-destructive/30 text-destructive hover:bg-destructive/5"
-                          disabled={isViewLoading}
-                          onClick={() => handleOpenReview("send-back")}
-                        >
-                          {isViewLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          ) : (
-                            "Review & Send Back"
-                          )}
-                        </Button>
-                      )}
+                          <Button
+                            variant="outline"
+                            className="w-full font-inter text-xs xl:text-sm font-medium border-destructive/30 text-destructive hover:bg-destructive/5"
+                            disabled={isViewLoading}
+                            onClick={() => handleOpenReview("send-back")}
+                          >
+                            {isViewLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              "Review & Send Back"
+                            )}
+                          </Button>
+                        )}
                     </div>
                     {error && (
                       <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20">
@@ -1037,9 +1056,9 @@ export function RequestItem({
               )}
             </div>
           ) : shouldShowRejectButtonOnly(
-              request.status,
-              request.approvalStage
-            ) ? (
+            request.status,
+            request.approvalStage
+          ) ? (
             <div className="flex flex-col gap-4 xl:gap-4 justify-self-end">
               <Popover
                 open={sendBackPopoverOpen}
@@ -1087,11 +1106,10 @@ export function RequestItem({
                           </span>
                         </label>
                         <span
-                          className={`text-xs font-inter ${
-                            isSendBackCommentsValid
-                              ? "text-muted-foreground"
-                              : "text-destructive"
-                          }`}
+                          className={`text-xs font-inter ${isSendBackCommentsValid
+                            ? "text-muted-foreground"
+                            : "text-destructive"
+                            }`}
                         >
                           {sendBackCommentsLength} / {MAX_COMMENT_LENGTH}
                         </span>
@@ -1140,12 +1158,21 @@ export function RequestItem({
                           setError(null);
 
                           try {
-                            await rejectRequest(request.id, sendBackComments);
-                            onStatusUpdate?.(
-                              request.id,
-                              "rejected",
-                              "completed"
-                            );
+                            if (isAdvertiserView) {
+                              await rejectResponse(request.id, sendBackComments);
+                              onStatusUpdate?.(
+                                request.id,
+                                "rejected",
+                                "advertiser"
+                              );
+                            } else {
+                              await rejectRequest(request.id, sendBackComments);
+                              onStatusUpdate?.(
+                                request.id,
+                                "rejected",
+                                "completed"
+                              );
+                            }
                             toast.success("Request rejected", {
                               description:
                                 "The request has been rejected successfully.",
@@ -1188,8 +1215,17 @@ export function RequestItem({
                           setIsSendingBack(true);
                           setError(null);
                           try {
-                            await returnRequest(request.id, sendBackComments);
-                            onStatusUpdate?.(request.id, "sent-back", "admin");
+                            if (isAdvertiserView) {
+                              await returnResponse(request.id, sendBackComments);
+                              onStatusUpdate?.(
+                                request.id,
+                                "sent-back",
+                                "advertiser"
+                              );
+                            } else {
+                              await returnRequest(request.id, sendBackComments);
+                              onStatusUpdate?.(request.id, "sent-back", "admin");
+                            }
                             toast.success("Request sent back to publisher", {
                               description:
                                 "The request has been sent back to the publisher for revision.",
@@ -1356,25 +1392,25 @@ export function RequestItem({
                 request.status,
                 request.advertiserStatus
               ) && (
-                <Button
-                  variant="outline"
-                  className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"
-                  style={{
-                    color: variables.colors.requestCardViewButtonTextColor,
-                    backgroundColor:
-                      variables.colors.requestCardViewButtonBackgroundColor,
-                    border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
-                  }}
-                  disabled={isViewLoading}
-                  onClick={() => handleOpenReview("view")}
-                >
-                  {isViewLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    "Check Annotations"
-                  )}
-                </Button>
-              )}
+                  <Button
+                    variant="outline"
+                    className="xl:h-11 xl:w-47 h-10 w-40 font-inter text-xs xl:text-sm font-medium rounded-[6px] shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200"
+                    style={{
+                      color: variables.colors.requestCardViewButtonTextColor,
+                      backgroundColor:
+                        variables.colors.requestCardViewButtonBackgroundColor,
+                      border: `1px solid ${variables.colors.requestCardViewButtonBorderColor}`,
+                    }}
+                    disabled={isViewLoading}
+                    onClick={() => handleOpenReview("view")}
+                  >
+                    {isViewLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      "Check Annotations"
+                    )}
+                  </Button>
+                )}
               {showDownloadButton && (
                 <Button
                   variant="outline"
@@ -1520,7 +1556,7 @@ export function RequestItem({
             setViewData(null);
           }}
           creatives={viewData.creatives}
-          onRemoveCreative={() => {}}
+          onRemoveCreative={() => { }}
           creativeType={viewData.creativeType}
         />
       )}

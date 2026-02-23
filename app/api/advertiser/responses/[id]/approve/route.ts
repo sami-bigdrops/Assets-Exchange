@@ -7,6 +7,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { advertisers } from "@/lib/schema";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(
   _: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -39,7 +41,7 @@ export async function POST(
       error instanceof Error ? error.message : "Internal server error";
     console.error("Approve response error:", error);
     if (message === "Request not found") {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json({ error: message }, { status: 404 });
     }
     if (message === "Invalid state transition") {
       return NextResponse.json({ error: message }, { status: 409 });

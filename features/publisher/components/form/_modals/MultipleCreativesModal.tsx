@@ -54,7 +54,6 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
   uploadedZipFileName,
   onFileNameChange,
   onZipFileNameChange,
-  onMetadataChange,
   creativeType = "email",
   viewOnly = false,
   onSaveAndSubmit,
@@ -182,8 +181,8 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                           <span className="text-xs sm:text-sm text-gray-700 font-medium px-2 py-2 h-8 sm:h-9 flex items-center whitespace-nowrap">
                             {uploadedZipFileName
                               ? uploadedZipFileName.substring(
-                                  uploadedZipFileName.lastIndexOf(".")
-                                )
+                                uploadedZipFileName.lastIndexOf(".")
+                              )
                               : ".zip"}
                           </span>
                         </div>
@@ -354,13 +353,12 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
                           </h3>
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <span
-                              className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full font-medium text-xs ${
-                                isImage
+                              className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full font-medium text-xs ${isImage
                                   ? "bg-blue-50 text-blue-600"
                                   : isHtml
                                     ? "bg-emerald-50 text-emerald-600"
                                     : "bg-gray-50 text-gray-600"
-                              }`}
+                                }`}
                             >
                               {fileType}
                             </span>

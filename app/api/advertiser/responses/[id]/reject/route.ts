@@ -1,33 +1,60 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
 
 import { rejectResponse } from "@/features/advertiser/services/response.service";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { advertisers } from "@/lib/schema";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(
-  req: NextRequest,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session || session.user.role !== "advertiser") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const advertiser = await db.query.advertisers.findFirst({
+    where: eq(advertisers.contactEmail, session.user.email),
+  });
+
+  if (!advertiser) {
+    return NextResponse.json(
+      { error: "Advertiser profile not found" },
+      { status: 404 }
+    );
+  }
+
   try {
-    const session = await auth.api.getSession({ headers: await req.headers });
-    if (!session || session.user.role !== "advertiser") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { id } = await params;
+    const { reason } = await req.json().catch(() => ({ reason: "" }));
+
+    if (!reason || typeof reason !== "string") {
+      return NextResponse.json(
+        { error: "Reason is required for rejection" },
+        { status: 400 }
+      );
     }
 
-    const { id } = await params;
-    const { reason } = await req.json(); // Reason is optional for direct reject, but good to have
-
-    await rejectResponse(
-      id,
-      session.user.id,
-      reason || "Directly rejected by advertiser"
-    );
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to reject request:", error);
-    return NextResponse.json(
-      { error: "Failed to reject request" },
-      { status: 500 }
-    );
+    await rejectResponse(id, advertiser.id, reason);
+    return new NextResponse(null, { status: 204 });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    console.error("Reject response error:", error);
+    if (message === "Request not found") {
+      return NextResponse.json({ error: message }, { status: 404 });
+    }
+    if (message === "Invalid state transition") {
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

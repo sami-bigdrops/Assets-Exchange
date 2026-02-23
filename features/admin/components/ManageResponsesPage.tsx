@@ -92,7 +92,7 @@ export function ManageResponsesPage({
 }: ManageResponsesPageProps) {
   const variables = getVariables();
   const { responses, isLoading, error, refresh, updateRequestStatus } =
-    useManageResponsesViewModel();
+    useManageResponsesViewModel(isAdvertiserView);
 
   const [activeTab, setActiveTab] = useState<TabValue>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -433,11 +433,10 @@ export function ManageResponsesPage({
                   >
                     <button
                       onClick={() => setActiveCategory("sortBy")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                        activeCategory === "sortBy"
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "sortBy"
                           ? "bg-gray-100 text-gray-900 font-medium"
                           : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                        }`}
                     >
                       <span>Sort By</span>
                       <div className="flex items-center gap-2">
@@ -467,11 +466,10 @@ export function ManageResponsesPage({
                     </button>
                     <button
                       onClick={() => setActiveCategory("priority")}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${
-                        activeCategory === "priority"
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-md text-sm transition-colors ${activeCategory === "priority"
                           ? "bg-gray-100 text-gray-900 font-medium"
                           : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                        }`}
                     >
                       <span>Priority</span>
                       <div className="flex items-center gap-2">
@@ -544,11 +542,10 @@ export function ManageResponsesPage({
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors flex items-center gap-2 ${
-                                sortBy === option.value
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors flex items-center gap-2 ${sortBy === option.value
                                   ? "bg-gray-100 text-gray-900 font-medium"
                                   : "text-gray-600 hover:bg-gray-50"
-                              }`}
+                                }`}
                             >
                               <option.icon className="h-4 w-4" />
                               <span>{option.label}</span>
@@ -567,11 +564,10 @@ export function ManageResponsesPage({
                                 setIsFilterOpen(false);
                                 setActiveCategory(null);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                                priorityFilter === priority
+                              className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${priorityFilter === priority
                                   ? "bg-gray-100 text-gray-900 font-medium"
                                   : "text-gray-600 hover:bg-gray-50"
-                              }`}
+                                }`}
                             >
                               {priority === "all"
                                 ? "All Priorities"
@@ -920,11 +916,10 @@ export function ManageResponsesPage({
                               setCurrentPage((prev) => prev - 1);
                             }
                           }}
-                          className={`transition-all duration-200 ${
-                            currentPage === 1
+                          className={`transition-all duration-200 ${currentPage === 1
                               ? "pointer-events-none opacity-40 cursor-not-allowed"
                               : "cursor-pointer hover:bg-gray-100"
-                          }`}
+                            }`}
                           style={{
                             color:
                               currentPage === 1
@@ -944,16 +939,15 @@ export function ManageResponsesPage({
                                 setCurrentPage(page);
                               }}
                               isActive={currentPage === page}
-                              className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${
-                                currentPage === page
+                              className={`transition-all duration-200 min-w-9 h-9 flex items-center justify-center font-inter text-sm ${currentPage === page
                                   ? "cursor-default"
                                   : "cursor-pointer hover:bg-gray-100"
-                              }`}
+                                }`}
                               style={{
                                 backgroundColor:
                                   currentPage === page
                                     ? variables.colors
-                                        .buttonDefaultBackgroundColor
+                                      .buttonDefaultBackgroundColor
                                     : "transparent",
                                 color:
                                   currentPage === page
@@ -962,7 +956,7 @@ export function ManageResponsesPage({
                                 borderColor:
                                   currentPage === page
                                     ? variables.colors
-                                        .buttonDefaultBackgroundColor
+                                      .buttonDefaultBackgroundColor
                                     : variables.colors.inputBorderColor,
                               }}
                             >
@@ -979,11 +973,10 @@ export function ManageResponsesPage({
                               setCurrentPage((prev) => prev + 1);
                             }
                           }}
-                          className={`transition-all duration-200 ${
-                            currentPage === totalPages
+                          className={`transition-all duration-200 ${currentPage === totalPages
                               ? "pointer-events-none opacity-40 cursor-not-allowed"
                               : "cursor-pointer hover:bg-gray-100"
-                          }`}
+                            }`}
                           style={{
                             color:
                               currentPage === totalPages

@@ -7,6 +7,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { advertisers } from "@/lib/schema";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -32,19 +34,23 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const body = await req.json();
-    if (!body?.reason) {
-      return NextResponse.json({ error: "Missing reason" }, { status: 400 });
+    const { reason } = await req.json().catch(() => ({ reason: "" }));
+
+    if (!reason || typeof reason !== "string") {
+      return NextResponse.json(
+        { error: "Reason is required when sending back" },
+        { status: 400 }
+      );
     }
 
-    await sendBackResponse(id, advertiser.id, body.reason);
+    await sendBackResponse(id, advertiser.id, reason);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";
     console.error("Send back response error:", error);
     if (message === "Request not found") {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json({ error: message }, { status: 404 });
     }
     if (message === "Invalid state transition") {
       return NextResponse.json({ error: message }, { status: 409 });

@@ -114,7 +114,6 @@ export const useSingleCreativeViewModal = ({
     };
   }, []);
 
-  // Helper function to extract marked image URL from proofreading result
   const getMarkedImageUrl = useCallback((): string | null => {
     if (!proofreadingData) {
       return null;
@@ -122,7 +121,6 @@ export const useSingleCreativeViewModal = ({
 
     const originalUrl = creative.url || creative.previewUrl || "";
 
-    // Check result object
     if (
       !proofreadingData.result ||
       typeof proofreadingData.result !== "object"
@@ -131,7 +129,6 @@ export const useSingleCreativeViewModal = ({
     }
     const result = proofreadingData.result as Record<string, unknown>;
 
-    // Check direct properties in result - prioritize marked_image fields
     if (
       result.marked_image &&
       typeof result.marked_image === "string" &&
@@ -160,7 +157,6 @@ export const useSingleCreativeViewModal = ({
     ) {
       return result.corrected_file_url;
     }
-    // Check for annotated_image (base64 direct)
     if (
       result.annotated_image &&
       typeof result.annotated_image === "string" &&
@@ -168,7 +164,6 @@ export const useSingleCreativeViewModal = ({
     ) {
       return result.annotated_image;
     }
-    // Check for output_image
     if (
       result.output_image &&
       typeof result.output_image === "string" &&
@@ -176,7 +171,6 @@ export const useSingleCreativeViewModal = ({
     ) {
       return result.output_image;
     }
-    // Check for processed_image
     if (
       result.processed_image &&
       typeof result.processed_image === "string" &&
@@ -184,7 +178,6 @@ export const useSingleCreativeViewModal = ({
     ) {
       return result.processed_image;
     }
-    // Check for image_marked_urls array (from HTML with multiple images)
     if (
       Array.isArray(result.image_marked_urls) &&
       result.image_marked_urls.length > 0
@@ -198,7 +191,6 @@ export const useSingleCreativeViewModal = ({
       }
     }
 
-    // Check nested result structure (result.result.marked_image)
     if (result.result && typeof result.result === "object") {
       const nestedResult = result.result as Record<string, unknown>;
       if (
@@ -245,8 +237,6 @@ export const useSingleCreativeViewModal = ({
       }
     }
 
-    // Fallback: find any string that looks like an image URL or base64
-    // But exclude the original URL
     const allKeys = Object.keys(result);
     for (const key of allKeys) {
       const value = result[key];
@@ -268,7 +258,6 @@ export const useSingleCreativeViewModal = ({
     return null;
   }, [proofreadingData, creative.url, creative.previewUrl]);
 
-  // Helper function to extract marked HTML content from proofreading result
   const getMarkedHtmlContent = useCallback((): string | null => {
     if (
       !proofreadingData?.result ||
@@ -291,7 +280,6 @@ export const useSingleCreativeViewModal = ({
       return result.marked_html;
     }
 
-    // Check nested result structure
     if (result.result && typeof result.result === "object") {
       const nestedResult = result.result as Record<string, unknown>;
       if (
@@ -331,43 +319,30 @@ export const useSingleCreativeViewModal = ({
 
       let processedHtml = html;
 
-      // Regex to find src attributes: src="VALUE" or src='VALUE'
       const srcRegex = /src=["']([^"']+)["']/gi;
 
       processedHtml = processedHtml.replace(srcRegex, (match, url) => {
-        // url is the value inside quotes, e.g. "image.png" or "images/logo.png"
 
-        // 1. Decode URL (handle %20 etc)
         const decodedUrl = decodeURIComponent(url);
-
-        // 2. Normalize path: replace backslashes, remove leading ./
         let normalizedTarget = decodedUrl.replace(/\\/g, "/");
         if (normalizedTarget.startsWith("./")) {
           normalizedTarget = normalizedTarget.substring(2);
         }
 
-        // Find a sibling that matches this URL
         const matchedSibling = siblingCreatives.find((sibling) => {
-          // Skip if not an image/asset
           const isAsset =
             sibling.type?.startsWith("image/") ||
             /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(sibling.name);
           if (!isAsset) return false;
 
-          // Normalize sibling path
           const siblingPath = sibling.name.replace(/\\/g, "/");
 
-          // Case insensitive comparison
           const lowerSibling = siblingPath.toLowerCase();
           const lowerTarget = normalizedTarget.toLowerCase();
-
-          // 1. Exact match (case insensitive)
           if (lowerSibling === lowerTarget) return true;
 
-          // 2. Sibling ends with target (case insensitive) -> handles "folder/img.png" matching "img.png"
           if (lowerSibling.endsWith("/" + lowerTarget)) return true;
 
-          // 3. Basename match (weakest check but needed for flattened vs nested mismatches)
           const siblingBasename = lowerSibling.split("/").pop();
           const targetBasename = lowerTarget.split("/").pop();
 
@@ -381,14 +356,18 @@ export const useSingleCreativeViewModal = ({
           return `src="${replacementUrl}"`;
         }
 
-        // If no sibling found, return original match
         return match;
       });
 
       return processedHtml;
     },
-    [siblingCreatives]
+    [siblingCreatives.map(s => `${s.name}:${s.url}`).join(',')]
   );
+
+  const onMetadataChangeRef = useRef(_onMetadataChange);
+  useEffect(() => {
+    onMetadataChangeRef.current = _onMetadataChange;
+  }, [_onMetadataChange]);
 
   const loadExistingCreativeData = useCallback(async () => {
     try {
@@ -414,7 +393,7 @@ export const useSingleCreativeViewModal = ({
           setAdditionalNotes(data.metadata.additionalNotes);
         }
         if (loadedFromLines || loadedSubjectLines) {
-          _onMetadataChange?.(creative.id, {
+          onMetadataChangeRef.current?.(creative.id, {
             fromLines: loadedFromLines,
             subjectLines: loadedSubjectLines,
           });
@@ -423,7 +402,7 @@ export const useSingleCreativeViewModal = ({
     } catch (_error) {
       console.error("No existing data found for creative:", creative.id);
     }
-  }, [creative.id, _onMetadataChange, processHtmlContent]);
+  }, [creative.id, processHtmlContent]);
 
   useEffect(() => {
     if (isOpen && creative.id) {
@@ -453,14 +432,11 @@ export const useSingleCreativeViewModal = ({
       ) {
         htmlText = (creative as { embeddedHtml?: string }).embeddedHtml!;
       } else {
-        // Check if this is a Vercel Blob Storage URL
         const isVercelBlobUrl = creative.url.includes(
           "blob.vercel-storage.com"
         );
 
         if (isVercelBlobUrl) {
-          // For Vercel Blob Storage, fetch directly from the client
-          // This avoids server-side 403 issues and CSP violations
           try {
             const directResponse = await fetch(creative.url, {
               method: "GET",
@@ -478,7 +454,6 @@ export const useSingleCreativeViewModal = ({
             console.error("Error fetching HTML from Vercel Blob:", error);
           }
         } else {
-          // For other URLs, try API endpoint first
           const encodedFileUrl = encodeURIComponent(creative.url);
           let apiUrl = `${API_ENDPOINTS.GET_FILE_CONTENT}?fileId=${creative.id}&fileUrl=${encodedFileUrl}&processAssets=true`;
           if (creative.uploadId) {
@@ -496,7 +471,6 @@ export const useSingleCreativeViewModal = ({
 
             if (apiResponse.ok) {
               const responseData = await apiResponse.json();
-              // Check if API returned a requiresClientFetch flag
               if (responseData.requiresClientFetch && responseData.url) {
                 const directResponse = await fetch(responseData.url, {
                   method: "GET",
@@ -513,7 +487,6 @@ export const useSingleCreativeViewModal = ({
                 htmlText = await apiResponse.text();
               }
             } else {
-              // Fallback to direct fetch
               const directResponse = await fetch(creative.url, {
                 method: "GET",
                 headers: {
@@ -529,7 +502,6 @@ export const useSingleCreativeViewModal = ({
             }
           } catch (error) {
             console.error("Error fetching HTML via API:", error);
-            // Final fallback to direct fetch
             try {
               const directResponse = await fetch(creative.url, {
                 method: "GET",
@@ -550,8 +522,6 @@ export const useSingleCreativeViewModal = ({
       }
 
       if (htmlText) {
-        // Check if we have corrected HTML from proofreading
-        // Only set original HTML if we don't have corrected version
         const hasProofreading = proofreadingData?.result;
         if (hasProofreading) {
           const result = proofreadingData.result as Record<string, unknown>;
@@ -579,7 +549,7 @@ export const useSingleCreativeViewModal = ({
       console.error("Error fetching HTML:", error);
       await tryAlternativeHtmlLoading();
     }
-  }, [creative, proofreadingData, processHtmlContent]);
+  }, [creative.id, creative.url, creative.uploadId, (creative as { embeddedHtml?: string }).embeddedHtml, proofreadingData, processHtmlContent]);
 
   const tryAlternativeHtmlLoading = async () => {
     const fallbackContent = `<!-- HTML Content Loading Failed -->
@@ -626,7 +596,6 @@ export const useSingleCreativeViewModal = ({
     }
   }, [isOpen, creative.type, creative.name, fetchHtmlContent]);
 
-  // Update htmlContent with corrected HTML when proofreading data is available
   useEffect(() => {
     const isHtmlFile =
       creative.html ||
@@ -891,15 +860,15 @@ export const useSingleCreativeViewModal = ({
         const rawCorrections = (resultData.corrections ||
           resultData.issues ||
           []) as Array<{
-          original_word?: string;
-          corrected_word?: string;
-          original_context?: string;
-          corrected_context?: string;
-          type?: string;
-          original?: string;
-          correction?: string;
-          note?: string;
-        }>;
+            original_word?: string;
+            corrected_word?: string;
+            original_context?: string;
+            corrected_context?: string;
+            type?: string;
+            original?: string;
+            correction?: string;
+            note?: string;
+          }>;
 
         const issues: ProofreadCreativeResponse["issues"] = rawCorrections.map(
           (c) => ({
@@ -927,7 +896,6 @@ export const useSingleCreativeViewModal = ({
 
         setProofreadingData(finalResult);
 
-        // Immediately update HTML content with corrected version if available
         const isHtmlFile =
           creative.html ||
           creative.type === "html" ||
@@ -999,15 +967,15 @@ export const useSingleCreativeViewModal = ({
               const rawCorrections = (resultData.corrections ||
                 resultData.issues ||
                 []) as Array<{
-                original_word?: string;
-                corrected_word?: string;
-                original_context?: string;
-                corrected_context?: string;
-                type?: string;
-                original?: string;
-                correction?: string;
-                note?: string;
-              }>;
+                  original_word?: string;
+                  corrected_word?: string;
+                  original_context?: string;
+                  corrected_context?: string;
+                  type?: string;
+                  original?: string;
+                  correction?: string;
+                  note?: string;
+                }>;
 
               const issues: ProofreadCreativeResponse["issues"] =
                 rawCorrections.map((c) => ({
@@ -1034,7 +1002,6 @@ export const useSingleCreativeViewModal = ({
 
               setProofreadingData(finalResult);
 
-              // Immediately update HTML content with corrected version if available
               const isHtmlFile =
                 creative.html ||
                 creative.type === "html" ||
@@ -1090,6 +1057,9 @@ export const useSingleCreativeViewModal = ({
             ) {
               if (pollRef.current) clearInterval(pollRef.current);
               setIsAnalyzing(false);
+              setShowOriginal(true);
+              setShowOriginalFullscreen(true);
+              setShowOriginalHtmlFullscreen(true);
               toast.error("Analysis failed", {
                 description: "Please try again.",
               });
@@ -1109,6 +1079,9 @@ export const useSingleCreativeViewModal = ({
       console.error("Proofreading failed:", error);
       if (pollRef.current) clearInterval(pollRef.current);
       setIsAnalyzing(false);
+      setShowOriginal(true);
+      setShowOriginalFullscreen(true);
+      setShowOriginalHtmlFullscreen(true);
 
       const errorMessage =
         error instanceof Error ? error.message : "Please try again.";
@@ -1227,7 +1200,6 @@ export const useSingleCreativeViewModal = ({
         return { x: 0, y: 0 };
       }
 
-      // Calculate the displayed size (image fits in container with object-contain)
       const containerAspect = containerWidth / containerHeight;
       const imageAspect = imgWidth / imgHeight;
 
@@ -1235,24 +1207,18 @@ export const useSingleCreativeViewModal = ({
       let displayedHeight: number;
 
       if (imageAspect > containerAspect) {
-        // Image is wider - fit to width
         displayedWidth = containerWidth;
         displayedHeight = containerWidth / imageAspect;
       } else {
-        // Image is taller - fit to height
         displayedHeight = containerHeight;
         displayedWidth = containerHeight * imageAspect;
       }
-
-      // Calculate scaled dimensions
       const scaledWidth = displayedWidth * zoom;
       const scaledHeight = displayedHeight * zoom;
 
-      // Calculate bounds (how far the image can move before going off-screen)
       const maxX = Math.max(0, (scaledWidth - containerWidth) / 2);
       const maxY = Math.max(0, (scaledHeight - containerHeight) / 2);
 
-      // Constrain the position
       const constrainedX = Math.max(-maxX, Math.min(maxX, x));
       const constrainedY = Math.max(-maxY, Math.min(maxY, y));
 
@@ -1342,9 +1308,8 @@ export const useSingleCreativeViewModal = ({
         const newX = e.clientX - dragStart.x;
         const newY = e.clientY - dragStart.y;
 
-        // Get container dimensions (viewport)
         const containerWidth = window.innerWidth;
-        const containerHeight = window.innerHeight - 80; // Subtract header height
+        const containerHeight = window.innerHeight - 80;
 
         const constrained = constrainPosition(
           newX,
@@ -1391,12 +1356,12 @@ export const useSingleCreativeViewModal = ({
   const isProofreadComplete = !!proofreadingData && !isAnalyzing;
   const proofreadResult = proofreadingData
     ? {
-        issues: proofreadingData.issues || [],
-        suggestions: proofreadingData.suggestions || [],
-        qualityScore: proofreadingData.qualityScore,
-        marked_image: getMarkedImageUrl(),
-        success: proofreadingData.success,
-      }
+      issues: proofreadingData.issues || [],
+      suggestions: proofreadingData.suggestions || [],
+      qualityScore: proofreadingData.qualityScore,
+      marked_image: getMarkedImageUrl(),
+      success: proofreadingData.success,
+    }
     : null;
 
   return {

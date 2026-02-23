@@ -1,7 +1,6 @@
 "use client";
 
-import { Mail, File, Smartphone } from "lucide-react";
-import { Mail, File, Copy, Check } from "lucide-react";
+import { Mail, File, Smartphone, Copy, Check } from "lucide-react";
 import Image from "next/image";
 import React, { Suspense, useState } from "react";
 import { toast } from "sonner";

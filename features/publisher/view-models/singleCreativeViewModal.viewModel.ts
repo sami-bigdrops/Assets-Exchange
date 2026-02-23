@@ -403,8 +403,16 @@ export const useSingleCreativeViewModal = ({
     }
   }, [creative, processHtmlContent]);
 
+  const lastFetchedIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (isOpen && creative.id) {
+    if (!isOpen) {
+      lastFetchedIdRef.current = null;
+      return;
+    }
+
+    if (isOpen && creative.id && lastFetchedIdRef.current !== creative.id) {
+      lastFetchedIdRef.current = creative.id;
       loadExistingCreativeData();
     }
   }, [isOpen, creative.id, loadExistingCreativeData]);

@@ -1,57 +1,70 @@
+import "server-only";
+
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
-const region = process.env.AWS_REGION ?? "us-east-1";
-const fromEmail =
-  process.env.SES_FROM_EMAIL ?? process.env.AWS_SES_FROM_EMAIL ?? "";
+import { env } from "@/env";
 
+/**
+ * AWS SES Singleton Client
+ * (Prevents multiple client instances in a server runtime)
+ */
 let client: SESClient | null = null;
 
 function getSESClient(): SESClient {
   if (!client) {
+    const region = env.AWS_REGION?.trim();
+    const accessKeyId = env.AWS_ACCESS_KEY_ID?.trim();
+    const secretAccessKey = env.AWS_SECRET_ACCESS_KEY?.trim();
+    if (!region || !accessKeyId || !secretAccessKey) {
+      throw new Error(
+        "SES is not configured: set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY"
+      );
+    }
     client = new SESClient({
       region,
-      ...(process.env.AWS_ACCESS_KEY_ID &&
-        process.env.AWS_SECRET_ACCESS_KEY && {
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-          },
-        }),
+      credentials: { accessKeyId, secretAccessKey },
     });
   }
   return client;
 }
 
-export interface SendEmailOptions {
-  to: string | string[];
+/**
+ * ✅ Task 1 required function signature:
+ * sendEmail({ to, subject, html })
+ */
+export async function sendEmail({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
   subject: string;
-  text: string;
-  html?: string;
-  replyTo?: string;
-}
+  html: string;
+}) {
+  const fromEmail = env.AWS_SES_FROM_EMAIL;
 
-export async function sendEmail(options: SendEmailOptions): Promise<void> {
-  const { to, subject, text, html, replyTo } = options;
   if (!fromEmail?.trim()) {
-    throw new Error("SES_FROM_EMAIL or AWS_SES_FROM_EMAIL is not set");
+    throw new Error("AWS_SES_FROM_EMAIL is not set");
   }
-  const toAddresses = Array.isArray(to) ? to : [to];
-  const ses = getSESClient();
+
   const command = new SendEmailCommand({
-    Source: fromEmail,
-    Destination: { ToAddresses: toAddresses },
+    Destination: { ToAddresses: [to] },
     Message: {
-      Subject: { Data: subject, Charset: "UTF-8" },
       Body: {
-        Text: { Data: text, Charset: "UTF-8" },
-        ...(html && { Html: { Data: html, Charset: "UTF-8" } }),
+        Html: { Data: html, Charset: "UTF-8" },
       },
+      Subject: { Data: subject, Charset: "UTF-8" },
     },
-    ...(replyTo && { ReplyToAddresses: [replyTo] }),
+    Source: fromEmail,
   });
-  await ses.send(command);
+
+  const ses = getSESClient();
+  return await ses.send(command);
 }
 
+/**
+ * Optional helper (useful for health checks / feature toggles)
+ */
 export function isEmailConfigured(): boolean {
-  return Boolean(fromEmail?.trim());
+  return Boolean(env.AWS_SES_FROM_EMAIL?.trim());
 }

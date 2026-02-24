@@ -1,37 +1,19 @@
 import { createId } from "@paralleldrive/cuid2";
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
+import { env } from "@/env";
 import { getOffer } from "@/features/admin/services/offer.service";
+import { sendSubmissionTelegramAlert } from "@/features/notifications/notification.service";
 import { db } from "@/lib/db";
-import { creativeRequests, creatives } from "@/lib/schema";
+import { logger } from "@/lib/logger";
+import { validateRequest } from "@/lib/middleware/validateRequest";
+import { assetsTable, creativeRequests, creatives } from "@/lib/schema";
+import { publishers } from "@/lib/schema";
 import { generateTrackingCode } from "@/lib/utils/tracking";
-
-const fileSchema = z.object({
-  id: z.string().optional(),
-  name: z.string(),
-  url: z.string(),
-  size: z.number(),
-  type: z.string(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-});
-
-const submitSchema = z.object({
-  affiliateId: z.string().min(1),
-  companyName: z.string().min(1),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email(),
-  telegramId: z.string().optional(),
-  offerId: z.string().min(1),
-  creativeType: z.string().min(1),
-  fromLines: z.string().optional(),
-  subjectLines: z.string().optional(),
-  additionalNotes: z.string().optional(),
-  priority: z.string().optional(),
-  files: z.array(fileSchema).optional(),
-});
+import { submitSchema } from "@/lib/validations/publisher";
 
 function countLines(text: string | undefined): number {
   if (!text || text.trim() === "") return 0;
@@ -40,28 +22,13 @@ function countLines(text: string | undefined): number {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const parsed = submitSchema.safeParse(body);
+    //  Zod validation via generic helper
+    const validation = await validateRequest(req, submitSchema);
+    if ("response" in validation) return validation.response;
 
-    if (!parsed.success) {
-      console.error(
-        "Validation error:",
-        JSON.stringify(parsed.error.flatten(), null, 2)
-      );
-      return NextResponse.json(
-        {
-          error: "Invalid input",
-          details: parsed.error.flatten(),
-          fieldErrors: parsed.error.flatten().fieldErrors,
-        },
-        { status: 400 }
-      );
-    }
-
-    const data = parsed.data;
+    const data = validation.data;
 
     const offer = await getOffer(data.offerId);
-
     if (!offer) {
       return NextResponse.json({ error: "Offer not found" }, { status: 404 });
     }
@@ -72,7 +39,7 @@ export async function POST(req: NextRequest) {
     let fromLinesCount = countLines(data.fromLines);
     let subjectLinesCount = countLines(data.subjectLines);
 
-    if (data.files && data.files.length > 0) {
+    if (data.files?.length) {
       data.files.forEach((file) => {
         if (file.metadata) {
           const metadata = file.metadata as Record<string, unknown>;
@@ -88,6 +55,7 @@ export async function POST(req: NextRequest) {
 
     const priority =
       data.priority === "high" ? "High Priority" : "Medium Priority";
+
     const trackingCode = generateTrackingCode();
 
     const [request] = await db
@@ -121,7 +89,28 @@ export async function POST(req: NextRequest) {
       })
       .returning({ id: creativeRequests.id });
 
-    if (data.files && data.files.length > 0) {
+    try {
+      await db.insert(assetsTable).values({
+        id: request.id,
+        publisherId,
+        status: "new",
+        createdAt: new Date(),
+        approvedAt: null,
+      });
+
+      logger.app.info(
+        { requestId: request.id, publisherId },
+        "Inserted asset into assets_table"
+      );
+    } catch (error) {
+      logger.app.error(
+        { requestId: request.id, publisherId, error },
+        "Failed to insert asset into assets_table"
+      );
+    }
+
+    if (data.files?.length) {
+      const now = new Date();
       const creativeRecords = data.files.map((file) => ({
         id: createId(),
         requestId: request.id,
@@ -136,11 +125,75 @@ export async function POST(req: NextRequest) {
             : "other",
         status: "pending",
         metadata: file.metadata || {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
+        statusUpdatedAt: now,
+        scanAttempts: 0,
       }));
 
       await db.insert(creatives).values(creativeRecords);
+    }
+
+    // ===== SEND TELEGRAM MESSAGE IF CONNECTED =====
+    try {
+      const [publisher] = await db
+        .select({
+          telegramChatId: publishers.telegramChatId,
+          telegramId: publishers.telegramId,
+        })
+        .from(publishers)
+        .where(eq(publishers.contactEmail, data.email))
+        .limit(1);
+
+      if (publisher?.telegramChatId) {
+        const botToken = env.TELEGRAM_BOT_TOKEN;
+        const TELEGRAM_API_BASE = "https://api.telegram.org/bot";
+
+        const h = await headers();
+        const host = h.get("x-forwarded-host") ?? h.get("host");
+        const proto = h.get("x-forwarded-proto") ?? "https";
+
+        const trackingUrl = `${proto}://${host}/track?code=${encodeURIComponent(trackingCode)}`;
+
+        const escapeHtml = (s: string) =>
+          s
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+
+        // const safeTrackingUrl = escapeHtml(trackingUrl);
+        const safeOfferName = escapeHtml(offer.offerName ?? "");
+        const message =
+          `<b>🎉 Submission Received!</b>\n\n` +
+          `Offer Name: ${safeOfferName}\n` +
+          `Offer ID: <code>${offer.offerId}</code>\n` +
+          `Tracking Code: <code>${trackingCode}</code>\n\n` +
+          `<a href="${trackingUrl}">🔗 Track your submission</a>`;
+
+        await fetch(`${TELEGRAM_API_BASE}${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: publisher.telegramChatId,
+            text: message,
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+          }),
+        });
+      }
+    } catch (telegramError) {
+      console.error("Telegram send failed:", telegramError);
+    }
+    // ===== END TELEGRAM SECTION =====
+
+    if (data.telegramId) {
+      sendSubmissionTelegramAlert(
+        data.telegramId,
+        trackingCode,
+        offer.offerName
+      ).catch((err) => console.error("[TELEGRAM_NOTIFY_ERROR]:", err));
     }
 
     return NextResponse.json(

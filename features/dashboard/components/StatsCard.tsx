@@ -270,8 +270,10 @@ export function StatsCard({
           <div className="space-y-2 ">
             {filteredAndOrderedHistoricalData.map((item, index) => {
               const isTotal = item.label === "Total";
-              const isLastNonTotal = !isTotal && index === filteredAndOrderedHistoricalData.length - 2;
-              
+              const isLastNonTotal =
+                !isTotal &&
+                index === filteredAndOrderedHistoricalData.length - 2;
+
               return (
                 <React.Fragment key={index}>
                   {isTotal && <Separator />}
@@ -279,7 +281,8 @@ export function StatsCard({
                     <span
                       className={`text-sm font-inter ${isTotal ? "font-semibold" : ""}`}
                       style={{
-                        color: variables.colors.statsCardHistoricalDataLabelColor,
+                        color:
+                          variables.colors.statsCardHistoricalDataLabelColor,
                       }}
                     >
                       {item.label}
@@ -287,7 +290,8 @@ export function StatsCard({
                     <span
                       className={`text-base font-inter ${isTotal ? "font-semibold" : "font-medium"}`}
                       style={{
-                        color: variables.colors.statsCardHistoricalDataValueColor,
+                        color:
+                          variables.colors.statsCardHistoricalDataValueColor,
                       }}
                     >
                       {item.value}

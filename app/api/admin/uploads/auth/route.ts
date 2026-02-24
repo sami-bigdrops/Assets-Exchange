@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { getRateLimitKey } from "@/lib/getRateLimitKey";
 import { logger } from "@/lib/logger";
 import { ratelimit } from "@/lib/ratelimit";
-import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from "@/lib/security";
+import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from "@/lib/security/route";
 
 async function enforceRateLimit() {
     const key = await getRateLimitKey();

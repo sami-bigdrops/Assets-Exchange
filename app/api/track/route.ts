@@ -20,9 +20,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Normalize tracking code to uppercase (codes are generated uppercase)
+    const normalizedCode = trackingCode?.trim().toUpperCase() || null;
+
     const requestData = await db.query.creativeRequests.findFirst({
-      where: trackingCode
-        ? eq(creativeRequests.trackingCode, trackingCode)
+      where: normalizedCode
+        ? eq(creativeRequests.trackingCode, normalizedCode)
         : eq(creativeRequests.id, trackingId!),
       with: {
         creatives: true,

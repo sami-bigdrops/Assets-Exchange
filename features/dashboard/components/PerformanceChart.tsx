@@ -309,11 +309,15 @@ export function PerformanceChart({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {metricOptions.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
+              {/* Guard: Filter out empty options to prevent Radix Select error.
+                  SelectItem cannot have empty string values as Select uses "" to clear selection. */}
+              {metricOptions
+                .filter((option) => option && String(option).trim() !== "")
+                .map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           <Select
@@ -332,11 +336,15 @@ export function PerformanceChart({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {comparisonOptions.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
+              {/* Guard: Filter out empty options to prevent Radix Select error.
+                  SelectItem cannot have empty string values as Select uses "" to clear selection. */}
+              {comparisonOptions
+                .filter((option) => option && String(option).trim() !== "")
+                .map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

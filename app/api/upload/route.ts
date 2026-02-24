@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
 import { saveBuffer } from "@/lib/fileStorage";
+import { sanitizeFilename } from "@/lib/security/route";
+import { validateBufferMagicBytes } from "@/lib/security/validateBuffer";
 import { ZipParserService } from "@/lib/services/zip-parser.service";
 
 export const runtime = "nodejs";
@@ -12,7 +14,6 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get("content-type") || "";
     let fileBuffer: Buffer;
     let fileName: string;
-    let fileType: string;
     let smartDetection = false;
 
     if (contentType.includes("multipart/form-data")) {
@@ -29,14 +30,12 @@ export async function POST(req: NextRequest) {
 
       fileBuffer = Buffer.from(await file.arrayBuffer());
       fileName = file.name;
-      fileType = file.type;
     } else {
       const url = new URL(req.url);
       smartDetection = url.searchParams.get("smartDetection") === "true";
 
       const rawFilename = url.searchParams.get("filename") || "upload.zip";
       fileName = decodeURIComponent(rawFilename);
-      fileType = contentType || "application/octet-stream";
 
       fileBuffer = Buffer.from(await req.arrayBuffer());
 
@@ -45,7 +44,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const isZip = fileType.includes("zip") || /\.zip$/i.test(fileName);
+    //validate buffer magic bytes
+    const v = await validateBufferMagicBytes(fileBuffer);
+
+    if (!v.ok) {
+      return NextResponse.json(
+        { error: "Invalid file", reason: v.reason },
+        { status: 415 }
+      );
+    }
+
+    const isZip = v.detectedMime.includes("zip") || v.detectedExt === "zip";
 
     if (isZip && smartDetection) {
       const zipId = uuidv4();
@@ -72,21 +81,38 @@ export async function POST(req: NextRequest) {
       let htmlCount = 0;
 
       for (const entry of parsedEntries) {
+        //  validate actual file content
+        const v = await validateBufferMagicBytes(entry.content);
+
+        if (!v.ok) {
+          return NextResponse.json(
+            {
+              error: "ZIP contains invalid file",
+              file: entry.name,
+              reason: v.reason,
+            },
+            { status: 415 }
+          );
+        }
+
+        const detectedType = v.detectedMime;
+
         const saved = await saveBuffer(
           entry.content,
-          entry.name.split("/").pop() || "file",
+          sanitizeFilename(entry.name.split("/").pop() || "file"),
           `extracted/${zipId}`
         );
 
-        if (entry.type.startsWith("image/")) imagesCount++;
-        if (entry.type.includes("html")) htmlCount++;
+        //  REPLACED: use detectedType instead of entry.type
+        if (detectedType.startsWith("image/")) imagesCount++;
+        if (detectedType.includes("html")) htmlCount++;
 
         items.push({
           id: saved.id,
           name: entry.name,
           url: saved.url,
           size: entry.content.length,
-          type: entry.type,
+          type: detectedType, // REPLACED HERE
           isDependency: entry.isDependency,
         });
       }
@@ -102,7 +128,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const saved = await saveBuffer(fileBuffer, fileName);
+    //change saving file ,sanititize filename+store safe type
+    const safeName = sanitizeFilename(fileName);
+    const saved = await saveBuffer(fileBuffer, safeName);
 
     return NextResponse.json({
       success: true,
@@ -111,7 +139,7 @@ export async function POST(req: NextRequest) {
         fileName: saved.fileName,
         fileUrl: saved.url,
         fileSize: saved.size,
-        fileType: fileType || "application/octet-stream",
+        fileType: v.detectedMime, //changed to detected mime type
         uploadDate: new Date().toISOString(),
       },
     });

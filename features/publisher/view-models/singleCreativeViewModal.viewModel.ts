@@ -864,15 +864,15 @@ export const useSingleCreativeViewModal = ({
         const rawCorrections = (resultData.corrections ||
           resultData.issues ||
           []) as Array<{
-          original_word?: string;
-          corrected_word?: string;
-          original_context?: string;
-          corrected_context?: string;
-          type?: string;
-          original?: string;
-          correction?: string;
-          note?: string;
-        }>;
+            original_word?: string;
+            corrected_word?: string;
+            original_context?: string;
+            corrected_context?: string;
+            type?: string;
+            original?: string;
+            correction?: string;
+            note?: string;
+          }>;
 
         const issues: ProofreadCreativeResponse["issues"] = rawCorrections.map(
           (c) => ({
@@ -971,15 +971,15 @@ export const useSingleCreativeViewModal = ({
               const rawCorrections = (resultData.corrections ||
                 resultData.issues ||
                 []) as Array<{
-                original_word?: string;
-                corrected_word?: string;
-                original_context?: string;
-                corrected_context?: string;
-                type?: string;
-                original?: string;
-                correction?: string;
-                note?: string;
-              }>;
+                  original_word?: string;
+                  corrected_word?: string;
+                  original_context?: string;
+                  corrected_context?: string;
+                  type?: string;
+                  original?: string;
+                  correction?: string;
+                  note?: string;
+                }>;
 
               const issues: ProofreadCreativeResponse["issues"] =
                 rawCorrections.map((c) => ({
@@ -1360,12 +1360,12 @@ export const useSingleCreativeViewModal = ({
   const isProofreadComplete = !!proofreadingData && !isAnalyzing;
   const proofreadResult = proofreadingData
     ? {
-        issues: proofreadingData.issues || [],
-        suggestions: proofreadingData.suggestions || [],
-        qualityScore: proofreadingData.qualityScore,
-        marked_image: getMarkedImageUrl(),
-        success: proofreadingData.success,
-      }
+      issues: proofreadingData.issues || [],
+      suggestions: proofreadingData.suggestions || [],
+      qualityScore: proofreadingData.qualityScore,
+      marked_image: getMarkedImageUrl(),
+      success: proofreadingData.success,
+    }
     : null;
 
   return {

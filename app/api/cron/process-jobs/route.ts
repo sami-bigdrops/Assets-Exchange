@@ -6,9 +6,13 @@ import { sendAlert } from "@/lib/alerts";
 import { auth } from "@/lib/auth";
 import { classifyJobError } from "@/lib/classifyJobError";
 import { db } from "@/lib/db";
-import { withJobContext } from "@/lib/logger";
-import { backgroundJobs } from "@/lib/schema";
-import { syncAdvertisersFromEverflow, syncOffersFromEverflow } from "@/lib/services/everflow-sync.service";
+import { logger, withJobContext } from "@/lib/logger";
+import { backgroundJobs, creatives } from "@/lib/schema";
+import { updateCreativeStatus } from "@/lib/services/creative-status.service";
+import {
+  syncAdvertisersFromEverflow,
+  syncOffersFromEverflow,
+} from "@/lib/services/everflow-sync.service";
 import { logJobEvent, JobEventType } from "@/lib/services/job-events.service";
 import { getSystemState, setSystemState } from "@/lib/services/system-state";
 import { type JobErrorType } from "@/types/jobError";
@@ -17,158 +21,195 @@ export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 const retryPolicy: Record<JobErrorType, { delayMinutes?: number }> = {
-    network: { delayMinutes: 1 },
-    rate_limit: { delayMinutes: 10 },
-    timeout: { delayMinutes: 2 },
-    external_api: { delayMinutes: 5 },
-    data_corruption: { delayMinutes: 0 },
-    permission: { delayMinutes: 0 },
-    system: { delayMinutes: 5 },
-    unknown: { delayMinutes: 5 },
+  network: { delayMinutes: 1 },
+  rate_limit: { delayMinutes: 10 },
+  timeout: { delayMinutes: 2 },
+  external_api: { delayMinutes: 5 },
+  data_corruption: { delayMinutes: 0 },
+  permission: { delayMinutes: 0 },
+  system: { delayMinutes: 5 },
+  unknown: { delayMinutes: 5 },
 };
 
+async function handleJobError(
+  job: typeof backgroundJobs.$inferSelect,
+  error: unknown,
+  startTime: number,
+  log: {
+    error: (meta: unknown, msg: string) => void;
+    info: (meta: unknown, msg: string) => void;
+    warn: (meta: unknown, msg: string) => void;
+  }
+) {
+  const classified = classifyJobError(error);
+  const errorType = classified.type;
+  const policy = retryPolicy[errorType];
 
-async function handleJobError(job: typeof backgroundJobs.$inferSelect, error: unknown, startTime: number, log: { error: (meta: unknown, msg: string) => void; info: (meta: unknown, msg: string) => void; warn: (meta: unknown, msg: string) => void }) {
-    const classified = classifyJobError(error);
-    const errorType = classified.type;
-    const policy = retryPolicy[errorType];
+  const currentRetryCount = job.retryCount || 0;
+  const maxRetries = job.maxRetries || 5;
+  const errorMessage = classified.message;
+  const errorStack = error instanceof Error ? error.stack : undefined;
+  const elapsed = Date.now() - startTime;
 
-    const currentRetryCount = job.retryCount || 0;
-    const maxRetries = job.maxRetries || 5;
-    const errorMessage = classified.message;
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    const elapsed = Date.now() - startTime;
+  log.error(
+    {},
+    `Job failed - type: ${errorType}, error: ${errorMessage}, severity: ${classified.severity}${errorStack ? `, stack: ${errorStack}` : ""}`
+  );
 
-    log.error({}, `Job failed - type: ${errorType}, error: ${errorMessage}, severity: ${classified.severity}${errorStack ? `, stack: ${errorStack}` : ''}`);
+  if (classified.retryable && currentRetryCount < maxRetries) {
+    const baseDelayMinutes = policy?.delayMinutes || 1;
+    const backoffMultiplier = Math.pow(2, currentRetryCount);
+    const delayMinutes = baseDelayMinutes * backoffMultiplier;
 
-    if (classified.retryable && currentRetryCount < maxRetries) {
-        const baseDelayMinutes = policy?.delayMinutes || 1;
-        const backoffMultiplier = Math.pow(2, currentRetryCount);
-        const delayMinutes = baseDelayMinutes * backoffMultiplier;
+    const jitter = delayMinutes * 0.1 * (Math.random() * 2 - 1);
+    const finalDelayMinutes = Math.max(0.1, delayMinutes + jitter);
 
-        const jitter = delayMinutes * 0.1 * (Math.random() * 2 - 1);
-        const finalDelayMinutes = Math.max(0.1, delayMinutes + jitter);
+    const nextRun = new Date(Date.now() + finalDelayMinutes * 60_000);
 
-        const nextRun = new Date(Date.now() + finalDelayMinutes * 60_000);
+    await db.transaction(async (tx) => {
+      await tx
+        .update(backgroundJobs)
+        .set({
+          status: "pending",
+          retryCount: currentRetryCount + 1,
+          lastErrorAt: new Date(),
+          nextRunAt: nextRun,
+          error: errorMessage,
+          errorType,
+        })
+        .where(eq(backgroundJobs.id, job.id));
 
-        await db.transaction(async (tx) => {
-            await tx
-                .update(backgroundJobs)
-                .set({
-                    status: "pending",
-                    retryCount: currentRetryCount + 1,
-                    lastErrorAt: new Date(),
-                    nextRunAt: nextRun,
-                    error: errorMessage,
-                    errorType,
-                })
-                .where(eq(backgroundJobs.id, job.id));
+      log.warn(
+        {},
+        `Retry scheduled - jobId: ${job.id}, retryCount: ${currentRetryCount + 1}, errorType: ${errorType}, nextRun: ${nextRun.toISOString()}`
+      );
 
-            log.warn({}, `Retry scheduled - jobId: ${job.id}, retryCount: ${currentRetryCount + 1}, errorType: ${errorType}, nextRun: ${nextRun.toISOString()}`);
+      await logJobEvent({
+        jobId: job.id,
+        type: "retry_scheduled",
+        message: `Retry scheduled in ${finalDelayMinutes.toFixed(2)} minutes (Attempt ${currentRetryCount + 1}/${maxRetries})`,
+        data: {
+          retryCount: currentRetryCount + 1,
+          nextRunAt: nextRun,
+          errorType,
+          stack: errorStack,
+        },
+        tx,
+      });
+    });
 
-            await logJobEvent({
-                jobId: job.id,
-                type: 'retry_scheduled',
-                message: `Retry scheduled in ${finalDelayMinutes.toFixed(2)} minutes (Attempt ${currentRetryCount + 1}/${maxRetries})`,
-                data: { retryCount: currentRetryCount + 1, nextRunAt: nextRun, errorType, stack: errorStack },
-                tx
-            });
-        });
-
-        if (currentRetryCount === maxRetries - 1) {
-            await sendAlert(`⚠️ Everflow sync retrying (${currentRetryCount + 1}/${maxRetries})\nJob: ${job.id}`);
-        }
-
-    } else {
-        await db.transaction(async (tx) => {
-            await tx
-                .update(backgroundJobs)
-                .set({
-                    status: "dead",
-                    deadLetteredAt: new Date(),
-                    finishedAt: new Date(),
-                    error: errorMessage,
-                    errorType,
-                    lastErrorAt: new Date(),
-                })
-                .where(eq(backgroundJobs.id, job.id));
-
-            await logJobEvent({
-                jobId: job.id,
-                type: JobEventType.FAILED,
-                message: "Moved to Dead Letter Queue: " + errorMessage,
-                data: { stack: errorStack, elapsed, errorType, deadLetter: true, severity: classified.severity },
-                tx
-            });
-        });
-
-        try {
-            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-            const [deadCount] = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(backgroundJobs)
-                .where(and(
-                    eq(backgroundJobs.status, "dead"),
-                    gte(backgroundJobs.deadLetteredAt, tenMinutesAgo)
-                ));
-
-            if (Number(deadCount.count) >= 10) {
-                await setSystemState("jobQueuePaused", {
-                    paused: true,
-                    reason: "Too many dead jobs (>10) in last 10 minutes",
-                    at: new Date().toISOString()
-                });
-                await sendAlert(`🚨 **CIRCUIT BREAKER TRIGGERED** 🚨\nJob Queue Paused automatically.\nReason: >10 dead jobs in 10 minutes.`);
-            }
-        } catch (err) {
-            console.error("Failed to check failure spike", err);
-        }
+    if (currentRetryCount === maxRetries - 1) {
+      await sendAlert(
+        `⚠️ Everflow sync retrying (${currentRetryCount + 1}/${maxRetries})\nJob: ${job.id}`
+      );
     }
+  } else {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(backgroundJobs)
+        .set({
+          status: "dead",
+          deadLetteredAt: new Date(),
+          finishedAt: new Date(),
+          error: errorMessage,
+          errorType,
+          lastErrorAt: new Date(),
+        })
+        .where(eq(backgroundJobs.id, job.id));
+
+      await logJobEvent({
+        jobId: job.id,
+        type: JobEventType.FAILED,
+        message: "Moved to Dead Letter Queue: " + errorMessage,
+        data: {
+          stack: errorStack,
+          elapsed,
+          errorType,
+          deadLetter: true,
+          severity: classified.severity,
+        },
+        tx,
+      });
+    });
+
+    try {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const [deadCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(backgroundJobs)
+        .where(
+          and(
+            eq(backgroundJobs.status, "dead"),
+            gte(backgroundJobs.deadLetteredAt, tenMinutesAgo)
+          )
+        );
+
+      if (Number(deadCount.count) >= 10) {
+        await setSystemState("jobQueuePaused", {
+          paused: true,
+          reason: "Too many dead jobs (>10) in last 10 minutes",
+          at: new Date().toISOString(),
+        });
+        await sendAlert(
+          `🚨 **CIRCUIT BREAKER TRIGGERED** 🚨\nJob Queue Paused automatically.\nReason: >10 dead jobs in 10 minutes.`
+        );
+      }
+    } catch (err) {
+      console.error("Failed to check failure spike", err);
+    }
+  }
 }
 
 const MAX_EXECUTION_TIME_MS = 240000;
 
 export async function GET(req: Request) {
-    const vercelCronHeader = req.headers.get("x-vercel-cron");
-    const authHeader = req.headers.get("Authorization");
-    const userAgent = req.headers.get("user-agent") || "";
-    const cronSecret = process.env.CRON_SECRET;
+  const vercelCronHeader = req.headers.get("x-vercel-cron");
+  const authHeader = req.headers.get("Authorization");
+  const userAgent = req.headers.get("user-agent") || "";
+  const cronSecret = process.env.CRON_SECRET;
 
-    const session = await auth.api.getSession({
-        headers: await headers(),
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  const isAdmin = session?.user?.role === "admin";
+
+  if (!isAdmin) {
+    const isVercelCron =
+      vercelCronHeader === "1" || userAgent.includes("vercel-cron");
+    const isAuthorizedSecret =
+      cronSecret && authHeader === `Bearer ${cronSecret}`;
+
+    if (!isVercelCron && !isAuthorizedSecret) {
+      console.warn("Cron endpoint accessed without authorization", {
+        hasHeader: !!vercelCronHeader,
+        headerValue: vercelCronHeader,
+        userAgent,
+        hasAuthHeader: !!authHeader,
+        hasCronSecret: !!cronSecret,
+        isProduction: process.env.NODE_ENV === "production",
+      });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
+  const startTime = Date.now();
+
+  const pausedState = await getSystemState<{ paused: boolean; reason: string }>(
+    "jobQueuePaused"
+  );
+  if (pausedState?.paused) {
+    console.warn("Job queue is paused:", pausedState.reason);
+    return NextResponse.json({
+      message: "Job queue is paused",
+      reason: pausedState.reason,
     });
-    const isAdmin = session?.user?.role === "admin";
+  }
 
-    if (!isAdmin) {
-        const isVercelCron = vercelCronHeader === "1" || userAgent.includes("vercel-cron");
-        const isAuthorizedSecret = cronSecret && authHeader === `Bearer ${cronSecret}`;
-        
-        if (!isVercelCron && !isAuthorizedSecret) {
-            console.warn("Cron endpoint accessed without authorization", {
-                hasHeader: !!vercelCronHeader,
-                headerValue: vercelCronHeader,
-                userAgent,
-                hasAuthHeader: !!authHeader,
-                hasCronSecret: !!cronSecret,
-                isProduction: process.env.NODE_ENV === "production",
-            });
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-    }
+  let processedCount = 0;
 
-    const startTime = Date.now();
-
-    const pausedState = await getSystemState<{ paused: boolean; reason: string }>("jobQueuePaused");
-    if (pausedState?.paused) {
-        console.warn("Job queue is paused:", pausedState.reason);
-        return NextResponse.json({ message: "Job queue is paused", reason: pausedState.reason });
-    }
-
-    let processedCount = 0;
-
-    try {
-        while (Date.now() - startTime < MAX_EXECUTION_TIME_MS) {
-            const lockedJob = await db.execute(sql`
+  try {
+    while (Date.now() - startTime < MAX_EXECUTION_TIME_MS) {
+      const lockedJob = await db.execute(sql`
                 UPDATE background_jobs
                 SET status = 'running', started_at = NOW()
                 WHERE id = (
@@ -183,253 +224,495 @@ export async function GET(req: Request) {
                 RETURNING *
             `);
 
-            if (lockedJob.rows.length === 0) {
-                break;
-            }
+      if (lockedJob.rows.length === 0) {
+        break;
+      }
 
-            const job = lockedJob.rows[0] as typeof backgroundJobs.$inferSelect;
-            processedCount++;
+      const job = lockedJob.rows[0] as typeof backgroundJobs.$inferSelect;
+      processedCount++;
 
-            const currentJobStatus = await db.query.backgroundJobs.findFirst({
-                where: eq(backgroundJobs.id, job.id),
-                columns: { status: true },
-            });
+      const currentJobStatus = await db.query.backgroundJobs.findFirst({
+        where: eq(backgroundJobs.id, job.id),
+        columns: { status: true },
+      });
 
-            if (currentJobStatus?.status === "cancelled") {
-                await logJobEvent({
-                    jobId: job.id,
-                    type: JobEventType.CANCELLED,
-                    message: "Job cancelled by admin/system",
-                });
-                continue;
-            }
+      if (currentJobStatus?.status === "cancelled") {
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.CANCELLED,
+          message: "Job cancelled by admin/system",
+        });
+        continue;
+      }
 
-            if (job.type === "everflow_sync") {
-                const log = withJobContext(job.id);
-                log.info({}, 'Everflow sync started');
-                await logJobEvent({
-                    jobId: job.id,
-                    type: JobEventType.STARTED,
-                    message: "Everflow sync started",
-                });
-                await processEverflowSync(job, startTime, log);
-            } else if (job.type === "everflow_advertiser_sync") {
-                const log = withJobContext(job.id);
-                log.info({}, 'Everflow advertiser sync started');
-                await logJobEvent({
-                    jobId: job.id,
-                    type: JobEventType.STARTED,
-                    message: "Everflow advertiser sync started",
-                });
-                await processEverflowAdvertiserSync(job, startTime, log);
-            } else {
-                await db
-                    .update(backgroundJobs)
-                    .set({
-                        status: "failed",
-                        finishedAt: new Date(),
-                        error: `Unknown job type: ${job.type}`,
-                    })
-                    .where(eq(backgroundJobs.id, job.id));
+      if (job.type === "everflow_sync") {
+        const log = withJobContext(job.id);
+        log.info({}, "Everflow sync started");
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.STARTED,
+          message: "Everflow sync started",
+        });
+        await processEverflowSync(job, startTime, log);
+      } else if (job.type === "everflow_advertiser_sync") {
+        const log = withJobContext(job.id);
+        log.info({}, "Everflow advertiser sync started");
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.STARTED,
+          message: "Everflow advertiser sync started",
+        });
+        await processEverflowAdvertiserSync(job, startTime, log);
+      } else if (job.type === "creative_scan") {
+        const log = withJobContext(job.id);
+        log.info({}, "Creative scan started");
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.STARTED,
+          message: "Creative scan started",
+        });
+        await processCreativeScan(job, startTime, log);
+      } else {
+        await db
+          .update(backgroundJobs)
+          .set({
+            status: "failed",
+            finishedAt: new Date(),
+            error: `Unknown job type: ${job.type}`,
+          })
+          .where(eq(backgroundJobs.id, job.id));
 
-                await logJobEvent({
-                    jobId: job.id,
-                    type: JobEventType.FAILED,
-                    message: `Unknown job type: ${job.type}`,
-                });
-            }
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.FAILED,
+          message: `Unknown job type: ${job.type}`,
+        });
+      }
+    }
+
+    return NextResponse.json({
+      message: "Worker run completed",
+      processed: processedCount,
+    });
+  } catch (error) {
+    console.error("Worker error:", error);
+    return NextResponse.json({ error: "Worker failed" }, { status: 500 });
+  }
+}
+
+async function processEverflowSync(
+  job: typeof backgroundJobs.$inferSelect,
+  startTime: number,
+  log: {
+    error: (meta: unknown, msg: string) => void;
+    info: (meta: unknown, msg: string) => void;
+    warn: (meta: unknown, msg: string) => void;
+  }
+) {
+  const payloadObj =
+    job.payload && typeof job.payload === "object"
+      ? (job.payload as Record<string, unknown>)
+      : {};
+  const userId = (payloadObj.userId as string) || "system";
+  const filters = (payloadObj.filters as Record<string, unknown>) || {};
+  const conflictResolution =
+    payloadObj.conflictResolution === "skip" ||
+    payloadObj.conflictResolution === "update" ||
+    payloadObj.conflictResolution === "merge"
+      ? payloadObj.conflictResolution
+      : "update";
+  const RUNNING_THRESHOLD_MINUTES = 10;
+  let longRunningAlertSent = false;
+
+  try {
+    await db
+      .update(backgroundJobs)
+      .set({ total: 0 })
+      .where(eq(backgroundJobs.id, job.id));
+
+    const syncResult = await syncOffersFromEverflow(userId, {
+      conflictResolution,
+      filters,
+      dryRun: false,
+      onProgress: async (progress) => {
+        await db
+          .update(backgroundJobs)
+          .set({
+            progress: progress.current,
+            total: progress.total,
+          })
+          .where(eq(backgroundJobs.id, job.id));
+
+        log.info(
+          {},
+          `Progress update - processed: ${progress.current}, total: ${progress.total}`
+        );
+
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.PROGRESS,
+          data: { processed: progress.current, total: progress.total },
+        });
+
+        if (
+          !longRunningAlertSent &&
+          Date.now() - startTime > RUNNING_THRESHOLD_MINUTES * 60_000
+        ) {
+          longRunningAlertSent = true;
+          await sendAlert(
+            `⏳ Everflow sync running > ${RUNNING_THRESHOLD_MINUTES} minutes\nJob: ${job.id}`
+          );
+        }
+      },
+      onEvent: async (event) => {
+        if (event.type === "chunk_processed") {
+          log.info(
+            {},
+            `Chunk processed - chunkNumber: ${event.data?.chunkNumber}, processed: ${event.data?.processed}, total: ${event.data?.total}`
+          );
         }
 
-        return NextResponse.json({
-            message: "Worker run completed",
-            processed: processedCount
+        await logJobEvent({
+          jobId: job.id,
+          type: event.type,
+          message: event.message,
+          data: event.data,
         });
-    } catch (error) {
-        console.error("Worker error:", error);
-        return NextResponse.json({ error: "Worker failed" }, { status: 500 });
-    }
+      },
+    });
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(backgroundJobs)
+        .set({
+          status: "completed",
+          finishedAt: new Date(),
+          progress: syncResult.totalRecords,
+          total: syncResult.totalRecords,
+          result: {
+            syncedRecords: syncResult.syncedRecords,
+            createdRecords: syncResult.createdRecords,
+            updatedRecords: syncResult.updatedRecords,
+            skippedRecords: syncResult.skippedRecords,
+            failedRecords: syncResult.failedRecords,
+            errors: syncResult.errors,
+          },
+        })
+        .where(eq(backgroundJobs.id, job.id));
+
+      log.info(
+        {},
+        `Everflow sync completed successfully - syncedRecords: ${syncResult.syncedRecords}, createdRecords: ${syncResult.createdRecords}, updatedRecords: ${syncResult.updatedRecords}, skippedRecords: ${syncResult.skippedRecords}, failedRecords: ${syncResult.failedRecords}`
+      );
+
+      await logJobEvent({
+        jobId: job.id,
+        type: JobEventType.COMPLETED,
+        message: "Everflow sync completed successfully",
+        data: syncResult,
+        tx,
+      });
+    });
+  } catch (error: unknown) {
+    await handleJobError(job, error, startTime, log);
+  }
 }
 
-async function processEverflowSync(job: typeof backgroundJobs.$inferSelect, startTime: number, log: { error: (meta: unknown, msg: string) => void; info: (meta: unknown, msg: string) => void; warn: (meta: unknown, msg: string) => void }) {
-    const payloadObj = job.payload && typeof job.payload === "object" ? job.payload as Record<string, unknown> : {};
-    const userId = (payloadObj.userId as string) || "system";
-    const filters = (payloadObj.filters as Record<string, unknown>) || {};
-    const conflictResolution = (payloadObj.conflictResolution === "skip" || payloadObj.conflictResolution === "update" || payloadObj.conflictResolution === "merge")
-        ? payloadObj.conflictResolution
-        : "update";
-    const RUNNING_THRESHOLD_MINUTES = 10;
-    let longRunningAlertSent = false;
+async function processEverflowAdvertiserSync(
+  job: typeof backgroundJobs.$inferSelect,
+  startTime: number,
+  log: {
+    error: (meta: unknown, msg: string) => void;
+    info: (meta: unknown, msg: string) => void;
+    warn: (meta: unknown, msg: string) => void;
+  }
+) {
+  const payloadObj =
+    job.payload && typeof job.payload === "object"
+      ? (job.payload as Record<string, unknown>)
+      : {};
+  const userId = (payloadObj.userId as string) || "system";
+  const filters = (payloadObj.filters as Record<string, unknown>) || {};
+  const conflictResolution =
+    payloadObj.conflictResolution === "skip" ||
+    payloadObj.conflictResolution === "update" ||
+    payloadObj.conflictResolution === "merge"
+      ? payloadObj.conflictResolution
+      : "update";
+  const RUNNING_THRESHOLD_MINUTES = 10;
+  let longRunningAlertSent = false;
 
-    try {
+  try {
+    await db
+      .update(backgroundJobs)
+      .set({ total: 0 })
+      .where(eq(backgroundJobs.id, job.id));
+
+    const syncResult = await syncAdvertisersFromEverflow(userId, {
+      conflictResolution,
+      filters,
+      dryRun: false,
+      onProgress: async (progress) => {
         await db
-            .update(backgroundJobs)
-            .set({ total: 0 })
-            .where(eq(backgroundJobs.id, job.id));
+          .update(backgroundJobs)
+          .set({
+            progress: progress.current,
+            total: progress.total,
+          })
+          .where(eq(backgroundJobs.id, job.id));
 
-        const syncResult = await syncOffersFromEverflow(userId, {
-            conflictResolution,
-            filters,
-            dryRun: false,
-            onProgress: async (progress) => {
-                await db
-                    .update(backgroundJobs)
-                    .set({
-                        progress: progress.current,
-                        total: progress.total,
-                    })
-                    .where(eq(backgroundJobs.id, job.id));
+        log.info(
+          {},
+          `Progress update - processed: ${progress.current}, total: ${progress.total}`
+        );
 
-                log.info({}, `Progress update - processed: ${progress.current}, total: ${progress.total}`);
-
-                await logJobEvent({
-                    jobId: job.id,
-                    type: JobEventType.PROGRESS,
-                    data: { processed: progress.current, total: progress.total },
-                });
-
-                if (!longRunningAlertSent && Date.now() - startTime > RUNNING_THRESHOLD_MINUTES * 60_000) {
-                    longRunningAlertSent = true;
-                    await sendAlert(`⏳ Everflow sync running > ${RUNNING_THRESHOLD_MINUTES} minutes\nJob: ${job.id}`);
-                }
-            },
-            onEvent: async (event) => {
-                if (event.type === 'chunk_processed') {
-                    log.info({}, `Chunk processed - chunkNumber: ${event.data?.chunkNumber}, processed: ${event.data?.processed}, total: ${event.data?.total}`);
-                }
-
-                await logJobEvent({
-                    jobId: job.id,
-                    type: event.type,
-                    message: event.message,
-                    data: event.data
-                });
-            }
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.PROGRESS,
+          data: { processed: progress.current, total: progress.total },
         });
 
-        await db.transaction(async (tx) => {
-            await tx
-                .update(backgroundJobs)
-                .set({
-                    status: "completed",
-                    finishedAt: new Date(),
-                    progress: syncResult.totalRecords,
-                    total: syncResult.totalRecords,
-                    result: {
-                        syncedRecords: syncResult.syncedRecords,
-                        createdRecords: syncResult.createdRecords,
-                        updatedRecords: syncResult.updatedRecords,
-                        skippedRecords: syncResult.skippedRecords,
-                        failedRecords: syncResult.failedRecords,
-                        errors: syncResult.errors,
-                    },
-                })
-                .where(eq(backgroundJobs.id, job.id));
+        if (
+          !longRunningAlertSent &&
+          Date.now() - startTime > RUNNING_THRESHOLD_MINUTES * 60_000
+        ) {
+          longRunningAlertSent = true;
+          await sendAlert(
+            `⏳ Everflow advertiser sync running > ${RUNNING_THRESHOLD_MINUTES} minutes\nJob: ${job.id}`
+          );
+        }
+      },
+      onEvent: async (event) => {
+        if (event.type === "chunk_processed") {
+          log.info(
+            {},
+            `Chunk processed - chunkNumber: ${event.data?.chunkNumber}, processed: ${event.data?.processed}, total: ${event.data?.total}`
+          );
+        }
 
-            log.info({}, `Everflow sync completed successfully - syncedRecords: ${syncResult.syncedRecords}, createdRecords: ${syncResult.createdRecords}, updatedRecords: ${syncResult.updatedRecords}, skippedRecords: ${syncResult.skippedRecords}, failedRecords: ${syncResult.failedRecords}`);
-
-            await logJobEvent({
-                jobId: job.id,
-                type: JobEventType.COMPLETED,
-                message: "Everflow sync completed successfully",
-                data: syncResult,
-                tx
-            });
+        await logJobEvent({
+          jobId: job.id,
+          type: event.type,
+          message: event.message,
+          data: event.data,
         });
+      },
+    });
 
+    await db.transaction(async (tx) => {
+      await tx
+        .update(backgroundJobs)
+        .set({
+          status: "completed",
+          finishedAt: new Date(),
+          progress: syncResult.totalRecords,
+          total: syncResult.totalRecords,
+          result: {
+            syncedRecords: syncResult.syncedRecords,
+            createdRecords: syncResult.createdRecords,
+            updatedRecords: syncResult.updatedRecords,
+            skippedRecords: syncResult.skippedRecords,
+            failedRecords: syncResult.failedRecords,
+            errors: syncResult.errors,
+          },
+        })
+        .where(eq(backgroundJobs.id, job.id));
 
-    } catch (error: unknown) {
-        await handleJobError(job, error, startTime, log);
-    }
+      log.info(
+        {},
+        `Everflow advertiser sync completed successfully - syncedRecords: ${syncResult.syncedRecords}, createdRecords: ${syncResult.createdRecords}, updatedRecords: ${syncResult.updatedRecords}, skippedRecords: ${syncResult.skippedRecords}, failedRecords: ${syncResult.failedRecords}`
+      );
+
+      await logJobEvent({
+        jobId: job.id,
+        type: JobEventType.COMPLETED,
+        message: "Everflow advertiser sync completed successfully",
+        data: syncResult,
+        tx,
+      });
+    });
+  } catch (error: unknown) {
+    await handleJobError(job, error, startTime, log);
+  }
 }
 
-async function processEverflowAdvertiserSync(job: typeof backgroundJobs.$inferSelect, startTime: number, log: { error: (meta: unknown, msg: string) => void; info: (meta: unknown, msg: string) => void; warn: (meta: unknown, msg: string) => void }) {
-    const payloadObj = job.payload && typeof job.payload === "object" ? job.payload as Record<string, unknown> : {};
-    const userId = (payloadObj.userId as string) || "system";
-    const filters = (payloadObj.filters as Record<string, unknown>) || {};
-    const conflictResolution = (payloadObj.conflictResolution === "skip" || payloadObj.conflictResolution === "update" || payloadObj.conflictResolution === "merge")
-        ? payloadObj.conflictResolution
-        : "update";
-    const RUNNING_THRESHOLD_MINUTES = 10;
-    let longRunningAlertSent = false;
+async function processCreativeScan(
+  job: typeof backgroundJobs.$inferSelect,
+  startTime: number,
+  log: {
+    error: (meta: unknown, msg: string) => void;
+    info: (meta: unknown, msg: string) => void;
+    warn: (meta: unknown, msg: string) => void;
+  }
+) {
+  const payloadObj =
+    job.payload && typeof job.payload === "object"
+      ? (job.payload as Record<string, unknown>)
+      : {};
+  const creativeId = payloadObj.creativeId as string;
+  const url = payloadObj.url as string;
+  const type = payloadObj.type as string;
 
-    try {
-        await db
-            .update(backgroundJobs)
-            .set({ total: 0 })
-            .where(eq(backgroundJobs.id, job.id));
+  if (!creativeId) {
+    throw new Error("Missing creativeId in job payload");
+  }
 
-        const syncResult = await syncAdvertisersFromEverflow(userId, {
-            conflictResolution,
-            filters,
-            dryRun: false,
-            onProgress: async (progress) => {
-                await db
-                    .update(backgroundJobs)
-                    .set({
-                        progress: progress.current,
-                        total: progress.total,
-                    })
-                    .where(eq(backgroundJobs.id, job.id));
+  try {
+    const creative = await db.query.creatives.findFirst({
+      where: eq(creatives.id, creativeId),
+      columns: {
+        id: true,
+        status: true,
+        scanAttempts: true,
+        url: true,
+        type: true,
+      },
+    });
 
-                log.info({}, `Progress update - processed: ${progress.current}, total: ${progress.total}`);
-
-                await logJobEvent({
-                    jobId: job.id,
-                    type: JobEventType.PROGRESS,
-                    data: { processed: progress.current, total: progress.total },
-                });
-
-                if (!longRunningAlertSent && Date.now() - startTime > RUNNING_THRESHOLD_MINUTES * 60_000) {
-                    longRunningAlertSent = true;
-                    await sendAlert(`⏳ Everflow advertiser sync running > ${RUNNING_THRESHOLD_MINUTES} minutes\nJob: ${job.id}`);
-                }
-            },
-            onEvent: async (event) => {
-                if (event.type === 'chunk_processed') {
-                    log.info({}, `Chunk processed - chunkNumber: ${event.data?.chunkNumber}, processed: ${event.data?.processed}, total: ${event.data?.total}`);
-                }
-
-                await logJobEvent({
-                    jobId: job.id,
-                    type: event.type,
-                    message: event.message,
-                    data: event.data
-                });
-            }
-        });
-
-        await db.transaction(async (tx) => {
-            await tx
-                .update(backgroundJobs)
-                .set({
-                    status: "completed",
-                    finishedAt: new Date(),
-                    progress: syncResult.totalRecords,
-                    total: syncResult.totalRecords,
-                    result: {
-                        syncedRecords: syncResult.syncedRecords,
-                        createdRecords: syncResult.createdRecords,
-                        updatedRecords: syncResult.updatedRecords,
-                        skippedRecords: syncResult.skippedRecords,
-                        failedRecords: syncResult.failedRecords,
-                        errors: syncResult.errors,
-                    },
-                })
-                .where(eq(backgroundJobs.id, job.id));
-
-            log.info({}, `Everflow advertiser sync completed successfully - syncedRecords: ${syncResult.syncedRecords}, createdRecords: ${syncResult.createdRecords}, updatedRecords: ${syncResult.updatedRecords}, skippedRecords: ${syncResult.skippedRecords}, failedRecords: ${syncResult.failedRecords}`);
-
-            await logJobEvent({
-                jobId: job.id,
-                type: JobEventType.COMPLETED,
-                message: "Everflow advertiser sync completed successfully",
-                data: syncResult,
-                tx
-            });
-        });
-
-    } catch (error: unknown) {
-        await handleJobError(job, error, startTime, log);
+    if (!creative) {
+      throw new Error(`Creative ${creativeId} not found`);
     }
+
+    if (creative.status !== "pending" && creative.status !== "SCANNING") {
+      log.info(
+        {},
+        `Creative ${creativeId} already processed, status: ${creative.status}`
+      );
+      await db.transaction(async (tx) => {
+        await tx
+          .update(backgroundJobs)
+          .set({
+            status: "completed",
+            finishedAt: new Date(),
+            result: {
+              skipped: true,
+              reason: `Creative already processed with status: ${creative.status}`,
+            },
+          })
+          .where(eq(backgroundJobs.id, job.id));
+
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.COMPLETED,
+          message: `Creative already processed, status: ${creative.status}`,
+          tx,
+        });
+      });
+      return;
+    }
+
+    await updateCreativeStatus(creativeId, {
+      status: "SCANNING",
+    });
+
+    log.info({}, `Creative ${creativeId} status updated to SCANNING`);
+
+    await logJobEvent({
+      jobId: job.id,
+      type: JobEventType.PROGRESS,
+      message: "Creative scan in progress",
+      data: { creativeId, status: "SCANNING" },
+    });
+
+    const scanResult = await performCreativeScan(
+      url || creative.url,
+      type || creative.type,
+      creativeId
+    );
+
+    if (scanResult.success) {
+      await updateCreativeStatus(creativeId, {
+        status: "approved",
+      });
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(backgroundJobs)
+          .set({
+            status: "completed",
+            finishedAt: new Date(),
+            result: {
+              success: true,
+              creativeId,
+              scanResult: scanResult.result,
+            },
+          })
+          .where(eq(backgroundJobs.id, job.id));
+
+        await logJobEvent({
+          jobId: job.id,
+          type: JobEventType.COMPLETED,
+          message: "Creative scan completed successfully",
+          data: { creativeId, result: scanResult.result },
+          tx,
+        });
+      });
+
+      log.info({}, `Creative ${creativeId} scan completed successfully`);
+    } else {
+      const errorMessage = scanResult.error || "Scan failed";
+      await updateCreativeStatus(creativeId, {
+        status: "pending",
+        scanError: errorMessage,
+      });
+
+      throw new Error(errorMessage);
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    await updateCreativeStatus(creativeId, {
+      status: "pending",
+      scanError: errorMessage,
+    });
+
+    await handleJobError(job, error, startTime, log);
+  }
 }
 
+async function performCreativeScan(
+  url: string,
+  type: string,
+  creativeId: string
+): Promise<{ success: boolean; result?: unknown; error?: string }> {
+  try {
+    if (process.env.PYTHON_SERVICE_URL) {
+      const response = await fetch(`${process.env.PYTHON_SERVICE_URL}/scan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_url: url }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Scan service returned ${response.status}`);
+      }
+
+      const result = await response.json();
+      return { success: true, result };
+    } else {
+      logger.warn({
+        action: "performCreativeScan",
+        creativeId,
+        message: "PYTHON_SERVICE_URL not configured, marking as approved",
+      });
+
+      return {
+        success: true,
+        result: { status: "approved", reason: "Scan service not configured" },
+      };
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error({
+      action: "performCreativeScan",
+      creativeId,
+      error: errorMessage,
+      message: "Scan failed",
+    });
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}

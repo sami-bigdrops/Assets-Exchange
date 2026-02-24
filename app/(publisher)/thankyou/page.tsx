@@ -1,8 +1,9 @@
 "use client";
 
-import { Mail, File } from "lucide-react";
+import { Mail, File, Smartphone, Copy, Check } from "lucide-react";
 import Image from "next/image";
-import React, { Suspense } from "react";
+import React, { Suspense, useState } from "react";
+import { toast } from "sonner";
 
 import { Constants } from "@/app/Constants/Constants";
 import {
@@ -68,9 +69,29 @@ function ThankYouPageContent() {
                     <p className="text-xs text-gray-500 mb-1">
                       Your Tracking Code
                     </p>
-                    <p className="text-xl font-mono font-bold text-blue-700 tracking-wider">
-                      {viewModel.trackingCode}
+                    <div className="flex items-center justify-center gap-2">
+                      <p className="text-xl font-mono font-bold text-blue-700 tracking-wider">
+                        {viewModel.trackingCode}
+                      </p>
+                      <CopyButton code={viewModel.trackingCode} />
+                    </div>
+                  </div>
+                )}
+                {viewModel.showTelegramHint && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100 flex items-center justify-center gap-2 max-w-sm w-full">
+                    <span className="text-lg">📢</span>
+                    <p className="text-xs text-blue-700 font-medium">
+                      Check your Telegram for the tracking link.
                     </p>
+                  </div>
+                )}
+                {viewModel.trackingCode && viewModel.hasConnectedTelegram && (
+                  <div className="mt-2 flex items-center justify-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 w-full max-w-sm">
+                    <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      We&apos;ve also sent this Tracking Link to your connected
+                      Telegram account!
+                    </span>
                   </div>
                 )}
               </div>
@@ -171,5 +192,34 @@ export default function ThankYouPage() {
     >
       <ThankYouPageContent />
     </Suspense>
+  );
+}
+
+function CopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      toast.success("Tracking code copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (_err) {
+      toast.error("Failed to copy code");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1 hover:bg-blue-50 rounded-md transition-colors"
+      title="Copy tracking code"
+    >
+      {copied ? (
+        <Check className="w-4 h-4 text-green-600" />
+      ) : (
+        <Copy className="w-4 h-4 text-gray-400 hover:text-blue-600" />
+      )}
+    </button>
   );
 }

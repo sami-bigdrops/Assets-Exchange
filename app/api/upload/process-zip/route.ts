@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
 import { saveBuffer } from "@/lib/fileStorage";
+import { validateBufferMagicBytes } from "@/lib/security/validateBuffer";
 import { ZipParserService } from "@/lib/services/zip-parser.service";
 
 export const runtime = "nodejs";
@@ -46,21 +47,38 @@ export async function POST(req: NextRequest) {
     let htmlCount = 0;
 
     for (const entry of parsedEntries) {
+      //validating each extracted file before saving it
+      const v = await validateBufferMagicBytes(entry.content);
+
+      if (!v.ok) {
+        return NextResponse.json(
+          {
+            error: "ZIP contains invalid file",
+            file: entry.name,
+            reason: v.reason,
+          },
+          { status: 415 }
+        );
+      }
+
+      const detectedType = v.detectedMime;
+
+      // 3. Save extracted files to Blob (server-side)
       const saved = await saveBuffer(
         entry.content,
         entry.name.split("/").pop() || "file",
         `extracted/${zipId}`
       );
 
-      if (entry.type.startsWith("image/")) imagesCount++;
-      if (entry.type.includes("html")) htmlCount++;
+      if (detectedType.startsWith("image/")) imagesCount++;
+      if (detectedType.includes("html")) htmlCount++;
 
       items.push({
         id: saved.id,
         name: entry.name,
         url: saved.url,
         size: entry.content.length,
-        type: entry.type,
+        type: detectedType,
         isDependency: entry.isDependency,
       });
     }

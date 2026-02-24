@@ -2,8 +2,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-import { toast } from "sonner";
-
 import { getVariables } from "@/components/_variables/variables";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -74,6 +72,10 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
             validation.hasUploadedFiles,
             validation.hasFromSubjectLines
           );
+          toast.error(
+            "Please ensure all required fields are filled correctly."
+          );
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }
       } else if (currentStep === 1) {
         const result = validation.validatePersonalDetailsStep(formData);
@@ -192,52 +194,7 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
             <Button
               type="button"
               className="w-full h-14 font-inter font-medium"
-<<<<<<< Updated upstream
               onClick={handleNextOrSubmit}
-=======
-              onClick={async () => {
-                if (currentStep === 3) {
-                  const result = validation.validateCompleteFormData(
-                    formData,
-                    validation.hasUploadedFiles,
-                    validation.hasFromSubjectLines
-                  );
-                  if (result.valid) {
-                    await handleSubmit();
-                  } else {
-                    validation.validateCreativeDetailsStep(
-                      formData,
-                      validation.hasUploadedFiles,
-                      validation.hasFromSubjectLines
-                    );
-                    toast.error(
-                      "Please ensure all required fields are filled correctly."
-                    );
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }
-                } else {
-                  let isValid = false;
-                  if (currentStep === 1) {
-                    const result =
-                      validation.validatePersonalDetailsStep(formData);
-                    isValid = result.valid;
-                    if (!isValid) {
-                      return;
-                    }
-                  } else if (currentStep === 2) {
-                    const result =
-                      validation.validateContactDetailsStep(formData);
-                    isValid = result.valid;
-                    if (!isValid) {
-                      return;
-                    }
-                  }
-                  if (isValid) {
-                    nextStep();
-                  }
-                }
-              }}
->>>>>>> Stashed changes
               disabled={isSubmitting}
               style={{
                 backgroundColor: variables.colors.buttonDefaultBackgroundColor,

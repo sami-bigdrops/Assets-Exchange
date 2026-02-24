@@ -22,7 +22,6 @@ function mapOffer(row: typeof offers.$inferSelect): Offer {
   };
 }
 
-<<<<<<< Updated upstream
 export async function listOffers({
   search,
   status,
@@ -32,70 +31,48 @@ export async function listOffers({
   status?: "Active" | "Inactive";
   advertiserId?: string;
 }) {
-  const conditions = [];
+  try {
+    const conditions = [];
 
-  if (status) {
-    conditions.push(eq(offers.status, status));
-  } else {
-    conditions.push(eq(offers.status, "Active"));
-  }
-
-  if (search) {
-    conditions.push(ilike(offers.offerName, `%${search}%`));
-  }
-
-  if (advertiserId) {
-    conditions.push(eq(offers.advertiserId, advertiserId));
-  }
-
-  const rows = await db
-    .select()
-    .from(offers)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(sql`${offers.createdAt} DESC`);
-
-  return rows.map(mapOffer);
-=======
-export async function listOffers({ search, status }: { search?: string; status?: "Active" | "Inactive" }) {
-    try {
-        const conditions = [];
-
-        if (status) {
-            conditions.push(eq(offers.status, status));
-        } else {
-            conditions.push(eq(offers.status, "Active"));
-        }
-
-        if (search) {
-            conditions.push(ilike(offers.offerName, `%${search}%`));
-        }
-
-        const rows = await db
-            .select()
-            .from(offers)
-            .where(conditions.length > 0 ? and(...conditions) : undefined)
-            .orderBy(sql`${offers.createdAt} DESC`)
-
-        return rows.map(mapOffer)
-    } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : String(error);
-
-        // Handle Neon/Postgres compute quota error
-        if (msg.includes("compute time quota") || msg.includes("compute time")) {
-            throw {
-                status: 503,
-                message: "Service temporarily unavailable due to high load",
-                code: "COMPUTE_QUOTA_EXCEEDED"
-            };
-        }
-
-        // Normalize and rethrow other errors
-        if (error instanceof Error) {
-            throw error;
-        }
-        throw new Error(msg);
+    if (status) {
+      conditions.push(eq(offers.status, status));
+    } else {
+      conditions.push(eq(offers.status, "Active"));
     }
->>>>>>> Stashed changes
+
+    if (search) {
+      conditions.push(ilike(offers.offerName, `%${search}%`));
+    }
+
+    if (advertiserId) {
+      conditions.push(eq(offers.advertiserId, advertiserId));
+    }
+
+    const rows = await db
+      .select()
+      .from(offers)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(sql`${offers.createdAt} DESC`);
+
+    return rows.map(mapOffer);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+
+    // Handle Neon/Postgres compute quota error
+    if (msg.includes("compute time quota") || msg.includes("compute time")) {
+      throw {
+        status: 503,
+        message: "Service temporarily unavailable due to high load",
+        code: "COMPUTE_QUOTA_EXCEEDED",
+      };
+    }
+
+    // Normalize and rethrow other errors
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(msg);
+  }
 }
 
 export async function getOffer(id: string) {

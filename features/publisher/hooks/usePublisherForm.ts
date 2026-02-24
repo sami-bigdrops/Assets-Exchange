@@ -199,19 +199,19 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
         ...formData,
         ...(files.length > 0
           ? {
-            files: files.map((f: SavedFileMeta) => ({
-              id: f.id,
-              name: f.name,
-              url: f.url,
-              size: f.size,
-              type: f.type,
-              metadata: f.metadata || {
-                fromLines: f.fromLines,
-                subjectLines: f.subjectLines,
-                additionalNotes: f.additionalNotes,
-              },
-            })),
-          }
+              files: files.map((f: SavedFileMeta) => ({
+                id: f.id,
+                name: f.name,
+                url: f.url,
+                size: f.size,
+                type: f.type,
+                metadata: f.metadata || {
+                  fromLines: f.fromLines,
+                  subjectLines: f.subjectLines,
+                  additionalNotes: f.additionalNotes,
+                },
+              })),
+            }
           : {}),
       };
 
@@ -230,11 +230,11 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
         const errorDetails =
           Object.keys(fieldErrors).length > 0
             ? `${errorMessage}: ${Object.entries(fieldErrors)
-              .map(
-                ([key, value]) =>
-                  `${key}: ${Array.isArray(value) ? value.join(", ") : value}`
-              )
-              .join("; ")}`
+                .map(
+                  ([key, value]) =>
+                    `${key}: ${Array.isArray(value) ? value.join(", ") : value}`
+                )
+                .join("; ")}`
             : errorMessage;
         console.error("Submission validation error:", errorData);
         throw new Error(errorDetails);
@@ -259,15 +259,8 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
       }
 
       const trackingCode = result.trackingCode;
-<<<<<<< Updated upstream
-=======
-      const telegramHint = formData.telegramId ? "true" : "false";
+      const _telegramHint = formData.telegramId ? "true" : "false";
 
-      if (process.env.NODE_ENV === "development") {
-        console.info("Routing to thankyou page");
-      }
-
->>>>>>> Stashed changes
       router.push(
         `/thankyou?type=${submissionType}&count=${fileCount}${trackingCode ? `&trackingCode=${trackingCode}` : ""}`
       );
@@ -276,7 +269,9 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
     } catch (error) {
       console.error("Submission error:", error);
       toast.error(
-        error instanceof Error ? error.message : "Submission failed. Please try again."
+        error instanceof Error
+          ? error.message
+          : "Submission failed. Please try again."
       );
       throw error;
     } finally {

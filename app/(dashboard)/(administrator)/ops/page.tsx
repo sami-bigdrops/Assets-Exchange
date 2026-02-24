@@ -34,7 +34,7 @@ import {
   Trash2,
   MoveRight,
 } from "lucide-react";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, Fragment } from "react";
 import {
   LineChart,
   Line,
@@ -1762,10 +1762,10 @@ export default function OpsPage() {
                         <p className="text-2xl font-bold">
                           {dailyStats.totalSubmitted > 0
                             ? `${Math.round(
-                                (dailyStats.totalApproved /
-                                  dailyStats.totalSubmitted) *
-                                  100
-                              )}%`
+                              (dailyStats.totalApproved /
+                                dailyStats.totalSubmitted) *
+                              100
+                            )}%`
                             : "-"}
                         </p>
                       </div>
@@ -2032,7 +2032,7 @@ export default function OpsPage() {
                         </p>
                         <p className="text-2xl font-bold">
                           {batchAnalytics.summary.averageCtr != null &&
-                          !isNaN(batchAnalytics.summary.averageCtr)
+                            !isNaN(batchAnalytics.summary.averageCtr)
                             ? batchAnalytics.summary.averageCtr.toFixed(2)
                             : "0.00"}
                           %
@@ -2040,7 +2040,7 @@ export default function OpsPage() {
                       </div>
                     </div>
                     {batchAnalytics.batches &&
-                    batchAnalytics.batches.length > 0 ? (
+                      batchAnalytics.batches.length > 0 ? (
                       <div>
                         <p className="text-sm font-medium mb-2">
                           Batch Performance
@@ -2251,14 +2251,14 @@ export default function OpsPage() {
                                                         b.status === "active" &&
                                                         b.id &&
                                                         String(b.id).trim() !==
-                                                          ""
+                                                        ""
                                                     ).length > 0 ? (
                                                       batchesList
                                                         .filter(
                                                           (b) =>
                                                             b.id !== batch.id &&
                                                             b.status ===
-                                                              "active" &&
+                                                            "active" &&
                                                             b.id &&
                                                             String(
                                                               b.id
@@ -2505,7 +2505,7 @@ export default function OpsPage() {
                                 </p>
                                 <p className="text-2xl font-bold">
                                   {comparisonData.batchA.ctr != null &&
-                                  !isNaN(comparisonData.batchA.ctr)
+                                    !isNaN(comparisonData.batchA.ctr)
                                     ? comparisonData.batchA.ctr.toFixed(2)
                                     : "0.00"}
                                   %
@@ -2548,7 +2548,7 @@ export default function OpsPage() {
                                 </p>
                                 <p className="text-2xl font-bold">
                                   {comparisonData.batchB.ctr != null &&
-                                  !isNaN(comparisonData.batchB.ctr)
+                                    !isNaN(comparisonData.batchB.ctr)
                                     ? comparisonData.batchB.ctr.toFixed(2)
                                     : "0.00"}
                                   %
@@ -2625,14 +2625,14 @@ export default function OpsPage() {
                               <TableCell className="font-medium">CTR</TableCell>
                               <TableCell className="text-right">
                                 {comparisonData.batchA.ctr != null &&
-                                !isNaN(comparisonData.batchA.ctr)
+                                  !isNaN(comparisonData.batchA.ctr)
                                   ? comparisonData.batchA.ctr.toFixed(2)
                                   : "0.00"}
                                 %
                               </TableCell>
                               <TableCell className="text-right">
                                 {comparisonData.batchB.ctr != null &&
-                                !isNaN(comparisonData.batchB.ctr)
+                                  !isNaN(comparisonData.batchB.ctr)
                                   ? comparisonData.batchB.ctr.toFixed(2)
                                   : "0.00"}
                                 %

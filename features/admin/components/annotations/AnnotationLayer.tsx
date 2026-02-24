@@ -1,33 +1,54 @@
-import { useRef, useState, type MouseEvent } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  type MouseEvent,
+} from "react";
 
 import { Badge } from "@/components/ui/badge";
+
+export type AnnotationPositionData = {
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+};
 
 export interface Annotation {
   id: string;
   creativeId: string;
-  positionData: { x: number; y: number; width?: number; height?: number };
+  positionData: AnnotationPositionData;
   content: string;
   status: "active" | "resolved";
   adminId: string;
   createdAt: string;
 }
 
+function isRect(
+  p: AnnotationPositionData
+): p is { x: number; y: number; width: number; height: number } {
+  const w = p.width ?? 0;
+  const h = p.height ?? 0;
+  return w > 0.5 && h > 0.5;
+}
+
 interface AnnotationLayerProps {
   creativeUrl: string;
   type: "image" | "html";
   annotations: Annotation[];
-  onAddAnnotation: (position: {
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
-  }) => void;
+  onAddAnnotation: (position: AnnotationPositionData) => void;
   onSelectAnnotation: (annotation: Annotation) => void;
   isAddingMode: boolean;
   htmlContent?: string;
   selectedAnnotationId?: string | null;
-  pendingPin?: { x: number; y: number; width?: number; height?: number } | null;
-  isReadOnly?: boolean;
+  hoveredAnnotationId?: string | null;
+  connectionPointAnnotationId?: string | null;
+  pendingAnnotation?: AnnotationPositionData | null;
+  onHoveredRectConnectionPoint?: (
+    point: { x: number; y: number } | null
+  ) => void;
+  readOnly?: boolean;
 }
 
 export function AnnotationLayer({
@@ -39,85 +60,149 @@ export function AnnotationLayer({
   isAddingMode,
   htmlContent,
   selectedAnnotationId,
-  pendingPin,
-  isReadOnly = false,
+  hoveredAnnotationId = null,
+  connectionPointAnnotationId = null,
+  pendingAnnotation,
+  onHoveredRectConnectionPoint,
+  readOnly = false,
 }: AnnotationLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(
-    null
-  );
-  const [currentBox, setCurrentBox] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
 
-  const getRelativeCoords = (e: MouseEvent) => {
-    if (!containerRef.current) return { x: 0, y: 0 };
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    return { x, y };
-  };
-
-  const handleMouseDown = (e: MouseEvent) => {
-    if (!isAddingMode) return;
-    e.preventDefault();
-    const coords = getRelativeCoords(e);
-    setStartPoint(coords);
-    setIsDrawing(true);
-    setCurrentBox({ x: coords.x, y: coords.y, width: 0, height: 0 });
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDrawing || !startPoint) return;
-    const coords = getRelativeCoords(e);
-
-    const x = Math.min(startPoint.x, coords.x);
-    const y = Math.min(startPoint.y, coords.y);
-    const width = Math.abs(coords.x - startPoint.x);
-    const height = Math.abs(coords.y - startPoint.y);
-
-    setCurrentBox({ x, y, width, height });
-  };
-
-  const handleInteractionEnd = (e: MouseEvent) => {
-    if (!isAddingMode || !isDrawing || !startPoint || !currentBox) {
-      setIsDrawing(false);
+  const updateConnectionPoint = useCallback(() => {
+    const id = connectionPointAnnotationId;
+    if (!onHoveredRectConnectionPoint || !id || !containerRef.current) {
+      if (!id && onHoveredRectConnectionPoint)
+        onHoveredRectConnectionPoint(null);
       return;
     }
-
-    if (currentBox.width > 2 && currentBox.height > 2) {
-      onAddAnnotation(currentBox);
-    } else {
-      // Treated as click/pin
-      onAddAnnotation({ x: currentBox.x, y: currentBox.y });
+    const note = annotations.find((a) => a.id === id);
+    if (!note || !isRect(note.positionData)) {
+      onHoveredRectConnectionPoint(null);
+      return;
     }
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const pd = note.positionData;
+    const rightX =
+      containerRect.left +
+      ((pd.x + (pd.width ?? 0)) / 100) * containerRect.width;
+    const centerY =
+      containerRect.top +
+      ((pd.y + (pd.height ?? 0) / 2) / 100) * containerRect.height;
+    onHoveredRectConnectionPoint({ x: rightX, y: centerY });
+  }, [connectionPointAnnotationId, annotations, onHoveredRectConnectionPoint]);
 
-    setIsDrawing(false);
-    setCurrentBox(null);
-    setStartPoint(null);
-    e.stopPropagation(); // Stop click event
-  };
+  useEffect(() => {
+    updateConnectionPoint();
+    if (!connectionPointAnnotationId) return;
+    const onUpdate = () => updateConnectionPoint();
+    window.addEventListener("resize", onUpdate);
+    window.addEventListener("scroll", onUpdate, true);
+    return () => {
+      window.removeEventListener("resize", onUpdate);
+      window.removeEventListener("scroll", onUpdate, true);
+    };
+  }, [connectionPointAnnotationId, updateConnectionPoint]);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const [dragCurrent, setDragCurrent] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const toPercent = useCallback((clientX: number, clientY: number) => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = Math.max(
+      0,
+      Math.min(100, ((clientX - rect.left) / rect.width) * 100)
+    );
+    const y = Math.max(
+      0,
+      Math.min(100, ((clientY - rect.top) / rect.height) * 100)
+    );
+    return { x, y };
+  }, []);
+
+  const handleMouseDown = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (readOnly || !isAddingMode || !containerRef.current) return;
+      const point = toPercent(e.clientX, e.clientY);
+      if (point) {
+        setDragStart(point);
+        setDragCurrent(point);
+      }
+    },
+    [readOnly, isAddingMode, toPercent]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (dragStart === null) return;
+      const point = toPercent(e.clientX, e.clientY);
+      if (point) setDragCurrent(point);
+    },
+    [dragStart, toPercent]
+  );
+
+  const handleMouseUp = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (dragStart === null || dragCurrent === null) return;
+      const x1 = Math.min(dragStart.x, dragCurrent.x);
+      const y1 = Math.min(dragStart.y, dragCurrent.y);
+      const x2 = Math.max(dragStart.x, dragCurrent.x);
+      const y2 = Math.max(dragStart.y, dragCurrent.y);
+      let width = x2 - x1;
+      let height = y2 - y1;
+      if (width < 1 && height < 1) {
+        width = 0;
+        height = 0;
+      }
+      onAddAnnotation({ x: x1, y: y1, width, height });
+      setDragStart(null);
+      setDragCurrent(null);
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    [dragStart, dragCurrent, onAddAnnotation]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    if (dragStart !== null) {
+      setDragStart(null);
+      setDragCurrent(null);
+    }
+  }, [dragStart]);
+
+  const drawingRect =
+    dragStart && dragCurrent
+      ? (() => {
+          const x = Math.min(dragStart.x, dragCurrent.x);
+          const y = Math.min(dragStart.y, dragCurrent.y);
+          const w = Math.abs(dragCurrent.x - dragStart.x);
+          const h = Math.abs(dragCurrent.y - dragStart.y);
+          return { x, y, w, h };
+        })()
+      : null;
 
   return (
-    <div className="relative inline-block border rounded-lg overflow-hidden bg-gray-100 shadow-sm select-none">
+    <div className="relative inline-block w-full max-w-4xl border rounded-lg overflow-hidden bg-gray-100">
       <div
         ref={containerRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
-        onMouseUp={handleInteractionEnd}
-        onMouseLeave={() => setIsDrawing(false)}
-        className={`relative ${isAddingMode && !isReadOnly ? "cursor-crosshair" : "cursor-default"}`}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        className={`relative select-none ${isAddingMode ? "cursor-crosshair" : "cursor-default"}`}
+        style={{ userSelect: "none" }}
       >
         {type === "image" ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={creativeUrl}
             alt="Creative to review"
-            className="block max-w-full max-h-[80vh] w-auto h-auto pointer-events-none"
+            className="w-full h-auto block pointer-events-none"
+            draggable={false}
           />
         ) : (
           <div className="relative w-full">
@@ -126,13 +211,12 @@ export function AnnotationLayer({
                 htmlContent ||
                 '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Arial,sans-serif;color:#666;"><p>Loading HTML content...</p></div>'
               }
-              className="w-full h-[80vh] min-w-[600px] border-none pointer-events-none"
+              className="w-full h-[600px] border-none pointer-events-none"
               title="HTML Creative"
               sandbox="allow-scripts allow-same-origin"
             />
-            {/* Overlay for capturing mouse events over iframe */}
             {isAddingMode && (
-              <div className="absolute inset-0 cursor-crosshair" />
+              <div className="absolute inset-0 cursor-crosshair pointer-events-none" />
             )}
           </div>
         )}
@@ -141,155 +225,170 @@ export function AnnotationLayer({
           className="absolute inset-0 w-full h-full pointer-events-none"
           style={{ zIndex: 5, overflow: "visible" }}
         >
-          {annotations.map((note) => {
-            const isSelected = selectedAnnotationId === note.id;
-            const isResolved = note.status === "resolved";
-            const color = isResolved
-              ? "rgba(34,197,94,1)"
-              : "rgba(239,68,68,1)";
-            const fillColor = isResolved
-              ? "rgba(34,197,94,0.1)"
-              : "rgba(239,68,68,0.1)";
-
-            if (note.positionData.width && note.positionData.height) {
-              return (
-                <rect
-                  key={`rect-${note.id}`}
-                  x={`${note.positionData.x}%`}
-                  y={`${note.positionData.y}%`}
-                  width={`${note.positionData.width}%`}
-                  height={`${note.positionData.height}%`}
-                  fill={fillColor}
-                  stroke={color}
-                  strokeWidth={isSelected ? 3 : 2}
-                  rx={4}
-                  style={{
-                    filter: isSelected
-                      ? "drop-shadow(0 0 4px rgba(0,0,0,0.2))"
-                      : "none",
-                  }}
-                />
-              );
-            }
-
-            // Fallback for pins (connect lines to right edge?)
-            // Or just rely on the pin badge which is rendered below.
-            // Keeping lines for pins as previously implemented:
-            return (
-              <line
-                key={`line-${note.id}`}
-                x1={`${note.positionData.x}%`}
-                y1={`${note.positionData.y}%`}
-                x2="100%"
-                y2={`${note.positionData.y}%`}
-                stroke={
-                  isSelected
-                    ? color
-                    : isResolved
-                      ? "rgba(34,197,94,0.5)"
-                      : "rgba(239,68,68,0.5)"
-                }
-                strokeWidth={isSelected ? 2 : 1}
-                strokeDasharray="4 4"
-              />
-            );
-          })}
-
-          {/* Drawing Box Preview */}
-          {currentBox && (
+          {drawingRect && (
             <rect
-              x={`${currentBox.x}%`}
-              y={`${currentBox.y}%`}
-              width={`${currentBox.width}%`}
-              height={`${currentBox.height}%`}
-              fill="rgba(59,130,246,0.15)"
-              stroke="#3b82f6"
+              x={`${drawingRect.x}%`}
+              y={`${drawingRect.y}%`}
+              width={`${drawingRect.w}%`}
+              height={`${drawingRect.h}%`}
+              fill="rgba(59,130,246,0.2)"
+              stroke="rgba(59,130,246,0.9)"
               strokeWidth={2}
-              rx={4}
-              style={{ filter: "drop-shadow(0 4px 6px rgba(59,130,246,0.2))" }}
+              strokeDasharray="4 2"
             />
           )}
+          {annotations.map((note) => {
+            const isSelected = selectedAnnotationId === note.id;
+            const isHovered = hoveredAnnotationId === note.id;
+            const isResolved = note.status === "resolved";
+            const showFill = isSelected || isHovered;
+            const fillColor = showFill
+              ? isResolved
+                ? "rgba(34,197,94,0.06)"
+                : "rgba(239,68,68,0.06)"
+              : "transparent";
+            const strokeColor = isResolved
+              ? isSelected || isHovered
+                ? "rgba(34,197,94,1)"
+                : "rgba(34,197,94,0.6)"
+              : isSelected || isHovered
+                ? "rgba(239,68,68,1)"
+                : "rgba(239,68,68,0.6)";
+            if (isRect(note.positionData)) {
+              return (
+                <g key={note.id}>
+                  <rect
+                    x={`${note.positionData.x}%`}
+                    y={`${note.positionData.y}%`}
+                    width={`${note.positionData.width}%`}
+                    height={`${note.positionData.height}%`}
+                    fill={fillColor}
+                    stroke={strokeColor}
+                    strokeWidth={isSelected || isHovered ? 2.5 : 1.5}
+                    strokeDasharray={isSelected || isHovered ? "none" : "6 3"}
+                  />
+                </g>
+              );
+            }
+            return null;
+          })}
         </svg>
 
-        {pendingPin && (
+        {pendingAnnotation && isRect(pendingAnnotation) && (
+          <rect
+            x={`${pendingAnnotation.x}%`}
+            y={`${pendingAnnotation.y}%`}
+            width={`${pendingAnnotation.width}%`}
+            height={`${pendingAnnotation.height}%`}
+            fill="rgba(59,130,246,0.15)"
+            stroke="rgba(59,130,246,0.9)"
+            strokeWidth={2}
+            strokeDasharray="4 2"
+          />
+        )}
+
+        {pendingAnnotation && !isRect(pendingAnnotation) && (
           <div
             className="absolute pointer-events-none"
             style={{
-              left: `${pendingPin.x}%`,
-              top: `${pendingPin.y}%`,
-              width: pendingPin.width ? `${pendingPin.width}%` : undefined,
-              height: pendingPin.height ? `${pendingPin.height}%` : undefined,
-              transform: pendingPin.width ? "none" : "translate(-50%, -50%)",
+              left: `${pendingAnnotation.x}%`,
+              top: `${pendingAnnotation.y}%`,
+              transform: "translate(-50%, -50%)",
               zIndex: 12,
             }}
           >
-            {pendingPin.width ? (
-              <div className="w-full h-full border-2 border-blue-500 bg-blue-500/15 rounded-md shadow-lg backdrop-blur-[1px] box-content animate-in fade-in zoom-in duration-200" />
-            ) : (
-              <>
-                <div
-                  className="rounded-full animate-ping"
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    backgroundColor: "rgba(59,130,246,0.4)",
-                    position: "absolute",
-                    top: "-20px",
-                    left: "-20px",
-                  }}
-                />
-                <div
-                  className="rounded-full flex items-center justify-center"
-                  style={{
-                    width: "24px",
-                    height: "24px",
-                    backgroundColor: "#3b82f6",
-                    border: "3px solid white",
-                    boxShadow: "0 4px 12px rgba(59,130,246,0.5)",
-                    position: "absolute",
-                    top: "-12px",
-                    left: "-12px",
-                  }}
-                >
-                  <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                </div>
-              </>
-            )}
+            <div
+              className="rounded-full"
+              style={{
+                width: "16px",
+                height: "16px",
+                backgroundColor: "rgba(59,130,246,0.8)",
+                border: "3px solid white",
+                boxShadow: "0 0 0 3px rgba(59,130,246,0.4)",
+              }}
+            />
           </div>
         )}
 
         {annotations.map((note, index) => {
-          const isSelected = selectedAnnotationId === note.id;
-          const isResolved = note.status === "resolved";
-          const hasDimensions =
-            note.positionData.width && note.positionData.height;
-
-          return (
-            <div key={note.id}>
-              {/* Pin/Badge */}
+          if (isRect(note.positionData)) {
+            const isResolved = note.status === "resolved";
+            const pd = note.positionData;
+            return (
               <button
+                key={note.id}
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectAnnotation(note);
                 }}
-                className={`absolute rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110 ${isSelected ? "scale-110 ring-4 ring-white/50" : "hover:-translate-y-1"}`}
+                className="absolute flex items-start justify-start pt-0.5 pl-0.5 transition-opacity"
+                style={{
+                  left: `${pd.x}%`,
+                  top: `${pd.y}%`,
+                  width: `${Math.max(pd.width ?? 0, 4)}%`,
+                  height: `${Math.max(pd.height ?? 0, 4)}%`,
+                  minWidth: "24px",
+                  minHeight: "24px",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  zIndex: 10,
+                }}
+              >
+                <span
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow"
+                  style={{
+                    backgroundColor: isResolved ? "#22c55e" : "#ef4444",
+                    border: `1.5px solid ${isResolved ? "#15803d" : "#b91c1c"}`,
+                  }}
+                >
+                  {index + 1}
+                </span>
+              </button>
+            );
+          }
+          const isSelected = selectedAnnotationId === note.id;
+          const isResolved = note.status === "resolved";
+          const pd = note.positionData;
+          return (
+            <div key={note.id}>
+              <div
+                className="absolute rounded-full pointer-events-none transition-all duration-200"
+                style={{
+                  left: `${pd.x}%`,
+                  top: `${pd.y}%`,
+                  transform: "translate(-50%, -50%)",
+                  width: isSelected ? "60px" : "48px",
+                  height: isSelected ? "60px" : "48px",
+                  backgroundColor: isResolved
+                    ? "rgba(34,197,94,0.15)"
+                    : "rgba(239,68,68,0.15)",
+                  border: `1.5px solid ${isResolved ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                  zIndex: 8,
+                }}
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectAnnotation(note);
+                }}
+                className="absolute rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-110"
                 style={{
                   width: "32px",
                   height: "32px",
-                  left: hasDimensions
-                    ? `${note.positionData.x + note.positionData.width! / 2}%`
-                    : `${note.positionData.x}%`,
-                  top: hasDimensions
-                    ? `${note.positionData.y + note.positionData.height! / 2}%`
-                    : `${note.positionData.y}%`,
-                  transform: `translate(-50%, -50%)`,
-                  backgroundColor: isResolved ? "#10b981" : "#ef4444",
-                  border: "2px solid white",
+                  left: `${pd.x}%`,
+                  top: `${pd.y}%`,
+                  transform: `translate(-50%, -50%) ${isSelected ? "scale(1.15)" : ""}`,
+                  backgroundColor: isResolved ? "#22c55e" : "#ef4444",
+                  border: `2px solid ${isResolved ? "#15803d" : "#b91c1c"}`,
                   color: "white",
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: "bold",
                   zIndex: 10,
-                  boxShadow: `0 4px 14px ${isResolved ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)"}`,
+                  boxShadow: isSelected
+                    ? `0 0 0 3px ${isResolved ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.5)"}`
+                    : "0 2px 4px rgba(0,0,0,0.2)",
                 }}
               >
                 {index + 1}
@@ -298,7 +397,7 @@ export function AnnotationLayer({
           );
         })}
 
-        {isAddingMode && (
+        {isAddingMode && !readOnly && (
           <div
             className="absolute top-2 right-2 pointer-events-none"
             style={{ zIndex: 15 }}
@@ -307,7 +406,7 @@ export function AnnotationLayer({
               variant="secondary"
               className="bg-yellow-100 text-yellow-800 border-yellow-300"
             >
-              Click and drag to box, or click to pin
+              Drag to draw a rectangle
             </Badge>
           </div>
         )}

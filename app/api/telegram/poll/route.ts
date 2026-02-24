@@ -61,6 +61,17 @@ export async function POST() {
 
     if (!response.ok) {
       const errorText = await response.text();
+
+      // If a webhook is active, getUpdates returns 409 Conflict.
+      // We can safely ignore this since the webhook handles updates.
+      if (response.status === 409) {
+        return NextResponse.json({
+          success: true,
+          processed: 0,
+          webhookActive: true,
+        });
+      }
+
       console.error("Telegram API error:", errorText);
       return NextResponse.json(
         { error: "Failed to fetch updates from Telegram" },

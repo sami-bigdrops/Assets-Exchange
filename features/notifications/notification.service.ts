@@ -14,27 +14,19 @@ export async function notifyWorkflowEvent(evt: WorkflowEvent) {
 
     switch (evt.event) {
       case "request.approved_by_admin":
-        msg = `*Request approved by Admin*\n${base}`;
-        break;
-
-      case "request.forwarded_to_advertiser":
-        msg = `*Request forwarded to Advertiser*\n${base}`;
+        msg = `📤 *Request approved by Admin*\n${base}`;
         break;
 
       case "request.rejected_by_admin":
-        msg = `*Request rejected by Admin*\n${base}`;
-        break;
-
-      case "request.sent_back_by_admin":
-        msg = `*Request sent back to Publisher*\n${base}`;
+        msg = `❌ *Request rejected by Admin*\n${base}`;
         break;
 
       case "response.approved_by_advertiser":
-        msg = `*Response approved by Advertiser*\n${base}`;
+        msg = `✅ *Response approved by Advertiser*\n${base}`;
         break;
 
       case "response.sent_back_by_advertiser":
-        msg = `*Response sent back by Advertiser*\n${base}`;
+        msg = `↩️ *Response sent back by Advertiser*\n${base}`;
         break;
 
       default:

@@ -25,6 +25,12 @@ export async function generateEmailContent(
     });
 
     if (!response.ok) {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("text/html")) {
+        throw new Error(
+          "API route not found (returned HTML). Check /api/generate-email-content route wiring."
+        );
+      }
       const errorText = await response.text();
       throw new Error(errorText || "Failed to generate email content");
     }

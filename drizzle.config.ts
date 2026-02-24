@@ -19,4 +19,5 @@ export default defineConfig({
   dbCredentials: {
     url: databaseUrl,
   },
+  tablesFilter: ["!pg_stat_statements_info", "!pg_stat_statements"],
 });

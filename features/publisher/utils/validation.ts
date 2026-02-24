@@ -128,35 +128,6 @@ export const validateField = (
       }
       break;
 
-    // case "fromLines":
-    //   if (!value || value.trim().length === 0) {
-    //     return {
-    //       valid: false,
-    //       error: "From lines are required",
-    //     };
-    //   }
-    //   break;
-
-    // case "subjectLines":
-    //   if (!value || value.trim().length === 0) {
-    //     return {
-    //       valid: false,
-    //       error: "Subject lines are required",
-    //     };
-    //   }
-    //   break;
-
-    default:
-      if (
-        fieldName !== "fromLines" &&
-        fieldName !== "subjectLines" &&
-        !isRequired(value)
-      ) {
-        return {
-          valid: false,
-          error: ERROR_MESSAGES.VALIDATION.REQUIRED_FIELD,
-        };
-      }
       break;
   }
 
@@ -233,18 +204,12 @@ export const validateCreativeDetails = (
     errors.creativeType = creativeTypeValidation.error;
   }
 
-  // const fromLinesValidation = validateField(
-  //   "fromLines",
-  //   formData.fromLines || ""
-  // );
+  // const fromLinesValidation = validateField('fromLines', formData.fromLines || '');
   // if (!fromLinesValidation.valid && fromLinesValidation.error) {
   //   errors.fromLines = fromLinesValidation.error;
   // }
 
-  // const subjectLinesValidation = validateField(
-  //   "subjectLines",
-  //   formData.subjectLines || ""
-  // );
+  // const subjectLinesValidation = validateField('subjectLines', formData.subjectLines || '');
   // if (!subjectLinesValidation.valid && subjectLinesValidation.error) {
   //   errors.subjectLines = subjectLinesValidation.error;
   // }
@@ -333,38 +298,38 @@ export const validateFile = (file: File): FileValidationResult => {
 };
 
 // Validate from lines and subject lines
-export const validateFromSubjectLines = (
-  fromLines: string,
-  subjectLines: string
-): ValidationResult => {
-  const errors: Record<string, string> = {};
+// export const validateFromSubjectLines = (
+//   fromLines: string,
+//   subjectLines: string
+// ): ValidationResult => {
+//   const errors: Record<string, string> = {};
 
-  if (!fromLines || !fromLines.trim()) {
-    errors.fromLines = "From lines are required";
-  }
+//   if (!fromLines || !fromLines.trim()) {
+//     errors.fromLines = 'From lines are required';
+//   }
 
-  if (!subjectLines || !subjectLines.trim()) {
-    errors.subjectLines = "Subject lines are required";
-  }
+//   if (!subjectLines || !subjectLines.trim()) {
+//     errors.subjectLines = 'Subject lines are required';
+//   }
 
-  if (Object.keys(errors).length > 0) {
-    return {
-      valid: false,
-      errors,
-      error: createError(
-        ErrorType.VALIDATION,
-        "From lines and subject lines are required",
-        "FROM_SUBJECT_LINES_REQUIRED",
-        errors
-      ),
-    };
-  }
+//   if (Object.keys(errors).length > 0) {
+//     return {
+//       valid: false,
+//       errors,
+//       error: createError(
+//         ErrorType.VALIDATION,
+//         'From lines and subject lines are required',
+//         'FROM_SUBJECT_LINES_REQUIRED',
+//         errors
+//       )
+//     };
+//   }
 
-  return {
-    valid: true,
-    errors: {},
-  };
-};
+//   return {
+//     valid: true,
+//     errors: {}
+//   };
+// }
 
 // Get line count helper
 export const getLineCount = (text: string): number => {

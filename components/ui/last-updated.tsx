@@ -25,12 +25,19 @@ export function LastUpdated() {
     };
 
     updateTime();
-    const interval = setInterval(updateTime, 1000);
+    const clockInterval = setInterval(updateTime, 1000);
 
-    return () => clearInterval(interval);
-  }, []);
+    const refreshInterval = setInterval(() => {
+      router.refresh();
+    }, 10000);
 
-  const handleRefresh = async () => {
+    return () => {
+      clearInterval(clockInterval);
+      clearInterval(refreshInterval);
+    };
+  }, [router]);
+
+  const handleRefresh = () => {
     setIsUpdating(true);
     router.refresh();
     setTimeout(() => {
@@ -46,7 +53,7 @@ export function LastUpdated() {
       disabled={isUpdating}
     >
       <RefreshCw
-        className={`size-4 xl:size-4.5 font-inter text-xs lg:text-[0.8rem] xl:text-[0.9rem]  font-medium ${isUpdating ? "animate-spin" : ""}`}
+        className={`size-4 xl:size-4.5 font-inter text-xs lg:text-[0.8rem] xl:text-[0.9rem] font-medium ${isUpdating ? "animate-spin" : ""}`}
         style={{
           color: variables.colors.headerIconColor,
         }}

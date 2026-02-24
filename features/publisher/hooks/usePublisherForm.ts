@@ -259,6 +259,8 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
       }
 
       const trackingCode = result.trackingCode;
+      const _telegramHint = formData.telegramId ? "true" : "false";
+
       router.push(
         `/thankyou?type=${submissionType}&count=${fileCount}${trackingCode ? `&trackingCode=${trackingCode}` : ""}`
       );
@@ -266,6 +268,11 @@ export const usePublisherForm = (editingRequestId?: string | null) => {
       return result;
     } catch (error) {
       console.error("Submission error:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Submission failed. Please try again."
+      );
       throw error;
     } finally {
       setIsSubmitting(false);

@@ -1,0 +1,1976 @@
+﻿commit d15d30d45b165c812b49d9e6c0f74a329bb3618c
+Author: sami-bigdrops <sami@bigdropsmarketing.com>
+Date:   Fri Feb 20 01:49:06 2026 +0530
+
+    Annotation page: dedicated route, role-based edit, share view-only link
+    
+    - Add /annotate/[creativeID] page with CreativeReview
+    - Role-based editing: only admin/advertiser can add/edit/delete comments; publisher and others view-only
+    - Share button in header copies view-only link (?mode=view)
+    - Rich text editor for new and edit comment; HTML rendered in cards and publisher viewer
+    - Solid red connecting line; improved sidebar colors and spacing
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+diff --git a/app/annotate/[creativeID]/AnnotatePageClient.tsx b/app/annotate/[creativeID]/AnnotatePageClient.tsx
+new file mode 100644
+index 0000000..815e08a
+--- /dev/null
++++ b/app/annotate/[creativeID]/AnnotatePageClient.tsx
+@@ -0,0 +1,176 @@
++"use client";
++
++import {
++  ArrowLeft,
++  File,
++  FileText,
++  Image as ImageIcon,
++  Link2,
++} from "lucide-react";
++import { useRouter } from "next/navigation";
++import { useState } from "react";
++import { toast } from "sonner";
++
++import { Button } from "@/components/ui/button";
++import { CreativeReview } from "@/features/admin";
++
++function formatFileSize(bytes: number): string {
++  if (bytes === 0) return "0 B";
++  const k = 1024;
++  const sizes = ["B", "KB", "MB", "GB"];
++  const i = Math.floor(Math.log(bytes) / Math.log(k));
++  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
++}
++
++interface AnnotatePageClientProps {
++  creativeId: string;
++  creativeUrl: string;
++  creativeType: "image" | "html";
++  fileName?: string;
++  fileTypeLabel?: string;
++  fileSize?: number;
++  requestId?: string;
++  action?: "send-back" | "reject";
++  readOnly?: boolean;
++}
++
++export function AnnotatePageClient({
++  creativeId,
++  creativeUrl,
++  creativeType,
++  fileName = "Creative",
++  fileTypeLabel,
++  fileSize = 0,
++  requestId,
++  action,
++  readOnly = false,
++}: AnnotatePageClientProps) {
++  const router = useRouter();
++  const [isSubmitting, setIsSubmitting] = useState(false);
++
++  const handleAction = async () => {
++    if (!requestId || !action) return;
++
++    setIsSubmitting(true);
++    try {
++      const endpoint =
++        action === "send-back"
++          ? `/api/admin/requests/${requestId}/return`
++          : `/api/admin/requests/${requestId}/reject`;
++
++      const res = await fetch(endpoint, {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({
++          feedback: "Please review the specific annotations added to the file.",
++        }),
++      });
++
++      if (!res.ok) throw new Error("Action failed");
++
++      toast.success(
++        action === "send-back" ? "Request returned" : "Request rejected"
++      );
++      router.push("/requests");
++      router.refresh();
++    } catch {
++      toast.error("Failed to process action");
++    } finally {
++      setIsSubmitting(false);
++    }
++  };
++
++  const displayType =
++    fileTypeLabel ?? (creativeType === "image" ? "Image" : "HTML");
++  const hasConfirm = requestId && action && !readOnly;
++
++  const handleShare = () => {
++    const url = new URL(window.location.href);
++    url.searchParams.set("mode", "view");
++    url.searchParams.delete("action");
++    url.searchParams.delete("requestId");
++    navigator.clipboard.writeText(url.toString());
++    toast.success("View-only link copied to clipboard");
++  };
++
++  return (
++    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
++      <header className="flex-none bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between gap-4 min-h-[56px]">
++        <div className="flex items-center gap-3 min-w-0 flex-1">
++          <Button
++            variant="ghost"
++            size="icon"
++            onClick={() => router.back()}
++            aria-label="Go back"
++            className="shrink-0 h-9 w-9"
++          >
++            <ArrowLeft className="h-4 w-4" />
++          </Button>
++          {creativeType === "image" ? (
++            <ImageIcon className="h-5 w-5 text-blue-500 shrink-0" />
++          ) : creativeType === "html" ? (
++            <FileText className="h-5 w-5 text-green-500 shrink-0" />
++          ) : (
++            <File className="h-5 w-5 text-gray-500 shrink-0" />
++          )}
++          <span className="text-sm font-medium text-gray-800 truncate min-w-0">
++            {fileName}
++          </span>
++          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded border border-purple-200 shrink-0">
++            {displayType}
++          </span>
++          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200 shrink-0">
++            {formatFileSize(fileSize)}
++          </span>
++        </div>
++        <div className="flex items-center gap-2 shrink-0">
++          <Button
++            variant="outline"
++            size="sm"
++            onClick={handleShare}
++            className="gap-1.5 text-gray-700"
++          >
++            <Link2 className="h-4 w-4" />
++            Share
++          </Button>
++          {hasConfirm && (
++            <Button
++              variant="destructive"
++              size="sm"
++              onClick={handleAction}
++              disabled={isSubmitting}
++            >
++              {isSubmitting
++                ? "Processing..."
++                : action === "send-back"
++                  ? "Confirm Send Back"
++                  : "Confirm Rejection"}
++            </Button>
++          )}
++        </div>
++      </header>
++
++      <main className="flex-1 overflow-hidden">
++        <CreativeReview
++          creativeId={creativeId}
++          creativeUrl={creativeUrl}
++          creativeType={creativeType}
++          fileName={fileName}
++          fileTypeLabel={displayType}
++          fileSize={fileSize}
++          hideHeader
++          actionLabel={
++            action === "send-back"
++              ? "Confirm Send Back"
++              : action === "reject"
++                ? "Confirm Rejection"
++                : undefined
++          }
++          onAction={hasConfirm ? handleAction : undefined}
++          isSubmitting={isSubmitting}
++          readOnly={readOnly}
++        />
++      </main>
++    </div>
++  );
++}
+diff --git a/app/annotate/[creativeID]/page.tsx b/app/annotate/[creativeID]/page.tsx
+new file mode 100644
+index 0000000..ba98db5
+--- /dev/null
++++ b/app/annotate/[creativeID]/page.tsx
+@@ -0,0 +1,60 @@
++import { eq } from "drizzle-orm";
++import { headers } from "next/headers";
++import { notFound, redirect } from "next/navigation";
++
++import { auth } from "@/lib/auth";
++import { db } from "@/lib/db";
++import { creatives } from "@/lib/schema";
++
++import { AnnotatePageClient } from "./AnnotatePageClient";
++
++export default async function AnnotatePage({
++  params,
++  searchParams,
++}: {
++  params: Promise<{ creativeID: string }>;
++  searchParams: Promise<{ requestId?: string; action?: string; mode?: string }>;
++}) {
++  const session = await auth.api.getSession({
++    headers: await headers(),
++  });
++
++  if (!session) {
++    redirect("/auth");
++  }
++
++  const userRole = (session.user.role as string) ?? "";
++
++  const { creativeID } = await params;
++  const { requestId, action, mode } = await searchParams;
++  const isViewOnly =
++    mode === "view" || !["admin", "advertiser"].includes(userRole);
++
++  const creative = await db.query.creatives.findFirst({
++    where: eq(creatives.id, creativeID),
++  });
++
++  if (!creative) {
++    notFound();
++  }
++
++  const creativeType = creative.type.toLowerCase().includes("image")
++    ? "image"
++    : "html";
++
++  return (
++    <AnnotatePageClient
++      creativeId={creative.id}
++      creativeUrl={creative.url}
++      creativeType={creativeType}
++      fileName={creative.name}
++      fileTypeLabel={creative.type?.split("/").pop() ?? creativeType}
++      fileSize={creative.size ?? 0}
++      requestId={requestId ?? undefined}
++      action={
++        action === "send-back" || action === "reject" ? action : undefined
++      }
++      readOnly={isViewOnly}
++    />
++  );
++}
+diff --git a/features/admin/components/RequestItem.tsx b/features/admin/components/RequestItem.tsx
+index 7933cc6..0773115 100644
+--- a/features/admin/components/RequestItem.tsx
++++ b/features/admin/components/RequestItem.tsx
+@@ -36,7 +36,6 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
+ import MultipleCreativesModal from "@/features/publisher/components/form/_modals/MultipleCreativesModal";
+ import SingleCreativeViewModal from "@/features/publisher/components/form/_modals/SingleCreativeViewModal";
+ 
+-
+ import {
+   getRequestViewData,
+   type RequestViewData,
+@@ -49,8 +48,6 @@ import {
+ } from "../services/adminRequests.client";
+ import type { CreativeRequest } from "../types/request.types";
+ 
+-import { ReviewActionModal } from "./modals/ReviewActionModal";
+-
+ const MAX_COMMENT_LENGTH = 5000;
+ 
+ interface RequestItemProps {
+@@ -280,13 +277,6 @@ export function RequestItem({
+   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+   const [isViewLoading, setIsViewLoading] = useState(false);
+ 
+-  // Review Action Modal State
+-  const [reviewModal, setReviewModal] = useState<{
+-    isOpen: boolean;
+-    action: "reject" | "send-back";
+-    creative: { id: string; url: string; type: string };
+-  } | null>(null);
+-
+   // Character count for comments
+   const rejectCommentsLength = useMemo(() => {
+     const text = rejectComments.replace(/<[^>]*>/g, "");
+@@ -408,23 +398,11 @@ export function RequestItem({
+         return;
+       }
+ 
+-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+-      const isImage = !!(mainCreative as any).previewUrl;
+-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+-      const creativeUrl = (mainCreative as any).previewUrl || mainCreative.url;
+-      const creativeType = isImage ? "image" : "html";
+-
+-      setReviewModal({
+-        isOpen: true,
+-        action,
+-        creative: {
+-          id: mainCreative.id,
+-          url: creativeUrl,
+-          type: creativeType,
+-        },
+-      });
+       setRejectPopoverOpen(false);
+       setSendBackPopoverOpen(false);
++      router.push(
++        `/annotate/${mainCreative.id}?requestId=${request.id}&action=${action}`
++      );
+     } catch {
+       toast.error("Failed to load creative for review");
+     } finally {
+@@ -1494,31 +1472,6 @@ export function RequestItem({
+           creativeType={viewData.creativeType}
+         />
+       )}
+-
+-      {/* Review Action Modal */}
+-      {reviewModal && (
+-        <ReviewActionModal
+-          isOpen={reviewModal.isOpen}
+-          onClose={() => setReviewModal(null)}
+-          title={
+-            reviewModal.action === "send-back"
+-              ? "Review & Send Back"
+-              : "Review & Reject Request"
+-          }
+-          actionType={reviewModal.action}
+-          requestId={request.id}
+-          creative={reviewModal.creative}
+-          onSuccess={() => {
+-            setReviewModal(null);
+-            onStatusUpdate?.(
+-              request.id,
+-              reviewModal.action === "send-back" ? "sent-back" : "rejected",
+-              "admin"
+-            );
+-            router.refresh();
+-          }}
+-        />
+-      )}
+     </Accordion.Item>
+   );
+ }
+diff --git a/features/admin/components/annotations/AnnotateCreative.tsx b/features/admin/components/annotations/AnnotateCreative.tsx
+new file mode 100644
+index 0000000..be08671
+--- /dev/null
++++ b/features/admin/components/annotations/AnnotateCreative.tsx
+@@ -0,0 +1,281 @@
++"use client";
++
++import { Eye, File, FileText, Image as ImageIcon } from "lucide-react";
++import { useCallback, useEffect, useRef, useState } from "react";
++
++import { Button } from "@/components/ui/button";
++
++import {
++  AnnotationLayer,
++  type Annotation,
++  type AnnotationPositionData,
++} from "./AnnotationLayer";
++import { AnnotationSidebar } from "./AnnotationSidebar";
++
++function formatFileSize(bytes: number): string {
++  if (bytes === 0) return "0 B";
++  const k = 1024;
++  const sizes = ["B", "KB", "MB", "GB"];
++  const i = Math.floor(Math.log(bytes) / Math.log(k));
++  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
++}
++
++export interface AnnotateCreativeProps {
++  fileName: string;
++  fileTypeLabel: string;
++  fileSize: number;
++  creativeUrl: string;
++  creativeType: "image" | "html";
++  htmlContent?: string;
++  annotations: Annotation[];
++  pendingAnnotation: AnnotationPositionData | null;
++  selectedAnnotation: Annotation | null;
++  onSaveAnnotation: (content: string) => void;
++  onCancelPin: () => void;
++  onResolve: (id: string) => void;
++  onDelete: (id: string) => void;
++  onUpdate?: (id: string, content: string) => void;
++  onAddAnnotation: (position: AnnotationPositionData) => void;
++  onSelectAnnotation: (annotation: Annotation) => void;
++  hoveredAnnotationId?: string | null;
++  onHoverAnnotation?: (id: string | null) => void;
++  onLeaveAnnotation?: () => void;
++  isAddingMode: boolean;
++  onToggleAddingMode: () => void;
++  actionLabel?: string;
++  onAction?: () => void;
++  isSubmitting?: boolean;
++  hideHeader?: boolean;
++  readOnly?: boolean;
++}
++
++export function AnnotateCreative({
++  fileName,
++  fileTypeLabel,
++  fileSize,
++  creativeUrl,
++  creativeType,
++  htmlContent,
++  annotations,
++  pendingAnnotation,
++  selectedAnnotation,
++  onSaveAnnotation,
++  onCancelPin,
++  onResolve,
++  onDelete,
++  onUpdate,
++  onAddAnnotation,
++  onSelectAnnotation,
++  hoveredAnnotationId = null,
++  onHoverAnnotation,
++  onLeaveAnnotation,
++  isAddingMode,
++  onToggleAddingMode,
++  actionLabel,
++  onAction,
++  isSubmitting,
++  hideHeader = false,
++  readOnly = false,
++}: AnnotateCreativeProps) {
++  const showActionFooter = onAction && !hideHeader;
++  const lineAnnotationId =
++    hoveredAnnotationId ?? selectedAnnotation?.id ?? null;
++  const [connectionLineFrom, setConnectionLineFrom] = useState<{
++    x: number;
++    y: number;
++  } | null>(null);
++  const [connectionLineTo, setConnectionLineTo] = useState<{
++    x: number;
++    y: number;
++  } | null>(null);
++  const [contentRect, setContentRect] = useState<{
++    left: number;
++    top: number;
++    width: number;
++    height: number;
++  } | null>(null);
++  const contentRef = useRef<HTMLDivElement>(null);
++
++  const updateContentRect = useCallback(() => {
++    const el = contentRef.current;
++    if (!el) {
++      setContentRect(null);
++      return;
++    }
++    const rect = el.getBoundingClientRect();
++    setContentRect({
++      left: rect.left,
++      top: rect.top,
++      width: rect.width,
++      height: rect.height,
++    });
++  }, []);
++
++  useEffect(() => {
++    if (!lineAnnotationId) {
++      setConnectionLineTo(null);
++      return;
++    }
++    updateContentRect();
++    window.addEventListener("resize", updateContentRect);
++    const el = document.getElementById(`annotation-card-${lineAnnotationId}`);
++    if (!el) {
++      setConnectionLineTo(null);
++      return () => window.removeEventListener("resize", updateContentRect);
++    }
++    const updateTo = () => {
++      const rect = el.getBoundingClientRect();
++      setConnectionLineTo({ x: rect.left, y: rect.top + rect.height / 2 });
++      updateContentRect();
++    };
++    updateTo();
++    const observer = new ResizeObserver(updateTo);
++    observer.observe(el);
++    window.addEventListener("scroll", updateTo, true);
++    return () => {
++      observer.disconnect();
++      window.removeEventListener("scroll", updateTo, true);
++      window.removeEventListener("resize", updateContentRect);
++    };
++  }, [lineAnnotationId, updateContentRect]);
++
++  const showConnectionLine =
++    connectionLineFrom &&
++    connectionLineTo &&
++    contentRect &&
++    contentRect.width > 0 &&
++    contentRect.height > 0;
++
++  return (
++    <div className="flex flex-col h-full w-full bg-white">
++      {!hideHeader && (
++        <header className="shrink-0 border-b border-gray-200 px-4 sm:px-6 py-4 bg-white">
++          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-wrap">
++            <div className="shrink-0">
++              {creativeType === "image" ? (
++                <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
++              ) : creativeType === "html" ? (
++                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
++              ) : (
++                <File className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500" />
++              )}
++            </div>
++            <div className="min-w-0 flex-1">
++              <h1 className="text-xs sm:text-sm font-medium text-gray-800 truncate">
++                {fileName}
++              </h1>
++            </div>
++            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
++              <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded border border-purple-200">
++                {fileTypeLabel}
++              </span>
++              <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200">
++                {formatFileSize(fileSize)}
++              </span>
++            </div>
++          </div>
++        </header>
++      )}
++
++      <div
++        ref={contentRef}
++        className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0 relative"
++      >
++        {showConnectionLine && contentRect && (
++          <svg
++            className="absolute inset-0 w-full h-full pointer-events-none z-20"
++            viewBox={`0 0 ${contentRect.width} ${contentRect.height}`}
++            preserveAspectRatio="none"
++            aria-hidden
++          >
++            <defs>
++              <clipPath id="lineClipBelowHeaders">
++                <rect
++                  x={0}
++                  y={56}
++                  width={contentRect.width}
++                  height={Math.max(0, contentRect.height - 56)}
++                />
++              </clipPath>
++            </defs>
++            <g clipPath="url(#lineClipBelowHeaders)">
++              <line
++                x1={connectionLineFrom.x - contentRect.left}
++                y1={connectionLineFrom.y - contentRect.top}
++                x2={connectionLineTo.x - contentRect.left}
++                y2={connectionLineTo.y - contentRect.top}
++                stroke="#ef4444"
++                strokeWidth={2}
++              />
++            </g>
++          </svg>
++        )}
++        <div className="flex lg:w-[70%] lg:flex-none lg:border-r border-gray-200 bg-gray-50 flex-col min-h-0 flex-1">
++          <div className="flex h-14 items-center gap-3 border-b border-gray-200 px-4 sm:px-6 shrink-0">
++            <div className="p-2 bg-blue-100 rounded-lg">
++              <Eye className="h-5 w-5 text-blue-600" />
++            </div>
++            <h2 className="text-lg font-semibold text-gray-800">Preview</h2>
++          </div>
++          <div className="flex-1 min-h-0 overflow-auto flex items-start justify-center p-4 sm:p-6">
++            <div className="w-full max-w-[640px]">
++              <AnnotationLayer
++                creativeUrl={creativeUrl}
++                type={creativeType}
++                annotations={annotations}
++                isAddingMode={readOnly ? false : isAddingMode}
++                onAddAnnotation={onAddAnnotation}
++                onSelectAnnotation={onSelectAnnotation}
++                selectedAnnotationId={selectedAnnotation?.id ?? null}
++                hoveredAnnotationId={hoveredAnnotationId}
++                connectionPointAnnotationId={lineAnnotationId}
++                pendingAnnotation={pendingAnnotation}
++                onHoveredRectConnectionPoint={setConnectionLineFrom}
++                htmlContent={htmlContent}
++                readOnly={readOnly}
++              />
++            </div>
++          </div>
++        </div>
++
++        <div className="flex lg:w-[30%] lg:flex-none flex-col overflow-hidden border-t lg:border-t-0 border-gray-200 bg-gray-50 flex-1 min-h-0">
++          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
++            <AnnotationSidebar
++              annotations={annotations}
++              pendingAnnotation={pendingAnnotation}
++              selectedAnnotation={selectedAnnotation}
++              onSave={onSaveAnnotation}
++              onCancel={onCancelPin}
++              onResolve={onResolve}
++              onDelete={onDelete}
++              onUpdate={onUpdate}
++              onSelectAnnotation={onSelectAnnotation}
++              onHoverAnnotation={onHoverAnnotation}
++              onLeaveAnnotation={onLeaveAnnotation}
++              isAddingMode={isAddingMode}
++              onToggleAddingMode={onToggleAddingMode}
++              readOnly={readOnly}
++            />
++          </div>
++          {showActionFooter && (
++            <div className="shrink-0 p-4 border-t bg-white">
++              <Button
++                className="w-full"
++                variant="destructive"
++                onClick={onAction}
++                disabled={isSubmitting}
++              >
++                {isSubmitting
++                  ? "Processing..."
++                  : actionLabel || "Complete Review"}
++              </Button>
++              <p className="text-xs text-center text-gray-500 mt-2">
++                This will send the request back with these notes.
++              </p>
++            </div>
++          )}
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/features/admin/components/annotations/AnnotationLayer.tsx b/features/admin/components/annotations/AnnotationLayer.tsx
+index 84117e2..677a71d 100644
+--- a/features/admin/components/annotations/AnnotationLayer.tsx
++++ b/features/admin/components/annotations/AnnotationLayer.tsx
+@@ -1,27 +1,54 @@
+-import { useRef, type MouseEvent } from "react";
++import {
++  useRef,
++  useState,
++  useCallback,
++  useEffect,
++  type MouseEvent,
++} from "react";
+ 
+ import { Badge } from "@/components/ui/badge";
+ 
++export type AnnotationPositionData = {
++  x: number;
++  y: number;
++  width?: number;
++  height?: number;
++};
++
+ export interface Annotation {
+   id: string;
+   creativeId: string;
+-  positionData: { x: number; y: number };
++  positionData: AnnotationPositionData;
+   content: string;
+   status: "active" | "resolved";
+   adminId: string;
+   createdAt: string;
+ }
+ 
++function isRect(
++  p: AnnotationPositionData
++): p is { x: number; y: number; width: number; height: number } {
++  const w = p.width ?? 0;
++  const h = p.height ?? 0;
++  return w > 0.5 && h > 0.5;
++}
++
+ interface AnnotationLayerProps {
+   creativeUrl: string;
+   type: "image" | "html";
+   annotations: Annotation[];
+-  onAddAnnotation: (position: { x: number; y: number }) => void;
++  onAddAnnotation: (position: AnnotationPositionData) => void;
+   onSelectAnnotation: (annotation: Annotation) => void;
+   isAddingMode: boolean;
+   htmlContent?: string;
+   selectedAnnotationId?: string | null;
+-  pendingPin?: { x: number; y: number } | null;
++  hoveredAnnotationId?: string | null;
++  connectionPointAnnotationId?: string | null;
++  pendingAnnotation?: AnnotationPositionData | null;
++  onHoveredRectConnectionPoint?: (
++    point: { x: number; y: number } | null
++  ) => void;
++  readOnly?: boolean;
+ }
+ 
+ export function AnnotationLayer({
+@@ -33,33 +60,149 @@ export function AnnotationLayer({
+   isAddingMode,
+   htmlContent,
+   selectedAnnotationId,
+-  pendingPin,
++  hoveredAnnotationId = null,
++  connectionPointAnnotationId = null,
++  pendingAnnotation,
++  onHoveredRectConnectionPoint,
++  readOnly = false,
+ }: AnnotationLayerProps) {
+   const containerRef = useRef<HTMLDivElement>(null);
+ 
+-  const handleContainerClick = (e: MouseEvent) => {
+-    if (!isAddingMode || !containerRef.current) return;
++  const updateConnectionPoint = useCallback(() => {
++    const id = connectionPointAnnotationId;
++    if (!onHoveredRectConnectionPoint || !id || !containerRef.current) {
++      if (!id && onHoveredRectConnectionPoint)
++        onHoveredRectConnectionPoint(null);
++      return;
++    }
++    const note = annotations.find((a) => a.id === id);
++    if (!note || !isRect(note.positionData)) {
++      onHoveredRectConnectionPoint(null);
++      return;
++    }
++    const containerRect = containerRef.current.getBoundingClientRect();
++    const pd = note.positionData;
++    const rightX =
++      containerRect.left +
++      ((pd.x + (pd.width ?? 0)) / 100) * containerRect.width;
++    const centerY =
++      containerRect.top +
++      ((pd.y + (pd.height ?? 0) / 2) / 100) * containerRect.height;
++    onHoveredRectConnectionPoint({ x: rightX, y: centerY });
++  }, [connectionPointAnnotationId, annotations, onHoveredRectConnectionPoint]);
++
++  useEffect(() => {
++    updateConnectionPoint();
++    if (!connectionPointAnnotationId) return;
++    const onUpdate = () => updateConnectionPoint();
++    window.addEventListener("resize", onUpdate);
++    window.addEventListener("scroll", onUpdate, true);
++    return () => {
++      window.removeEventListener("resize", onUpdate);
++      window.removeEventListener("scroll", onUpdate, true);
++    };
++  }, [connectionPointAnnotationId, updateConnectionPoint]);
++  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
++    null
++  );
++  const [dragCurrent, setDragCurrent] = useState<{
++    x: number;
++    y: number;
++  } | null>(null);
+ 
++  const toPercent = useCallback((clientX: number, clientY: number) => {
++    if (!containerRef.current) return null;
+     const rect = containerRef.current.getBoundingClientRect();
+-    const x = ((e.clientX - rect.left) / rect.width) * 100;
+-    const y = ((e.clientY - rect.top) / rect.height) * 100;
++    const x = Math.max(
++      0,
++      Math.min(100, ((clientX - rect.left) / rect.width) * 100)
++    );
++    const y = Math.max(
++      0,
++      Math.min(100, ((clientY - rect.top) / rect.height) * 100)
++    );
++    return { x, y };
++  }, []);
+ 
+-    onAddAnnotation({ x, y });
+-  };
++  const handleMouseDown = useCallback(
++    (e: MouseEvent<HTMLDivElement>) => {
++      if (readOnly || !isAddingMode || !containerRef.current) return;
++      const point = toPercent(e.clientX, e.clientY);
++      if (point) {
++        setDragStart(point);
++        setDragCurrent(point);
++      }
++    },
++    [readOnly, isAddingMode, toPercent]
++  );
++
++  const handleMouseMove = useCallback(
++    (e: MouseEvent<HTMLDivElement>) => {
++      if (dragStart === null) return;
++      const point = toPercent(e.clientX, e.clientY);
++      if (point) setDragCurrent(point);
++    },
++    [dragStart, toPercent]
++  );
++
++  const handleMouseUp = useCallback(
++    (e: MouseEvent<HTMLDivElement>) => {
++      if (dragStart === null || dragCurrent === null) return;
++      const x1 = Math.min(dragStart.x, dragCurrent.x);
++      const y1 = Math.min(dragStart.y, dragCurrent.y);
++      const x2 = Math.max(dragStart.x, dragCurrent.x);
++      const y2 = Math.max(dragStart.y, dragCurrent.y);
++      let width = x2 - x1;
++      let height = y2 - y1;
++      if (width < 1 && height < 1) {
++        width = 0;
++        height = 0;
++      }
++      onAddAnnotation({ x: x1, y: y1, width, height });
++      setDragStart(null);
++      setDragCurrent(null);
++      e.preventDefault();
++      e.stopPropagation();
++    },
++    [dragStart, dragCurrent, onAddAnnotation]
++  );
++
++  const handleMouseLeave = useCallback(() => {
++    if (dragStart !== null) {
++      setDragStart(null);
++      setDragCurrent(null);
++    }
++  }, [dragStart]);
++
++  const drawingRect =
++    dragStart && dragCurrent
++      ? (() => {
++          const x = Math.min(dragStart.x, dragCurrent.x);
++          const y = Math.min(dragStart.y, dragCurrent.y);
++          const w = Math.abs(dragCurrent.x - dragStart.x);
++          const h = Math.abs(dragCurrent.y - dragStart.y);
++          return { x, y, w, h };
++        })()
++      : null;
+ 
+   return (
+     <div className="relative inline-block w-full max-w-4xl border rounded-lg overflow-hidden bg-gray-100">
+       <div
+         ref={containerRef}
+-        onClick={handleContainerClick}
+-        className={`relative ${isAddingMode ? "cursor-crosshair" : "cursor-default"}`}
++        onMouseDown={handleMouseDown}
++        onMouseMove={handleMouseMove}
++        onMouseUp={handleMouseUp}
++        onMouseLeave={handleMouseLeave}
++        className={`relative select-none ${isAddingMode ? "cursor-crosshair" : "cursor-default"}`}
++        style={{ userSelect: "none" }}
+       >
+         {type === "image" ? (
+           /* eslint-disable-next-line @next/next/no-img-element */
+           <img
+             src={creativeUrl}
+             alt="Creative to review"
+-            className="w-full h-auto block"
++            className="w-full h-auto block pointer-events-none"
++            draggable={false}
+           />
+         ) : (
+           <div className="relative w-full">
+@@ -68,12 +211,12 @@ export function AnnotationLayer({
+                 htmlContent ||
+                 '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Arial,sans-serif;color:#666;"><p>Loading HTML content...</p></div>'
+               }
+-              className="w-full h-[600px] border-none"
++              className="w-full h-[600px] border-none pointer-events-none"
+               title="HTML Creative"
+               sandbox="allow-scripts allow-same-origin"
+             />
+             {isAddingMode && (
+-              <div className="absolute inset-0 cursor-crosshair" />
++              <div className="absolute inset-0 cursor-crosshair pointer-events-none" />
+             )}
+           </div>
+         )}
+@@ -82,51 +225,78 @@ export function AnnotationLayer({
+           className="absolute inset-0 w-full h-full pointer-events-none"
+           style={{ zIndex: 5, overflow: "visible" }}
+         >
++          {drawingRect && (
++            <rect
++              x={`${drawingRect.x}%`}
++              y={`${drawingRect.y}%`}
++              width={`${drawingRect.w}%`}
++              height={`${drawingRect.h}%`}
++              fill="rgba(59,130,246,0.2)"
++              stroke="rgba(59,130,246,0.9)"
++              strokeWidth={2}
++              strokeDasharray="4 2"
++            />
++          )}
+           {annotations.map((note) => {
+             const isSelected = selectedAnnotationId === note.id;
++            const isHovered = hoveredAnnotationId === note.id;
+             const isResolved = note.status === "resolved";
+-            const lineColor = isResolved
+-              ? "rgba(34,197,94,0.6)"
+-              : "rgba(239,68,68,0.6)";
+-            const selectedLineColor = isResolved
+-              ? "rgba(34,197,94,1)"
+-              : "rgba(239,68,68,1)";
+-            return (
+-              <line
+-                key={`line-${note.id}`}
+-                x1={`${note.positionData.x}%`}
+-                y1={`${note.positionData.y}%`}
+-                x2="100%"
+-                y2={`${note.positionData.y}%`}
+-                stroke={isSelected ? selectedLineColor : lineColor}
+-                strokeWidth={isSelected ? 2.5 : 1.5}
+-                strokeDasharray={isSelected ? "none" : "6 3"}
+-              />
+-            );
++            const showFill = isSelected || isHovered;
++            const fillColor = showFill
++              ? isResolved
++                ? "rgba(34,197,94,0.06)"
++                : "rgba(239,68,68,0.06)"
++              : "transparent";
++            const strokeColor = isResolved
++              ? isSelected || isHovered
++                ? "rgba(34,197,94,1)"
++                : "rgba(34,197,94,0.6)"
++              : isSelected || isHovered
++                ? "rgba(239,68,68,1)"
++                : "rgba(239,68,68,0.6)";
++            if (isRect(note.positionData)) {
++              return (
++                <g key={note.id}>
++                  <rect
++                    x={`${note.positionData.x}%`}
++                    y={`${note.positionData.y}%`}
++                    width={`${note.positionData.width}%`}
++                    height={`${note.positionData.height}%`}
++                    fill={fillColor}
++                    stroke={strokeColor}
++                    strokeWidth={isSelected || isHovered ? 2.5 : 1.5}
++                    strokeDasharray={isSelected || isHovered ? "none" : "6 3"}
++                  />
++                </g>
++              );
++            }
++            return null;
+           })}
+         </svg>
+ 
+-        {pendingPin && (
++        {pendingAnnotation && isRect(pendingAnnotation) && (
++          <rect
++            x={`${pendingAnnotation.x}%`}
++            y={`${pendingAnnotation.y}%`}
++            width={`${pendingAnnotation.width}%`}
++            height={`${pendingAnnotation.height}%`}
++            fill="rgba(59,130,246,0.15)"
++            stroke="rgba(59,130,246,0.9)"
++            strokeWidth={2}
++            strokeDasharray="4 2"
++          />
++        )}
++
++        {pendingAnnotation && !isRect(pendingAnnotation) && (
+           <div
+             className="absolute pointer-events-none"
+             style={{
+-              left: `${pendingPin.x}%`,
+-              top: `${pendingPin.y}%`,
++              left: `${pendingAnnotation.x}%`,
++              top: `${pendingAnnotation.y}%`,
+               transform: "translate(-50%, -50%)",
+               zIndex: 12,
+             }}
+           >
+-            <div
+-              className="rounded-full animate-ping"
+-              style={{
+-                width: "40px",
+-                height: "40px",
+-                backgroundColor: "rgba(59,130,246,0.3)",
+-                position: "absolute",
+-                top: "-20px",
+-                left: "-20px",
+-              }}
+-            />
+             <div
+               className="rounded-full"
+               style={{
+@@ -135,25 +305,58 @@ export function AnnotationLayer({
+                 backgroundColor: "rgba(59,130,246,0.8)",
+                 border: "3px solid white",
+                 boxShadow: "0 0 0 3px rgba(59,130,246,0.4)",
+-                position: "absolute",
+-                top: "-8px",
+-                left: "-8px",
+               }}
+             />
+           </div>
+         )}
+ 
+         {annotations.map((note, index) => {
++          if (isRect(note.positionData)) {
++            const isResolved = note.status === "resolved";
++            const pd = note.positionData;
++            return (
++              <button
++                key={note.id}
++                type="button"
++                onClick={(e) => {
++                  e.stopPropagation();
++                  onSelectAnnotation(note);
++                }}
++                className="absolute flex items-start justify-start pt-0.5 pl-0.5 transition-opacity"
++                style={{
++                  left: `${pd.x}%`,
++                  top: `${pd.y}%`,
++                  width: `${Math.max(pd.width ?? 0, 4)}%`,
++                  height: `${Math.max(pd.height ?? 0, 4)}%`,
++                  minWidth: "24px",
++                  minHeight: "24px",
++                  backgroundColor: "transparent",
++                  border: "none",
++                  zIndex: 10,
++                }}
++              >
++                <span
++                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow"
++                  style={{
++                    backgroundColor: isResolved ? "#22c55e" : "#ef4444",
++                    border: `1.5px solid ${isResolved ? "#15803d" : "#b91c1c"}`,
++                  }}
++                >
++                  {index + 1}
++                </span>
++              </button>
++            );
++          }
+           const isSelected = selectedAnnotationId === note.id;
+           const isResolved = note.status === "resolved";
+-
++          const pd = note.positionData;
+           return (
+             <div key={note.id}>
+               <div
+                 className="absolute rounded-full pointer-events-none transition-all duration-200"
+                 style={{
+-                  left: `${note.positionData.x}%`,
+-                  top: `${note.positionData.y}%`,
++                  left: `${pd.x}%`,
++                  top: `${pd.y}%`,
+                   transform: "translate(-50%, -50%)",
+                   width: isSelected ? "60px" : "48px",
+                   height: isSelected ? "60px" : "48px",
+@@ -164,8 +367,8 @@ export function AnnotationLayer({
+                   zIndex: 8,
+                 }}
+               />
+-
+               <button
++                type="button"
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onSelectAnnotation(note);
+@@ -174,8 +377,8 @@ export function AnnotationLayer({
+                 style={{
+                   width: "32px",
+                   height: "32px",
+-                  left: `${note.positionData.x}%`,
+-                  top: `${note.positionData.y}%`,
++                  left: `${pd.x}%`,
++                  top: `${pd.y}%`,
+                   transform: `translate(-50%, -50%) ${isSelected ? "scale(1.15)" : ""}`,
+                   backgroundColor: isResolved ? "#22c55e" : "#ef4444",
+                   border: `2px solid ${isResolved ? "#15803d" : "#b91c1c"}`,
+@@ -194,7 +397,7 @@ export function AnnotationLayer({
+           );
+         })}
+ 
+-        {isAddingMode && (
++        {isAddingMode && !readOnly && (
+           <div
+             className="absolute top-2 right-2 pointer-events-none"
+             style={{ zIndex: 15 }}
+@@ -203,7 +406,7 @@ export function AnnotationLayer({
+               variant="secondary"
+               className="bg-yellow-100 text-yellow-800 border-yellow-300"
+             >
+-              Click anywhere to add a comment
++              Drag to draw a rectangle
+             </Badge>
+           </div>
+         )}
+diff --git a/features/admin/components/annotations/AnnotationSidebar.tsx b/features/admin/components/annotations/AnnotationSidebar.tsx
+index 186b521..d17cc97 100644
+--- a/features/admin/components/annotations/AnnotationSidebar.tsx
++++ b/features/admin/components/annotations/AnnotationSidebar.tsx
+@@ -1,32 +1,39 @@
+ import { format } from "date-fns";
+-import { Check, Trash2 } from "lucide-react";
++import { Pencil, PenLine, Trash2 } from "lucide-react";
+ import { useState, useEffect, useRef } from "react";
+ 
+ import { Badge } from "@/components/ui/badge";
+ import { Button } from "@/components/ui/button";
+-import {
+-  Card,
+-  CardContent,
+-  CardDescription,
+-  CardFooter,
+-  CardHeader,
+-  CardTitle,
+-} from "@/components/ui/card";
++import { RichTextEditor } from "@/components/ui/rich-text-editor";
+ import { ScrollArea } from "@/components/ui/scroll-area";
+-import { Textarea } from "@/components/ui/textarea";
+ 
+-import { type Annotation } from "./AnnotationLayer";
++import type { Annotation, AnnotationPositionData } from "./AnnotationLayer";
+ 
++function stripHtml(html: string) {
++  const tmp = document.createElement("div");
++  tmp.innerHTML = html;
++  return tmp.textContent || tmp.innerText || "";
++}
+ 
++function isHtmlEmpty(html: string) {
++  return stripHtml(html).trim().length === 0;
++}
+ 
+ interface AnnotationSidebarProps {
+   annotations: Annotation[];
+-  pendingAnnotation: { x: number; y: number } | null;
++  pendingAnnotation: AnnotationPositionData | null;
+   onSave: (content: string) => void;
+   onCancel: () => void;
+   onResolve: (id: string) => void;
+   onDelete: (id: string) => void;
++  onUpdate?: (id: string, content: string) => void;
+   selectedAnnotation: Annotation | null;
++  onSelectAnnotation?: (annotation: Annotation) => void;
++  onHoverAnnotation?: (id: string | null) => void;
++  onLeaveAnnotation?: () => void;
++  isAddingMode?: boolean;
++  onToggleAddingMode?: () => void;
++  readOnly?: boolean;
+ }
+ 
+ export function AnnotationSidebar({
+@@ -34,13 +41,31 @@ export function AnnotationSidebar({
+   pendingAnnotation,
+   onSave,
+   onCancel,
+-  onResolve,
++  onResolve: _onResolve,
+   onDelete,
++  onUpdate,
+   selectedAnnotation,
++  onSelectAnnotation,
++  onHoverAnnotation,
++  onLeaveAnnotation,
++  isAddingMode = false,
++  onToggleAddingMode,
++  readOnly = false,
+ }: AnnotationSidebarProps) {
++  const sortedAnnotations = [...annotations].sort(
++    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
++  );
+   const [comment, setComment] = useState("");
++  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
++  const [editingCardId, setEditingCardId] = useState<string | null>(null);
++  const [editContent, setEditContent] = useState("");
+   const scrollRef = useRef<HTMLDivElement>(null);
+ 
++  const isLongComment = (html: string) => {
++    const plain = stripHtml(html);
++    return plain.split(/\n/).length > 3 || plain.length > 120;
++  };
++
+   useEffect(() => {
+     if (selectedAnnotation) {
+       const el = document.getElementById(
+@@ -53,55 +78,84 @@ export function AnnotationSidebar({
+   }, [selectedAnnotation]);
+ 
+   const handleSave = () => {
+-    if (!comment.trim()) return;
++    if (isHtmlEmpty(comment)) return;
+     onSave(comment);
+     setComment("");
+   };
+ 
++  const handleStartEdit = (note: Annotation) => {
++    setEditingCardId(note.id);
++    setEditContent(note.content);
++  };
++
++  const handleSaveEdit = (id: string) => {
++    if (isHtmlEmpty(editContent) || !onUpdate) return;
++    onUpdate(id, editContent);
++    setEditingCardId(null);
++    setEditContent("");
++  };
++
++  const handleCancelEdit = () => {
++    setEditingCardId(null);
++    setEditContent("");
++  };
++
+   return (
+-    <div className="flex w-80 flex-col border-l bg-background">
+-      <div className="flex h-14 items-center border-b px-4">
+-        <h2 className="text-lg font-semibold">Annotations</h2>
+-        <Badge variant="secondary" className="ml-auto">
+-          {annotations.length}
+-        </Badge>
++    <div className="flex flex-col flex-1 min-h-0 bg-background">
++      <div className="flex h-14 items-center border-b border-gray-200 px-4 sm:px-6 gap-3 shrink-0">
++        <div className="p-2 bg-blue-100 rounded-lg">
++          <PenLine className="h-5 w-5 text-blue-600" />
++        </div>
++        <h2 className="text-lg font-semibold">Corrections</h2>
++        <Badge variant="secondary">{annotations.length}</Badge>
++        {!readOnly && onToggleAddingMode && (
++          <Button
++            variant="outline"
++            size="sm"
++            onClick={onToggleAddingMode}
++            className={`ml-auto shrink-0 ${
++              isAddingMode
++                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:text-white"
++                : ""
++            }`}
++          >
++            {isAddingMode ? "Cancel" : "+ Add Comment"}
++          </Button>
++        )}
+       </div>
+ 
+-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+-        <div className="space-y-4">
++      <ScrollArea className="flex-1 min-h-0 px-3 py-3" ref={scrollRef}>
++        <div className="space-y-3">
+           {pendingAnnotation && (
+-            <Card className="border-2 border-blue-500 shadow-lg shadow-blue-100">
+-              <CardHeader className="p-4 pb-2">
+-                <CardTitle className="text-sm font-medium">
+-                  New Comment
+-                </CardTitle>
+-                <CardDescription>
+-                  At position {Math.round(pendingAnnotation.x)}%,{" "}
+-                  {Math.round(pendingAnnotation.y)}%
+-                </CardDescription>
+-              </CardHeader>
+-              <CardContent className="p-4 pt-2">
+-                <Textarea
+-                  placeholder="Describe the issue..."
+-                  value={comment}
+-                  onChange={(e) => setComment(e.target.value)}
+-                  className="min-h-[100px]"
+-                  autoFocus
+-                />
+-              </CardContent>
+-              <CardFooter className="flex justify-end gap-2 p-4 pt-0">
+-                <Button variant="ghost" size="sm" onClick={onCancel}>
++            <div className="rounded-lg border-2 border-blue-400 bg-blue-50/50 p-4">
++              <p className="text-sm font-semibold text-blue-800 mb-2">
++                New Comment
++              </p>
++              <RichTextEditor
++                value={comment}
++                onChange={setComment}
++                placeholder="Describe the issue..."
++                className="border-blue-300 bg-white text-sm [&_[contenteditable]]:min-h-[72px] [&_[contenteditable]]:max-h-[200px]"
++              />
++              <div className="flex justify-end gap-2 mt-3">
++                <Button
++                  variant="outline"
++                  size="sm"
++                  onClick={onCancel}
++                  className="h-8 px-4 text-xs font-medium text-gray-600 border-gray-300 hover:bg-gray-100"
++                >
+                   Cancel
+                 </Button>
+                 <Button
+                   size="sm"
+                   onClick={handleSave}
+-                  disabled={!comment.trim()}
++                  disabled={isHtmlEmpty(comment)}
++                  className="h-8 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                 >
+                   Save
+                 </Button>
+-              </CardFooter>
+-            </Card>
++              </div>
++            </div>
+           )}
+ 
+           {annotations.length === 0 && !pendingAnnotation && (
+@@ -110,78 +164,151 @@ export function AnnotationSidebar({
+             </div>
+           )}
+ 
+-          {annotations.map((note, index) => {
++          {sortedAnnotations.map((note, index) => {
+             const isSelected = selectedAnnotation?.id === note.id;
++            const isExpanded = expandedCardId === note.id;
++            const isEditing = editingCardId === note.id;
+             const isResolved = note.status === "resolved";
+-            const accentColor = isResolved ? "#22c55e" : "#ef4444";
++            const truncated =
++              isLongComment(note.content) && !isExpanded && !isEditing;
+ 
+             return (
+-              <Card
++              <div
+                 key={note.id}
+                 id={`annotation-card-${note.id}`}
+-                className="transition-all duration-200"
+-                style={{
+-                  borderLeft: `4px solid ${accentColor}`,
+-                  backgroundColor: isSelected
++                role="button"
++                tabIndex={0}
++                onKeyDown={(e) => {
++                  if (e.key === "Enter" || e.key === " ") {
++                    if (isEditing) return;
++                    e.preventDefault();
++                    onSelectAnnotation?.(note);
++                    setExpandedCardId((prev) =>
++                      prev === note.id ? null : note.id
++                    );
++                  }
++                }}
++                onClick={() => {
++                  if (isEditing) return;
++                  onSelectAnnotation?.(note);
++                  setExpandedCardId((prev) =>
++                    prev === note.id ? null : note.id
++                  );
++                }}
++                onMouseEnter={() => onHoverAnnotation?.(note.id)}
++                onMouseLeave={() => onLeaveAnnotation?.()}
++                className={`group relative rounded-lg border transition-all duration-150 cursor-pointer ${
++                  isSelected
+                     ? isResolved
+-                      ? "rgba(34,197,94,0.08)"
+-                      : "rgba(239,68,68,0.08)"
+-                    : undefined,
+-                  boxShadow: isSelected
+-                    ? `0 0 0 2px ${accentColor}40, 0 4px 12px ${accentColor}20`
+-                    : undefined,
+-                  opacity: isResolved && !isSelected ? 0.6 : 1,
++                      ? "border-green-300 bg-green-50/40"
++                      : "border-red-300 bg-red-50/40"
++                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50"
++                } ${isResolved && !isSelected ? "opacity-75" : ""}`}
++                style={{
++                  borderLeftWidth: "3px",
++                  borderLeftColor: isResolved ? "#22c55e" : "#ef4444",
+                 }}
+               >
+-                <CardHeader className="p-4 pb-2 space-y-0">
+-                  <div className="flex items-start justify-between">
+-                    <div className="flex items-center gap-2">
+-                      <span
+-                        className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white"
+-                        style={{ backgroundColor: accentColor }}
+-                      >
+-                        {index + 1}
+-                      </span>
+-                      <span className="text-xs text-muted-foreground">
+-                        {format(new Date(note.createdAt), "MMM d, h:mm a")}
+-                      </span>
+-                    </div>
++                <div className="px-4 py-3">
++                  <div className="flex items-center gap-2 mb-2">
++                    <span
++                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
++                      style={{
++                        backgroundColor: isResolved ? "#22c55e" : "#ef4444",
++                      }}
++                    >
++                      {index + 1}
++                    </span>
++                    <span className="text-xs text-gray-500">
++                      {format(new Date(note.createdAt), "MMM d, h:mm a")}
++                    </span>
+                     {isResolved && (
+-                      <Badge
+-                        variant="outline"
+-                        className="text-green-600 border-green-200 bg-green-50"
+-                      >
++                      <span className="ml-auto text-[10px] font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">
+                         Resolved
+-                      </Badge>
++                      </span>
++                    )}
++
++                    {!readOnly && !isEditing && (
++                      <div
++                        className="ml-auto flex items-center gap-1.5"
++                        onClick={(e) => e.stopPropagation()}
++                      >
++                        {!isResolved && (
++                          <button
++                            type="button"
++                            className="p-1.5 rounded-md text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors"
++                            onClick={() => handleStartEdit(note)}
++                            title="Edit"
++                          >
++                            <Pencil className="h-4 w-4" />
++                          </button>
++                        )}
++                        <button
++                          type="button"
++                          className="p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
++                          onClick={() => onDelete(note.id)}
++                          title="Delete"
++                        >
++                          <Trash2 className="h-4 w-4" />
++                        </button>
++                      </div>
+                     )}
+                   </div>
+-                </CardHeader>
+-                <CardContent className="p-4 pt-2">
+-                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+-                </CardContent>
+-                <CardFooter className="flex justify-end gap-2 p-4 pt-0">
+-                  <Button
+-                    variant="ghost"
+-                    size="icon"
+-                    className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+-                    onClick={() => onDelete(note.id)}
+-                    title="Delete"
+-                  >
+-                    <Trash2 className="h-4 w-4" />
+-                  </Button>
+-                  {!isResolved && (
+-                    <Button
+-                      variant="ghost"
+-                      size="icon"
+-                      className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+-                      onClick={() => onResolve(note.id)}
+-                      title="Mark as Resolved"
+-                    >
+-                      <Check className="h-4 w-4" />
+-                    </Button>
++
++                  {isEditing ? (
++                    <div onClick={(e) => e.stopPropagation()}>
++                      <RichTextEditor
++                        value={editContent}
++                        onChange={setEditContent}
++                        placeholder="Update your comment..."
++                        className="border-gray-300 bg-white text-sm [&_[contenteditable]]:min-h-[72px] [&_[contenteditable]]:max-h-[200px]"
++                      />
++                      <div className="flex justify-end gap-2 mt-3">
++                        <Button
++                          variant="outline"
++                          size="sm"
++                          onClick={handleCancelEdit}
++                          className="h-8 px-4 text-xs font-medium text-gray-600 border-gray-300 hover:bg-gray-100"
++                        >
++                          Cancel
++                        </Button>
++                        <Button
++                          size="sm"
++                          onClick={() => handleSaveEdit(note.id)}
++                          disabled={isHtmlEmpty(editContent)}
++                          className="h-8 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white"
++                        >
++                          Update
++                        </Button>
++                      </div>
++                    </div>
++                  ) : (
++                    <>
++                      <div
++                        className={`text-[13px] leading-relaxed text-gray-700 break-words prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 ${
++                          truncated ? "line-clamp-3" : ""
++                        }`}
++                        dangerouslySetInnerHTML={{ __html: note.content }}
++                      />
++
++                      {isLongComment(note.content) && (
++                        <button
++                          type="button"
++                          className="text-xs font-medium text-blue-600 hover:text-blue-700 mt-1"
++                          onClick={(e) => {
++                            e.stopPropagation();
++                            setExpandedCardId((prev) =>
++                              prev === note.id ? null : note.id
++                            );
++                          }}
++                        >
++                          {isExpanded ? "Show less" : "Show more"}
++                        </button>
++                      )}
++                    </>
+                   )}
+-                </CardFooter>
+-              </Card>
++                </div>
++              </div>
+             );
+           })}
+         </div>
+diff --git a/features/admin/components/annotations/CreativeReview.tsx b/features/admin/components/annotations/CreativeReview.tsx
+index 663dcd8..2e8e23d 100644
+--- a/features/admin/components/annotations/CreativeReview.tsx
++++ b/features/admin/components/annotations/CreativeReview.tsx
+@@ -3,38 +3,57 @@
+ import { useState, useEffect, useCallback } from "react";
+ import { toast } from "sonner";
+ 
+-import { Button } from "@/components/ui/button";
+-
+-import { AnnotationLayer, type Annotation } from "./AnnotationLayer";
+-import { AnnotationSidebar } from "./AnnotationSidebar";
++import { AnnotateCreative } from "./AnnotateCreative";
++import type { Annotation, AnnotationPositionData } from "./AnnotationLayer";
+ 
+ interface CreativeReviewProps {
+   creativeId: string;
+   creativeUrl: string;
+   creativeType: "image" | "html";
++  fileName?: string;
++  fileTypeLabel?: string;
++  fileSize?: number;
+   actionLabel?: string;
+   onAction?: () => void;
+   isSubmitting?: boolean;
++  hideHeader?: boolean;
++  readOnly?: boolean;
+ }
+ 
+ export function CreativeReview({
+   creativeId,
+   creativeUrl,
+   creativeType,
++  fileName,
++  fileTypeLabel,
++  fileSize = 0,
+   actionLabel,
+   onAction,
+   isSubmitting,
++  hideHeader = false,
++  readOnly = false,
+ }: CreativeReviewProps) {
+   const [annotations, setAnnotations] = useState<Annotation[]>([]);
+   const [isLoading, setIsLoading] = useState(false);
+   const [htmlContent, setHtmlContent] = useState("");
+ 
+   const [isAddingMode, setIsAddingMode] = useState(false);
+-  const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(
+-    null
+-  );
++  const [pendingAnnotation, setPendingAnnotation] =
++    useState<AnnotationPositionData | null>(null);
+   const [selectedAnnotation, setSelectedAnnotation] =
+     useState<Annotation | null>(null);
++  const [hoveredAnnotationId, setHoveredAnnotationId] = useState<string | null>(
++    null
++  );
++
++  const sortByCreatedAtAsc = useCallback(
++    (list: Annotation[]) =>
++      [...list].sort(
++        (a, b) =>
++          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
++      ),
++    []
++  );
+ 
+   const fetchHtmlContent = useCallback(async () => {
+     if (creativeType !== "html" || !creativeUrl) return;
+@@ -72,7 +91,7 @@ export function CreativeReview({
+       );
+       const data = await res.json();
+       if (data.success) {
+-        setAnnotations(data.data);
++        setAnnotations(sortByCreatedAtAsc(data.data));
+       }
+     } catch (error) {
+       console.error("Failed to load annotations", error);
+@@ -80,32 +99,38 @@ export function CreativeReview({
+     } finally {
+       setIsLoading(false);
+     }
+-  }, [creativeId]);
++  }, [creativeId, sortByCreatedAtAsc]);
+ 
+   useEffect(() => {
+     fetchAnnotations();
+   }, [fetchAnnotations]);
+ 
+-  const handlePinDrop = (position: { x: number; y: number }) => {
+-    setPendingPin(position);
++  const handleAddAnnotation = (position: AnnotationPositionData) => {
++    setPendingAnnotation(position);
+     setSelectedAnnotation(null);
+   };
++
++  const handleToggleAddingMode = () => {
++    setIsAddingMode((prev) => !prev);
++    setPendingAnnotation(null);
++  };
++
+   const handleSaveAnnotation = async (content: string) => {
+-    if (!pendingPin) return;
++    if (!pendingAnnotation) return;
+ 
+     const tempId = Math.random().toString();
+     const newNote: Annotation = {
+       id: tempId,
+       creativeId,
+       adminId: "me",
+-      positionData: pendingPin,
++      positionData: pendingAnnotation,
+       content,
+       status: "active",
+       createdAt: new Date().toISOString(),
+     };
+ 
+-    setAnnotations((prev) => [newNote, ...prev]);
+-    setPendingPin(null);
++    setAnnotations((prev) => sortByCreatedAtAsc([...prev, newNote]));
++    setPendingAnnotation(null);
+     setIsAddingMode(false);
+ 
+     try {
+@@ -114,7 +139,7 @@ export function CreativeReview({
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           creativeId,
+-          positionData: pendingPin,
++          positionData: pendingAnnotation,
+           content,
+         }),
+       });
+@@ -124,7 +149,9 @@ export function CreativeReview({
+       const savedData = await res.json();
+ 
+       setAnnotations((prev) =>
+-        prev.map((a) => (a.id === tempId ? savedData.data : a))
++        sortByCreatedAtAsc(
++          prev.map((a) => (a.id === tempId ? savedData.data : a))
++        )
+       );
+       toast.success("Annotation saved");
+     } catch {
+@@ -163,79 +190,71 @@ export function CreativeReview({
+     }
+   };
+ 
+-  return (
+-    <div className="flex h-full w-full bg-white overflow-hidden">
+-      <div className="flex-1 relative overflow-auto flex items-center justify-center p-8 bg-gray-50 border-r border-gray-200">
+-        <div className="absolute top-4 left-4 z-10 bg-white p-2 rounded shadow flex gap-2">
+-          <button
+-            onClick={() => {
+-              setIsAddingMode(!isAddingMode);
+-              setPendingPin(null);
+-            }}
+-            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+-              isAddingMode
+-                ? "bg-blue-600 text-white"
+-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+-            }`}
+-          >
+-            {isAddingMode ? "Cancel Pin" : "+ Add Comment"}
+-          </button>
+-        </div>
++  const handleUpdate = async (id: string, content: string) => {
++    setAnnotations((prev) =>
++      prev.map((a) => (a.id === id ? { ...a, content } : a))
++    );
+ 
+-        {isLoading ? (
+-          <div className="flex flex-col items-center gap-4">
+-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+-            <p className="text-sm text-gray-500">Loading annotations...</p>
+-          </div>
+-        ) : (
+-          <AnnotationLayer
+-            creativeUrl={creativeUrl}
+-            type={creativeType}
+-            annotations={annotations}
+-            isAddingMode={isAddingMode}
+-            onAddAnnotation={handlePinDrop}
+-            onSelectAnnotation={(note) => {
+-              setSelectedAnnotation(note);
+-              setPendingPin(null);
+-            }}
+-            htmlContent={creativeType === "html" ? htmlContent : undefined}
+-            selectedAnnotationId={selectedAnnotation?.id}
+-            pendingPin={pendingPin}
+-          />
+-        )}
+-      </div>
++    try {
++      const res = await fetch(`/api/admin/annotations/${id}`, {
++        method: "PATCH",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ content }),
++      });
++      if (!res.ok) throw new Error("Failed to update");
++      toast.success("Annotation updated");
++    } catch {
++      toast.error("Failed to update");
++      fetchAnnotations();
++    }
++  };
+ 
+-      <div className="w-[400px] bg-white flex flex-col h-full border-l border-gray-200 shadow-xl z-10">
+-        <div className="flex-1 overflow-hidden">
+-          <AnnotationSidebar
+-            annotations={annotations}
+-            pendingAnnotation={pendingPin}
+-            selectedAnnotation={selectedAnnotation}
+-            onSave={handleSaveAnnotation}
+-            onCancel={() => setPendingPin(null)}
+-            onResolve={handleResolve}
+-            onDelete={handleDelete}
+-          />
+-        </div>
++  const displayFileName = fileName ?? "Creative";
++  const displayFileTypeLabel =
++    fileTypeLabel ?? (creativeType === "image" ? "Image" : "HTML");
+ 
+-        {onAction && (
+-          <div className="p-4 border-t bg-gray-50">
+-            <Button
+-              className="w-full"
+-              variant="destructive"
+-              onClick={onAction}
+-              disabled={isSubmitting}
+-            >
+-              {isSubmitting
+-                ? "Processing..."
+-                : actionLabel || "Complete Review"}
+-            </Button>
+-            <p className="text-xs text-center text-gray-500 mt-2">
+-              This will send the request back with these notes.
+-            </p>
+-          </div>
+-        )}
++  if (isLoading) {
++    return (
++      <div className="flex h-full w-full items-center justify-center bg-gray-50">
++        <div className="flex flex-col items-center gap-4">
++          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
++          <p className="text-sm text-gray-500">Loading annotations...</p>
++        </div>
+       </div>
+-    </div>
++    );
++  }
++
++  return (
++    <AnnotateCreative
++      fileName={displayFileName}
++      fileTypeLabel={displayFileTypeLabel}
++      fileSize={fileSize}
++      creativeUrl={creativeUrl}
++      creativeType={creativeType}
++      htmlContent={creativeType === "html" ? htmlContent : undefined}
++      annotations={annotations}
++      pendingAnnotation={pendingAnnotation}
++      selectedAnnotation={selectedAnnotation}
++      hoveredAnnotationId={hoveredAnnotationId}
++      onSaveAnnotation={handleSaveAnnotation}
++      onCancelPin={() => setPendingAnnotation(null)}
++      onResolve={handleResolve}
++      onDelete={handleDelete}
++      onUpdate={handleUpdate}
++      onAddAnnotation={handleAddAnnotation}
++      onSelectAnnotation={(note) => {
++        setSelectedAnnotation(note);
++        setPendingAnnotation(null);
++      }}
++      onHoverAnnotation={setHoveredAnnotationId}
++      onLeaveAnnotation={() => setHoveredAnnotationId(null)}
++      isAddingMode={isAddingMode}
++      onToggleAddingMode={handleToggleAddingMode}
++      actionLabel={actionLabel}
++      onAction={onAction}
++      isSubmitting={isSubmitting}
++      hideHeader={hideHeader}
++      readOnly={readOnly}
++    />
+   );
+ }
+diff --git a/features/publisher/components/annotations/PublisherAnnotationViewer.tsx b/features/publisher/components/annotations/PublisherAnnotationViewer.tsx
+index fec5fbd..d2a76f9 100644
+--- a/features/publisher/components/annotations/PublisherAnnotationViewer.tsx
++++ b/features/publisher/components/annotations/PublisherAnnotationViewer.tsx
+@@ -8,16 +8,31 @@ import { Badge } from "@/components/ui/badge";
+ import { Button } from "@/components/ui/button";
+ import { ScrollArea } from "@/components/ui/scroll-area";
+ 
++type PositionData = {
++  x: number;
++  y: number;
++  width?: number;
++  height?: number;
++};
++
+ interface Annotation {
+   id: string;
+   creativeId: string;
+-  positionData: { x: number; y: number };
++  positionData: PositionData;
+   content: string;
+   status: "active" | "resolved";
+   adminId: string;
+   createdAt: string;
+ }
+ 
++function isRect(
++  p: PositionData
++): p is { x: number; y: number; width: number; height: number } {
++  const w = p.width ?? 0;
++  const h = p.height ?? 0;
++  return w > 0.5 && h > 0.5;
++}
++
+ interface PublisherAnnotationViewerProps {
+   isOpen: boolean;
+   onClose: () => void;
+@@ -134,7 +149,7 @@ export function PublisherAnnotationViewer({
+                 />
+               )}
+ 
+-              {/* SVG connector lines */}
++              {/* SVG annotation shapes */}
+               <svg
+                 className="absolute inset-0 w-full h-full pointer-events-none"
+                 style={{ zIndex: 5, overflow: "visible" }}
+@@ -142,38 +157,78 @@ export function PublisherAnnotationViewer({
+                 {annotations.map((note) => {
+                   const isSelected = selectedAnnotation?.id === note.id;
+                   const isResolved = note.status === "resolved";
+-                  const lineColor = isResolved
+-                    ? "rgba(34,197,94,0.6)"
+-                    : "rgba(239,68,68,0.6)";
+-                  const selectedColor = isResolved
+-                    ? "rgba(34,197,94,1)"
+-                    : "rgba(239,68,68,1)";
+-                  return (
+-                    <line
+-                      key={`line-${note.id}`}
+-                      x1={`${note.positionData.x}%`}
+-                      y1={`${note.positionData.y}%`}
+-                      x2="100%"
+-                      y2={`${note.positionData.y}%`}
+-                      stroke={isSelected ? selectedColor : lineColor}
+-                      strokeWidth={isSelected ? 2.5 : 1.5}
+-                      strokeDasharray={isSelected ? "none" : "6 3"}
+-                    />
+-                  );
++                  const fillColor = isResolved
++                    ? "rgba(34,197,94,0.2)"
++                    : "rgba(239,68,68,0.2)";
++                  const strokeColor = isResolved
++                    ? isSelected
++                      ? "rgba(34,197,94,1)"
++                      : "rgba(34,197,94,0.6)"
++                    : isSelected
++                      ? "rgba(239,68,68,1)"
++                      : "rgba(239,68,68,0.6)";
++                  if (isRect(note.positionData)) {
++                    const pd = note.positionData;
++                    return (
++                      <rect
++                        key={note.id}
++                        x={`${pd.x}%`}
++                        y={`${pd.y}%`}
++                        width={`${pd.width}%`}
++                        height={`${pd.height}%`}
++                        fill={fillColor}
++                        stroke={strokeColor}
++                        strokeWidth={isSelected ? 2.5 : 1.5}
++                        strokeDasharray={isSelected ? "none" : "6 3"}
++                      />
++                    );
++                  }
++                  return null;
+                 })}
+               </svg>
+ 
+-              {/* Annotation pins */}
++              {/* Annotation markers (rect buttons or pins) */}
+               {annotations.map((note, index) => {
+                 const isSelected = selectedAnnotation?.id === note.id;
+                 const isResolved = note.status === "resolved";
++                const pd = note.positionData;
++                if (isRect(pd)) {
++                  return (
++                    <button
++                      key={note.id}
++                      type="button"
++                      onClick={() => setSelectedAnnotation(note)}
++                      className="absolute flex items-center justify-center shadow-md hover:opacity-90 transition-opacity"
++                      style={{
++                        left: `${pd.x}%`,
++                        top: `${pd.y}%`,
++                        width: `${Math.max(pd.width ?? 0, 4)}%`,
++                        height: `${Math.max(pd.height ?? 0, 4)}%`,
++                        minWidth: "24px",
++                        minHeight: "24px",
++                        backgroundColor: isResolved ? "#22c55e" : "#ef4444",
++                        border: `2px solid ${isResolved ? "#15803d" : "#b91c1c"}`,
++                        color: "white",
++                        fontSize: "13px",
++                        fontWeight: "bold",
++                        zIndex: 10,
++                        opacity: isSelected ? 1 : 0.85,
++                        boxShadow: isSelected
++                          ? `0 0 0 3px ${isResolved ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.5)"}`
++                          : "0 2px 4px rgba(0,0,0,0.2)",
++                      }}
++                    >
++                      {index + 1}
++                    </button>
++                  );
++                }
+                 return (
+                   <div key={note.id}>
+                     <div
+                       className="absolute rounded-full pointer-events-none transition-all duration-200"
+                       style={{
+-                        left: `${note.positionData.x}%`,
+-                        top: `${note.positionData.y}%`,
++                        left: `${pd.x}%`,
++                        top: `${pd.y}%`,
+                         transform: "translate(-50%, -50%)",
+                         width: isSelected ? "60px" : "48px",
+                         height: isSelected ? "60px" : "48px",
+@@ -185,13 +240,14 @@ export function PublisherAnnotationViewer({
+                       }}
+                     />
+                     <button
++                      type="button"
+                       onClick={() => setSelectedAnnotation(note)}
+                       className="absolute rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-110"
+                       style={{
+                         width: "32px",
+                         height: "32px",
+-                        left: `${note.positionData.x}%`,
+-                        top: `${note.positionData.y}%`,
++                        left: `${pd.x}%`,
++                        top: `${pd.y}%`,
+                         transform: `translate(-50%, -50%) ${isSelected ? "scale(1.15)" : ""}`,
+                         backgroundColor: isResolved ? "#22c55e" : "#ef4444",
+                         border: `2px solid ${isResolved ? "#15803d" : "#b91c1c"}`,
+@@ -281,9 +337,10 @@ export function PublisherAnnotationViewer({
+                             </Badge>
+                           )}
+                         </div>
+-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+-                          {note.content}
+-                        </p>
++                        <div
++                          className="text-sm text-gray-700 prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
++                          dangerouslySetInnerHTML={{ __html: note.content }}
++                        />
+                       </div>
+                     </div>
+                   );

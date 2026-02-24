@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, Fragment } from "react";
 import {
   LineChart,
   Line,
@@ -526,7 +526,7 @@ function JobTable({
         {jobs.map((job) => {
           const isExpanded = expandedJobs.has(job.id);
           return (
-            <>
+            <Fragment key={job.id}>
               <TableRow
                 key={job.id}
                 className="hover:bg-muted/50 cursor-pointer"
@@ -703,7 +703,7 @@ function JobTable({
                   </TableCell>
                 </TableRow>
               )}
-            </>
+            </Fragment>
           );
         })}
         {jobs.length === 0 && (

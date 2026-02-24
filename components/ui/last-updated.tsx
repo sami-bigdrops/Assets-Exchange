@@ -2,14 +2,18 @@
 
 import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { getVariables } from "@/components/_variables/variables";
 import { Button } from "@/components/ui/button";
 
+export function dispatchDashboardRefresh() {
+  window.dispatchEvent(new CustomEvent("dashboard-refresh"));
+}
+
 export function LastUpdated() {
   const [time, setTime] = useState<string>("");
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const variables = getVariables();
 
@@ -28,7 +32,10 @@ export function LastUpdated() {
     const clockInterval = setInterval(updateTime, 1000);
 
     const refreshInterval = setInterval(() => {
-      router.refresh();
+      dispatchDashboardRefresh();
+      startTransition(() => {
+        router.refresh();
+      });
     }, 10000);
 
     return () => {
@@ -38,11 +45,10 @@ export function LastUpdated() {
   }, [router]);
 
   const handleRefresh = () => {
-    setIsUpdating(true);
-    router.refresh();
-    setTimeout(() => {
-      setIsUpdating(false);
-    }, 1000);
+    dispatchDashboardRefresh();
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   return (
@@ -50,16 +56,16 @@ export function LastUpdated() {
       variant="outline"
       className=" p-4 lg:p-4.5 xl:p-5.5"
       onClick={handleRefresh}
-      disabled={isUpdating}
+      disabled={isPending}
     >
       <RefreshCw
-        className={`size-4 xl:size-4.5 font-inter text-xs lg:text-[0.8rem] xl:text-[0.9rem] font-medium ${isUpdating ? "animate-spin" : ""}`}
+        className={`size-4 xl:size-4.5 font-inter text-xs lg:text-[0.8rem] xl:text-[0.9rem] font-medium ${isPending ? "animate-spin" : ""}`}
         style={{
           color: variables.colors.headerIconColor,
         }}
       />
       <span className="font-inter text-xs lg:text-[0.8rem] xl:text-[0.9rem] font-medium">
-        {isUpdating ? "Updating..." : `Last Updated: ${time}`}
+        {isPending ? "Updating..." : `Last Updated: ${time}`}
       </span>
     </Button>
   );

@@ -28,16 +28,8 @@ export async function getAdvertiserResponses({
   status?: string[];
   search?: string;
 }) {
-  const where: SQL[] = [
-    eq(creativeRequests.advertiserId, advertiserId),
-    or(
-      inArray(creativeRequests.approvalStage, ["advertiser", "completed"]),
-      and(
-        eq(creativeRequests.approvalStage, "admin"),
-        isNotNull(creativeRequests.advertiserStatus)
-      )
-    ) as SQL,
-  ];
+  const where: SQL[] = [eq(creativeRequests.advertiserId, advertiserId)];
+
   if (status && status.length > 0) {
     type RequestStatusUnion =
       | "new"
@@ -51,6 +43,13 @@ export async function getAdvertiserResponses({
         creativeRequests.status,
         status as unknown as [RequestStatusUnion, ...RequestStatusUnion[]]
       )
+    );
+  } else {
+    where.push(
+      or(
+        eq(creativeRequests.approvalStage, "advertiser"),
+        isNotNull(creativeRequests.advertiserStatus)
+      ) as SQL
     );
   }
   if (search) {
@@ -190,7 +189,7 @@ export async function sendBackResponse(
     await tx
       .update(creativeRequests)
       .set({
-        status: "pending",
+        status: "sent-back",
         approvalStage: "admin",
         advertiserStatus: "sent_back",
         advertiserComments: reason,
@@ -253,7 +252,7 @@ export async function rejectResponse(
     await tx
       .update(creativeRequests)
       .set({
-        status: "pending",
+        status: "rejected",
         approvalStage: "admin",
         advertiserStatus: "rejected",
         advertiserComments: reason,

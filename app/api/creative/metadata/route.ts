@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { creativeMetadata } from "@/lib/schema";
+import { creativeMetadata, creatives } from "@/lib/schema";
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,25 +23,70 @@ export async function GET(req: NextRequest) {
       .where(eq(creativeMetadata.creativeId, creativeIdParam))
       .limit(1);
 
-    if (result.length === 0) {
+    if (result.length > 0) {
+      const record = result[0];
       return NextResponse.json({
-        success: false,
-        metadata: undefined,
+        success: true,
+        metadata: {
+          fromLines: record.fromLines ?? undefined,
+          subjectLines: record.subjectLines ?? undefined,
+          proofreadingData: record.proofreadingData ?? undefined,
+          htmlContent: record.htmlContent ?? undefined,
+          additionalNotes: record.additionalNotes ?? undefined,
+          metadata: record.metadata ?? undefined,
+        },
       });
     }
 
-    const record = result[0];
+    const [creative] = await db
+      .select({
+        metadata: creatives.metadata,
+      })
+      .from(creatives)
+      .where(eq(creatives.id, creativeIdParam))
+      .limit(1);
+
+    if (creative?.metadata) {
+      const meta = creative.metadata as Record<string, unknown>;
+
+      let fallbackProofreadingData = meta.proofreadingData;
+
+      if (
+        !fallbackProofreadingData &&
+        (meta.ai_issues || meta.ai_score || meta.ai_status)
+      ) {
+        let qualityScore = meta.ai_score;
+        if (typeof qualityScore === "number") {
+          qualityScore = {
+            grammar: qualityScore,
+            readability: qualityScore,
+            conversion: qualityScore,
+            brandAlignment: qualityScore,
+          };
+        }
+
+        fallbackProofreadingData = {
+          issues: meta.ai_issues || [],
+          qualityScore: qualityScore || undefined,
+          status: meta.ai_status || "completed",
+          success: true,
+        };
+      }
+
+      return NextResponse.json({
+        success: true,
+        metadata: {
+          fromLines: meta.fromLines ?? undefined,
+          subjectLines: meta.subjectLines ?? undefined,
+          additionalNotes: meta.additionalNotes ?? undefined,
+          proofreadingData: fallbackProofreadingData ?? undefined,
+        },
+      });
+    }
 
     return NextResponse.json({
-      success: true,
-      metadata: {
-        fromLines: record.fromLines ?? undefined,
-        subjectLines: record.subjectLines ?? undefined,
-        proofreadingData: record.proofreadingData ?? undefined,
-        htmlContent: record.htmlContent ?? undefined,
-        additionalNotes: record.additionalNotes ?? undefined,
-        metadata: record.metadata ?? undefined,
-      },
+      success: false,
+      metadata: undefined,
     });
   } catch (error) {
     console.error("Error getting creative metadata:", error);

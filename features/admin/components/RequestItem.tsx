@@ -86,8 +86,21 @@ const getPriorityBadgeClass = (priority: string) => {
   return "rounded-[20px] border border-[#93C5FD] bg-[#DBEAFE] h-7 px-1.5 text-xs  xl:text-sm font-inter  text-[#1E40AF]";
 };
 
-const getStatusBadgeClass = (status: string) => {
-  switch (status.toLowerCase()) {
+const getStatusBadgeClass = (
+  status: string,
+  advertiserStatus?: string | null
+) => {
+  const normStatus = status.toLowerCase();
+  const normAdvStatus = advertiserStatus?.toLowerCase();
+
+  if (normAdvStatus === "rejected") {
+    return "rounded-[20px] border border-[#FCA5A5] bg-[#FEE2E2] h-7 px-2 text-xs xl:text-sm font-inter font-medium text-[#DC2626]";
+  }
+  if (normAdvStatus === "sent_back") {
+    return "rounded-[20px] border border-[#C4B5FD] bg-[#EDE9FE] h-7 px-2 text-xs xl:text-sm font-inter font-medium text-[#7C3AED]";
+  }
+
+  switch (normStatus) {
     case "new":
       return "rounded-[20px] border border-[#93C5FD] bg-[#DBEAFE] h-7 px-2 text-xs xl:text-sm font-inter font-medium text-[#1E40AF]";
     case "pending":
@@ -108,7 +121,8 @@ const getStatusBadgeClass = (status: string) => {
 const getStatusLabel = (
   status: string,
   approvalStage: string,
-  isAdvertiserView: boolean = false
+  isAdvertiserView: boolean = false,
+  advertiserStatus?: string | null
 ) => {
   const normalizedStatus = status.toLowerCase();
   const normalizedStage = approvalStage.toLowerCase();
@@ -122,7 +136,14 @@ const getStatusLabel = (
   }
 
   if (normalizedStatus === "pending" && normalizedStage === "admin") {
-    return "Pending";
+    // If advertiser already responded, show what they decided
+    if (!isAdvertiserView && advertiserStatus) {
+      if (advertiserStatus === "approved")
+        return "Advertiser Approved – Awaiting Admin";
+      if (advertiserStatus === "rejected") return "Rejected by Advertiser";
+      if (advertiserStatus === "sent_back") return "Returned by Advertiser";
+    }
+    return "Pending Approval";
   }
 
   if (normalizedStatus === "pending" && normalizedStage === "advertiser") {
@@ -315,11 +336,9 @@ export function RequestItem({
   const _isRejectCommentsValid = rejectCommentsLength <= MAX_COMMENT_LENGTH;
   const isSendBackCommentsValid = sendBackCommentsLength <= MAX_COMMENT_LENGTH;
 
-  // Check if popover has unsaved changes
   const hasUnsavedRejectComments = rejectComments.trim().length > 0;
   const hasUnsavedSendBackComments = sendBackComments.trim().length > 0;
 
-  // Handle popover close with warning
   const handleRejectPopoverClose = useCallback(
     async (open: boolean) => {
       if (!open && hasUnsavedRejectComments) {
@@ -501,12 +520,16 @@ export function RequestItem({
 
             <Badge
               variant="outline"
-              className={getStatusBadgeClass(request.status)}
+              className={getStatusBadgeClass(
+                request.status,
+                request.advertiserStatus
+              )}
             >
               {getStatusLabel(
                 request.status,
                 request.approvalStage,
-                isAdvertiserView
+                isAdvertiserView,
+                request.advertiserStatus
               )}
             </Badge>
           </div>

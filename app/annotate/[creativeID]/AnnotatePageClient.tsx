@@ -32,6 +32,7 @@ interface AnnotatePageClientProps {
   requestId?: string;
   action?: "send-back" | "reject";
   readOnly?: boolean;
+  userRole?: string;
 }
 
 export function AnnotatePageClient({
@@ -44,6 +45,7 @@ export function AnnotatePageClient({
   requestId,
   action,
   readOnly = false,
+  userRole,
 }: AnnotatePageClientProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,17 +55,33 @@ export function AnnotatePageClient({
 
     setIsSubmitting(true);
     try {
-      const endpoint =
-        action === "send-back"
-          ? `/api/admin/requests/${requestId}/return`
-          : `/api/admin/requests/${requestId}/reject`;
+      let endpoint: string;
+      let body: Record<string, string>;
+
+      const normalizedRole = userRole?.toLowerCase();
+      if (normalizedRole === "advertiser") {
+        endpoint =
+          action === "send-back"
+            ? `/api/advertiser/responses/${requestId}/send-back`
+            : `/api/advertiser/responses/${requestId}/reject`;
+        body = {
+          reason: "Please review the specific annotations added to the file.",
+        };
+      } else {
+        endpoint =
+          action === "send-back"
+            ? `/api/admin/requests/${requestId}/return`
+            : `/api/admin/requests/${requestId}/reject`;
+        body = {
+          feedback: "Please review the specific annotations added to the file.",
+        };
+      }
 
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          feedback: "Please review the specific annotations added to the file.",
-        }),
+        credentials: "include",
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) throw new Error("Action failed");
@@ -71,7 +89,7 @@ export function AnnotatePageClient({
       toast.success(
         action === "send-back" ? "Request returned" : "Request rejected"
       );
-      router.push("/requests");
+      router.push(normalizedRole === "advertiser" ? "/dashboard" : "/requests");
       router.refresh();
     } catch {
       toast.error("Failed to process action");

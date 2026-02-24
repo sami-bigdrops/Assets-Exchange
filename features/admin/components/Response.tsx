@@ -59,6 +59,15 @@ export function Response() {
     };
 
     load();
+
+    const pollInterval = setInterval(() => void load(), 30000);
+
+    const handleRefresh = () => void load();
+    window.addEventListener("dashboard-refresh", handleRefresh);
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener("dashboard-refresh", handleRefresh);
+    };
   }, []);
 
   const updateRequestStatus = useCallback(

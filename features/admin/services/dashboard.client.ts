@@ -206,13 +206,19 @@ function transformBackendStatsToFrontend(
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   try {
-    const response = await fetch("/api/admin/dashboard/stats", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    });
+    const response = await fetch(
+      `/api/admin/dashboard/stats?_t=${Date.now()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+        credentials: "include",
+        cache: "no-store",
+      }
+    );
 
     if (!response.ok) {
       if (response.status === 401) {

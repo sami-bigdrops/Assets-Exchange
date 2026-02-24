@@ -27,6 +27,15 @@ export function useAdminDashboardViewModel() {
 
   useEffect(() => {
     fetchData();
+
+    const pollInterval = setInterval(() => void fetchData(), 30000);
+
+    const handleRefresh = () => void fetchData();
+    window.addEventListener("dashboard-refresh", handleRefresh);
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener("dashboard-refresh", handleRefresh);
+    };
   }, [fetchData]);
 
   return {

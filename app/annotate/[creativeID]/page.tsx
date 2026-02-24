@@ -27,8 +27,6 @@ export default async function AnnotatePage({
 
   const { creativeID } = await params;
   const { requestId, action, mode } = await searchParams;
-  const isViewOnly =
-    mode === "view" || !["admin", "advertiser"].includes(userRole);
 
   const creative = await db.query.creatives.findFirst({
     where: eq(creatives.id, creativeID),
@@ -36,6 +34,29 @@ export default async function AnnotatePage({
 
   if (!creative) {
     notFound();
+  }
+
+  // Check if it should be read-only based on stage
+  let isViewOnly =
+    mode === "view" ||
+    !["admin", "advertiser", "administrator"].includes(userRole);
+
+  if (requestId) {
+    const { creativeRequests } = await import("@/lib/schema");
+    const request = await db.query.creativeRequests.findFirst({
+      where: eq(creativeRequests.id, requestId),
+    });
+
+    if (request) {
+      const isAdvertiser = userRole === "advertiser";
+      const isAdmin = userRole === "admin" || userRole === "administrator";
+
+      if (isAdvertiser && request.approvalStage !== "advertiser") {
+        isViewOnly = true;
+      } else if (isAdmin && request.approvalStage !== "admin") {
+        isViewOnly = true;
+      }
+    }
   }
 
   const creativeType = creative.type.toLowerCase().includes("image")
@@ -55,6 +76,7 @@ export default async function AnnotatePage({
         action === "send-back" || action === "reject" ? action : undefined
       }
       readOnly={isViewOnly}
+      userRole={userRole}
     />
   );
 }

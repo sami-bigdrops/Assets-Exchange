@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
 
     let fromLinesCount = countLines(data.fromLines);
     let subjectLinesCount = countLines(data.subjectLines);
+    let finalFromLines = data.fromLines || "";
+    let finalSubjectLines = data.subjectLines || "";
 
     if (data.files?.length) {
       data.files.forEach((file) => {
@@ -45,9 +47,11 @@ export async function POST(req: NextRequest) {
           const metadata = file.metadata as Record<string, unknown>;
           if (typeof metadata.fromLines === "string") {
             fromLinesCount += countLines(metadata.fromLines);
+            if (!finalFromLines) finalFromLines = metadata.fromLines;
           }
           if (typeof metadata.subjectLines === "string") {
             subjectLinesCount += countLines(metadata.subjectLines);
+            if (!finalSubjectLines) finalSubjectLines = metadata.subjectLines;
           }
         }
       });
@@ -81,8 +85,8 @@ export async function POST(req: NextRequest) {
         status: "new",
         approvalStage: "admin",
         adminStatus: "pending",
-        fromLines: data.fromLines,
-        subjectLines: data.subjectLines,
+        fromLines: finalFromLines,
+        subjectLines: finalSubjectLines,
         additionalNotes: data.additionalNotes,
         submittedAt: new Date(),
         updatedAt: new Date(),

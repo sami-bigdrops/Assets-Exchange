@@ -38,6 +38,16 @@ function rowToViewCreative(
     row.format === "html" ||
     /html/i.test(row.type) ||
     /\.html?$/i.test(row.name);
+
+  const metadata = {
+    fromLines: (row.metadata?.fromLines as string) || requestMetadata.fromLines,
+    subjectLines:
+      (row.metadata?.subjectLines as string) || requestMetadata.subjectLines,
+    additionalNotes:
+      (row.metadata?.additionalNotes as string) ||
+      requestMetadata.additionalNotes,
+  };
+
   return {
     id: row.id,
     name: row.name,
@@ -46,7 +56,7 @@ function rowToViewCreative(
     type: row.type,
     previewUrl: isImage ? row.url : undefined,
     html: isHtml,
-    metadata: requestMetadata,
+    metadata,
   };
 }
 

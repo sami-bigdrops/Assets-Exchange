@@ -131,6 +131,7 @@ export type RequestCreativeRow = {
   size: number;
   type: string;
   format: string | null;
+  metadata: Record<string, unknown>;
 };
 
 export async function getRequestWithCreatives(requestId: string) {
@@ -149,6 +150,7 @@ export async function getRequestWithCreatives(requestId: string) {
       size: creatives.size,
       type: creatives.type,
       format: creatives.format,
+      metadata: creatives.metadata,
     })
     .from(creatives)
     .where(

@@ -14,7 +14,7 @@ export async function POST(
   const headers = await getHeaders();
   const session = await auth.api.getSession({ headers });
 
-  if (!session || session.user.role !== "admin") {
+  if (!session || !["admin", "administrator"].includes(session.user.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

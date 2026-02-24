@@ -128,6 +128,7 @@ export const validateField = (
       }
       break;
 
+<<<<<<< Updated upstream
     // case "fromLines":
     //   if (!value || value.trim().length === 0) {
     //     return {
@@ -157,6 +158,24 @@ export const validateField = (
           error: ERROR_MESSAGES.VALIDATION.REQUIRED_FIELD,
         };
       }
+=======
+      // case 'fromLines':
+      //   if (!value || value.trim().length === 0) {
+      //     return {
+      //       valid: false,
+      //       error: 'From lines are required'
+      //     };
+      //   }
+      //   break;
+
+      // case 'subjectLines':
+      //   if (!value || value.trim().length === 0) {
+      //     return {
+      //       valid: false,
+      //       error: 'Subject lines are required'
+      //     };
+      //   }
+>>>>>>> Stashed changes
       break;
   }
 
@@ -233,18 +252,26 @@ export const validateCreativeDetails = (
     errors.creativeType = creativeTypeValidation.error;
   }
 
+<<<<<<< Updated upstream
   // const fromLinesValidation = validateField(
   //   "fromLines",
   //   formData.fromLines || ""
   // );
+=======
+  // const fromLinesValidation = validateField('fromLines', formData.fromLines || '');
+>>>>>>> Stashed changes
   // if (!fromLinesValidation.valid && fromLinesValidation.error) {
   //   errors.fromLines = fromLinesValidation.error;
   // }
 
+<<<<<<< Updated upstream
   // const subjectLinesValidation = validateField(
   //   "subjectLines",
   //   formData.subjectLines || ""
   // );
+=======
+  // const subjectLinesValidation = validateField('subjectLines', formData.subjectLines || '');
+>>>>>>> Stashed changes
   // if (!subjectLinesValidation.valid && subjectLinesValidation.error) {
   //   errors.subjectLines = subjectLinesValidation.error;
   // }
@@ -333,12 +360,13 @@ export const validateFile = (file: File): FileValidationResult => {
 };
 
 // Validate from lines and subject lines
-export const validateFromSubjectLines = (
-  fromLines: string,
-  subjectLines: string
-): ValidationResult => {
-  const errors: Record<string, string> = {};
+// export const validateFromSubjectLines = (
+//   fromLines: string,
+//   subjectLines: string
+// ): ValidationResult => {
+//   const errors: Record<string, string> = {};
 
+<<<<<<< Updated upstream
   if (!fromLines || !fromLines.trim()) {
     errors.fromLines = "From lines are required";
   }
@@ -365,6 +393,34 @@ export const validateFromSubjectLines = (
     errors: {},
   };
 };
+=======
+//   if (!fromLines || !fromLines.trim()) {
+//     errors.fromLines = 'From lines are required';
+//   }
+
+//   if (!subjectLines || !subjectLines.trim()) {
+//     errors.subjectLines = 'Subject lines are required';
+//   }
+
+//   if (Object.keys(errors).length > 0) {
+//     return {
+//       valid: false,
+//       errors,
+//       error: createError(
+//         ErrorType.VALIDATION,
+//         'From lines and subject lines are required',
+//         'FROM_SUBJECT_LINES_REQUIRED',
+//         errors
+//       )
+//     };
+//   }
+
+//   return {
+//     valid: true,
+//     errors: {}
+//   };
+// }
+>>>>>>> Stashed changes
 
 // Get line count helper
 export const getLineCount = (text: string): number => {

@@ -1,4 +1,6 @@
 "use client";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 import { toast } from "sonner";
 
@@ -39,6 +41,19 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
     editData,
     currentCreativeFilesRef,
   } = usePublisherForm(requestId ?? null);
+
+  /* Hydration Mismatch Fix:
+   * The currentStep comes from localStorage via usePublisherForm -> loadFormState.
+   * On the server, this is always 1 (default). On the client, it might be 3 (restored).
+   * We must wait until mounted to show the real step to avoid 1 vs 3 mismatch.
+   */
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // During SSR/Hydration, render step 1 (default). After mount, render real step.
+  const displayStep = isMounted ? currentStep : 1;
 
   const validation = useFormValidation(formData);
   const inputRingColor = variables.colors.inputRingColor;
@@ -131,7 +146,7 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
               className="text-base sm:text-lg font-semibold font-inter"
               style={{ color: variables.colors.titleColor }}
             >
-              Step {currentStep} of 3 : {getStepLabel(currentStep)}
+              Step {displayStep} of 3 : {getStepLabel(displayStep)}
             </p>
             <Separator />
             {editData?.adminComments && (
@@ -177,7 +192,52 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
             <Button
               type="button"
               className="w-full h-14 font-inter font-medium"
+<<<<<<< Updated upstream
               onClick={handleNextOrSubmit}
+=======
+              onClick={async () => {
+                if (currentStep === 3) {
+                  const result = validation.validateCompleteFormData(
+                    formData,
+                    validation.hasUploadedFiles,
+                    validation.hasFromSubjectLines
+                  );
+                  if (result.valid) {
+                    await handleSubmit();
+                  } else {
+                    validation.validateCreativeDetailsStep(
+                      formData,
+                      validation.hasUploadedFiles,
+                      validation.hasFromSubjectLines
+                    );
+                    toast.error(
+                      "Please ensure all required fields are filled correctly."
+                    );
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                } else {
+                  let isValid = false;
+                  if (currentStep === 1) {
+                    const result =
+                      validation.validatePersonalDetailsStep(formData);
+                    isValid = result.valid;
+                    if (!isValid) {
+                      return;
+                    }
+                  } else if (currentStep === 2) {
+                    const result =
+                      validation.validateContactDetailsStep(formData);
+                    isValid = result.valid;
+                    if (!isValid) {
+                      return;
+                    }
+                  }
+                  if (isValid) {
+                    nextStep();
+                  }
+                }
+              }}
+>>>>>>> Stashed changes
               disabled={isSubmitting}
               style={{
                 backgroundColor: variables.colors.buttonDefaultBackgroundColor,

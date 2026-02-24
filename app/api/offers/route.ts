@@ -13,10 +13,34 @@ export async function GET() {
     }));
 
     return NextResponse.json(offerData);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching offers:", error);
+
+    const isQuota =
+      error?.status === 503 ||
+      error?.code === "COMPUTE_QUOTA_EXCEEDED" ||
+      (typeof error?.message === "string" &&
+        (error.message.includes("compute time quota") ||
+          error.message.includes("compute time")));
+
+    if (isQuota) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "SERVICE_UNAVAILABLE",
+            message: "Service temporarily unavailable",
+          },
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        ok: false,
+        error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+      },
       { status: 500 }
     );
   }

@@ -13,15 +13,21 @@ export async function GET() {
     }));
 
     return NextResponse.json(offerData);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching offers:", error);
 
+    const err = error as {
+      status?: number;
+      code?: string;
+      message?: string;
+    } | null;
+
     const isQuota =
-      error?.status === 503 ||
-      error?.code === "COMPUTE_QUOTA_EXCEEDED" ||
-      (typeof error?.message === "string" &&
-        (error.message.includes("compute time quota") ||
-          error.message.includes("compute time")));
+      err?.status === 503 ||
+      err?.code === "COMPUTE_QUOTA_EXCEEDED" ||
+      (typeof err?.message === "string" &&
+        (err.message.includes("compute time quota") ||
+          err.message.includes("compute time")));
 
     if (isQuota) {
       return NextResponse.json(

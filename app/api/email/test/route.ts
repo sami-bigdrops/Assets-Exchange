@@ -24,10 +24,8 @@ export async function POST(req: Request) {
     }
 
     const subject = "Assets Exchange - Test Email";
-    const text = `This is a test email from the Assets Exchange application.\n\nIf you received this, the AWS SES email service is configured correctly.\n\nSent at: ${new Date().toISOString()}`;
     const html = `<p>This is a test email from the Assets Exchange application.</p><p>If you received this, the AWS SES email service is configured correctly.</p><p><small>Sent at: ${new Date().toISOString()}</small></p>`;
-
-    await sendEmail({ to, subject, text, html });
+    await sendEmail({ to, subject, html });
 
     return NextResponse.json({
       success: true,

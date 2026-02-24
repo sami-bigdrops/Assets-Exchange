@@ -155,12 +155,14 @@ describe("Grammar Feedback Extraction", () => {
       it("should handle null resultData", () => {
         const resultData = null;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const feedback = extractGrammarFeedback(resultData as any);
 
         expect(feedback).toEqual([]);
       });
 
       it("should handle resultData as string", () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const resultData = "invalid" as any;
 
         const feedback = extractGrammarFeedback(resultData);
@@ -374,7 +376,7 @@ describe("Grammar Feedback Extraction", () => {
           corrections: [{ original: "teh", correction: "the" }],
         };
 
-        vi.spyOn(console, "error").mockImplementation(() => {});
+        vi.spyOn(console, "error").mockImplementation(() => { });
 
         const originalExtract = extractGrammarFeedback;
         (global as any).extractGrammarFeedback = vi.fn(() => {
@@ -392,6 +394,7 @@ describe("Grammar Feedback Extraction", () => {
   });
 });
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 function extractGrammarFeedback(resultData: any): any[] {
   if (!resultData || typeof resultData !== "object") {
     return [];
@@ -463,6 +466,7 @@ function extractGrammarFeedback(resultData: any): any[] {
       severity = source === "correction" ? "warning" : "info";
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const location: any = {};
     if (typeof item.line === "number") {
       location.line = item.line;
@@ -501,6 +505,7 @@ function extractGrammarFeedback(resultData: any): any[] {
   return feedback;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractGrammarFeedbackWithBusinessLogic(
   resultData: any,
   taskStatus: string
@@ -524,3 +529,4 @@ function extractGrammarFeedbackWithBusinessLogic(
     return null;
   }
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */

@@ -21,6 +21,7 @@ import {
   getStepLabel,
   getButtonText,
 } from "@/features/publisher/view-models/publisherForm.viewModel";
+import { sanitizePlainText } from "@/lib/security/sanitize";
 
 interface PublisherFormProps {
   requestId?: string | null;
@@ -158,7 +159,7 @@ export default function PublisherForm({ requestId }: PublisherFormProps = {}) {
               >
                 <AlertTitle>Feedback from reviewer</AlertTitle>
                 <AlertDescription className="whitespace-pre-wrap mt-1">
-                  {editData.adminComments}
+                  {sanitizePlainText(editData.adminComments)}
                 </AlertDescription>
               </Alert>
             )}

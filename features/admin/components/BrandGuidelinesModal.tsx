@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Textarea } from "@/components/ui/textarea";
+import { sanitizeRichTextOrHtml } from "@/lib/security/sanitize";
 
 export interface BrandGuidelinesData {
   type: "url" | "file" | "text" | null;
@@ -37,6 +38,12 @@ export interface BrandGuidelinesData {
   mimeType?: string;
   text?: string;
   notes?: string;
+}
+
+interface CleanFile {
+  id: string;
+  originalName: string;
+  size: number;
 }
 
 interface BrandGuidelinesModalProps {
@@ -75,7 +82,7 @@ export function BrandGuidelinesModal({
 
   const [editType, setEditType] = useState<"url" | "upload" | "text">("url");
   const [editFile, setEditFile] = useState<File | null>(null);
-  const [cleanFiles, setCleanFiles] = useState<any[]>([]);
+  const [cleanFiles, setCleanFiles] = useState<CleanFile[]>([]);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -321,9 +328,7 @@ export function BrandGuidelinesModal({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || "Failed to save brand guidelines"
-        );
+        throw new Error(errorData.error || "Failed to save brand guidelines");
       }
 
       toast.success("Brand guidelines saved successfully", {
@@ -360,8 +365,7 @@ export function BrandGuidelinesModal({
               setBrandGuidelines(fetchResult.data);
             }
           }
-        } catch (_err) {
-        }
+        } catch (_err) {}
       };
 
       await fetchUpdated();
@@ -395,14 +399,18 @@ export function BrandGuidelinesModal({
     if (brandGuidelines.type === "url" && brandGuidelines.url) {
       return (
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 border rounded-lg"
+          <div
+            className="flex items-center justify-between p-3 border rounded-lg"
             style={{
               backgroundColor: variables.colors.cardBackground,
               borderColor: variables.colors.inputBorderColor,
             }}
           >
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-inter mb-1" style={{ color: variables.colors.inputPlaceholderColor }}>
+              <p
+                className="text-xs font-inter mb-1"
+                style={{ color: variables.colors.inputPlaceholderColor }}
+              >
                 Brand Guidelines URL
               </p>
               <a
@@ -509,7 +517,9 @@ export function BrandGuidelinesModal({
         <div className="border rounded-lg p-4 min-h-[200px] max-h-[600px] overflow-y-auto">
           <div
             className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: brandGuidelines.text }}
+            dangerouslySetInnerHTML={{
+              __html: sanitizeRichTextOrHtml(brandGuidelines.text),
+            }}
           />
         </div>
       );
@@ -533,18 +543,18 @@ export function BrandGuidelinesModal({
               style={
                 editType === "url"
                   ? {
-                    backgroundColor:
-                      variables.colors.buttonDefaultBackgroundColor,
-                    color: variables.colors.buttonDefaultTextColor,
-                    height: "2.25rem",
-                  }
+                      backgroundColor:
+                        variables.colors.buttonDefaultBackgroundColor,
+                      color: variables.colors.buttonDefaultTextColor,
+                      height: "2.25rem",
+                    }
                   : {
-                    backgroundColor:
-                      variables.colors.buttonOutlineBackgroundColor,
-                    borderColor: variables.colors.buttonOutlineBorderColor,
-                    color: variables.colors.buttonOutlineTextColor,
-                    height: "2.25rem",
-                  }
+                      backgroundColor:
+                        variables.colors.buttonOutlineBackgroundColor,
+                      borderColor: variables.colors.buttonOutlineBorderColor,
+                      color: variables.colors.buttonOutlineTextColor,
+                      height: "2.25rem",
+                    }
               }
             >
               URL
@@ -559,18 +569,18 @@ export function BrandGuidelinesModal({
               style={
                 editType === "upload"
                   ? {
-                    backgroundColor:
-                      variables.colors.buttonDefaultBackgroundColor,
-                    color: variables.colors.buttonDefaultTextColor,
-                    height: "2.25rem",
-                  }
+                      backgroundColor:
+                        variables.colors.buttonDefaultBackgroundColor,
+                      color: variables.colors.buttonDefaultTextColor,
+                      height: "2.25rem",
+                    }
                   : {
-                    backgroundColor:
-                      variables.colors.buttonOutlineBackgroundColor,
-                    borderColor: variables.colors.buttonOutlineBorderColor,
-                    color: variables.colors.buttonOutlineTextColor,
-                    height: "2.25rem",
-                  }
+                      backgroundColor:
+                        variables.colors.buttonOutlineBackgroundColor,
+                      borderColor: variables.colors.buttonOutlineBorderColor,
+                      color: variables.colors.buttonOutlineTextColor,
+                      height: "2.25rem",
+                    }
               }
             >
               Upload
@@ -585,18 +595,18 @@ export function BrandGuidelinesModal({
               style={
                 editType === "text"
                   ? {
-                    backgroundColor:
-                      variables.colors.buttonDefaultBackgroundColor,
-                    color: variables.colors.buttonDefaultTextColor,
-                    height: "2.25rem",
-                  }
+                      backgroundColor:
+                        variables.colors.buttonDefaultBackgroundColor,
+                      color: variables.colors.buttonDefaultTextColor,
+                      height: "2.25rem",
+                    }
                   : {
-                    backgroundColor:
-                      variables.colors.buttonOutlineBackgroundColor,
-                    borderColor: variables.colors.buttonOutlineBorderColor,
-                    color: variables.colors.buttonOutlineTextColor,
-                    height: "2.25rem",
-                  }
+                      backgroundColor:
+                        variables.colors.buttonOutlineBackgroundColor,
+                      borderColor: variables.colors.buttonOutlineBorderColor,
+                      color: variables.colors.buttonOutlineTextColor,
+                      height: "2.25rem",
+                    }
               }
             >
               Direct Input
@@ -832,11 +842,14 @@ export function BrandGuidelinesModal({
 
               {cleanFiles.length > 0 && (
                 <div className="space-y-2 mt-4!">
-                  <p className="text-sm font-inter font-medium" style={{ color: variables.colors.inputTextColor }}>
+                  <p
+                    className="text-sm font-inter font-medium"
+                    style={{ color: variables.colors.inputTextColor }}
+                  >
                     Select from available clean files:
                   </p>
                   <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                    {cleanFiles.map((file: any) => (
+                    {cleanFiles.map((file: CleanFile) => (
                       <div
                         key={file.id}
                         onClick={() => {
@@ -845,17 +858,34 @@ export function BrandGuidelinesModal({
                         }}
                         className="flex items-center justify-between p-2 rounded-md border cursor-pointer transition-colors"
                         style={{
-                          borderColor: selectedFileId === file.id ? variables.colors.buttonDefaultBackgroundColor : variables.colors.inputBorderColor,
-                          backgroundColor: selectedFileId === file.id ? `${variables.colors.buttonDefaultBackgroundColor}10` : "transparent",
+                          borderColor:
+                            selectedFileId === file.id
+                              ? variables.colors.buttonDefaultBackgroundColor
+                              : variables.colors.inputBorderColor,
+                          backgroundColor:
+                            selectedFileId === file.id
+                              ? `${variables.colors.buttonDefaultBackgroundColor}10`
+                              : "transparent",
                         }}
                       >
                         <div className="flex items-center gap-2 overflow-hidden">
-                          <File size={16} style={{ color: variables.colors.inputTextColor }} />
-                          <span className="text-sm truncate font-inter" style={{ color: variables.colors.inputTextColor }}>
+                          <File
+                            size={16}
+                            style={{ color: variables.colors.inputTextColor }}
+                          />
+                          <span
+                            className="text-sm truncate font-inter"
+                            style={{ color: variables.colors.inputTextColor }}
+                          >
                             {file.originalName}
                           </span>
                         </div>
-                        <span className="text-xs font-inter shrink-0" style={{ color: variables.colors.inputPlaceholderColor }}>
+                        <span
+                          className="text-xs font-inter shrink-0"
+                          style={{
+                            color: variables.colors.inputPlaceholderColor,
+                          }}
+                        >
                           {(file.size / 1024 / 1024).toFixed(2)} MB
                         </span>
                       </div>

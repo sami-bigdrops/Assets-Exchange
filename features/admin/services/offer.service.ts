@@ -142,7 +142,7 @@ export async function updateOffer(
   id: string,
   data: Partial<{
     name: string;
-    status: "active" | "inactive";
+    status: "Active" | "Inactive";
     visibility: "Public" | "Internal" | "Hidden";
     advertiserId: string;
     brandGuidelinesFileId: string | null;
@@ -163,12 +163,7 @@ export async function updateOffer(
     .update(offers)
     .set({
       offerName: data.name,
-      status:
-        data.status === "active"
-          ? "Active"
-          : data.status === "inactive"
-            ? "Inactive"
-            : undefined,
+      status: data.status,
       visibility: data.visibility,
       advertiserId: data.advertiserId,
       advertiserName,

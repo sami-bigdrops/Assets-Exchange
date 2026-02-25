@@ -9,6 +9,8 @@ import {
 import { auth } from "@/lib/auth";
 import { getRateLimitKey } from "@/lib/getRateLimitKey";
 import { ratelimit } from "@/lib/ratelimit";
+import { sanitizePlainText } from "@/lib/security/sanitize";
+import { idParamSchema, updateOfferSchema } from "@/lib/validations/admin";
 
 async function enforceRateLimit() {
   const key = await getRateLimitKey();
@@ -32,7 +34,17 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const row = await getOffer(id);
+
+  // Validate ID parameter
+  const paramsParsed = idParamSchema.safeParse({ id });
+  if (!paramsParsed.success) {
+    return NextResponse.json(
+      { error: "Invalid ID", details: paramsParsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const row = await getOffer(paramsParsed.data.id);
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(row);
 }
@@ -49,8 +61,38 @@ export async function PUT(
     if (rl) return rl;
 
     const { id } = await params;
+
+    // Validate ID parameter
+    const paramsParsed = idParamSchema.safeParse({ id });
+    if (!paramsParsed.success) {
+      return NextResponse.json(
+        { error: "Invalid ID", details: paramsParsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
     const body = await req.json();
-    const row = await updateOffer(id, body);
+
+    // Validate request body
+    const bodyParsed = updateOfferSchema.safeParse({
+      ...body,
+      id: paramsParsed.data.id,
+    });
+    if (!bodyParsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: bodyParsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { id: _, ...data } = bodyParsed.data;
+
+    // Sanitize name if present
+    if (data.name) {
+      data.name = sanitizePlainText(data.name);
+    }
+
+    const row = await updateOffer(paramsParsed.data.id, data);
     if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(row);
   } catch (err: unknown) {
@@ -72,7 +114,17 @@ export async function DELETE(
     if (rl) return rl;
 
     const { id } = await params;
-    await softDeleteOffer(id);
+
+    // Validate ID parameter
+    const paramsParsed = idParamSchema.safeParse({ id });
+    if (!paramsParsed.success) {
+      return NextResponse.json(
+        { error: "Invalid ID", details: paramsParsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    await softDeleteOffer(paramsParsed.data.id);
     return new NextResponse(null, { status: 204 });
   } catch (err: unknown) {
     const message =

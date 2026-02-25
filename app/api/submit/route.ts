@@ -10,8 +10,13 @@ import { sendSubmissionTelegramAlert } from "@/features/notifications/notificati
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { validateRequest } from "@/lib/middleware/validateRequest";
-import { assetsTable, creativeRequests, creatives } from "@/lib/schema";
-import { publishers } from "@/lib/schema";
+import {
+  assetsTable,
+  creativeRequests,
+  creatives,
+  publishers,
+} from "@/lib/schema";
+import { sanitizePlainText } from "@/lib/security/sanitize";
 import { generateTrackingCode } from "@/lib/utils/tracking";
 import { submitSchema } from "@/lib/validations/publisher";
 
@@ -27,6 +32,11 @@ export async function POST(req: NextRequest) {
     if ("response" in validation) return validation.response;
 
     const data = validation.data;
+
+    // Sanitize user-stored content for XSS protection
+    const sanitizedAdditionalNotes = sanitizePlainText(data.additionalNotes);
+    const sanitizedFromLines = sanitizePlainText(data.fromLines);
+    const sanitizedSubjectLines = sanitizePlainText(data.subjectLines);
 
     const offer = await getOffer(data.offerId);
     if (!offer) {
@@ -81,9 +91,9 @@ export async function POST(req: NextRequest) {
         status: "new",
         approvalStage: "admin",
         adminStatus: "pending",
-        fromLines: data.fromLines,
-        subjectLines: data.subjectLines,
-        additionalNotes: data.additionalNotes,
+        fromLines: sanitizedFromLines,
+        subjectLines: sanitizedSubjectLines,
+        additionalNotes: sanitizedAdditionalNotes,
         submittedAt: new Date(),
         updatedAt: new Date(),
       })

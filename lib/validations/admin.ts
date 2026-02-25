@@ -11,6 +11,31 @@ export const brandGuidelinesSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const idParamSchema = z
+  .object({
+    id: z.string().min(1, "ID is required").max(100),
+  })
+  .strict();
+
+export const searchQuerySchema = z
+  .object({
+    search: z.string().max(100).optional(),
+  })
+  .strict();
+
+export const offersListQuerySchema = z
+  .object({
+    search: z.string().max(100).optional(),
+    status: z.enum(["Active", "Inactive"]).optional(),
+  })
+  .strict();
+
+export const offerCodeQuerySchema = z
+  .object({
+    code: z.string().min(1).max(50),
+  })
+  .strict();
+
 export const createAdvertiserSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   contactEmail: z.string().email().optional().or(z.literal("")),
@@ -19,19 +44,25 @@ export const createAdvertiserSchema = z.object({
   brandGuidelines: brandGuidelinesSchema.optional(),
 });
 
-export const updateAdvertiserSchema = createAdvertiserSchema.partial().extend({
-  id: z.string().min(1),
-});
+export const updateAdvertiserSchema = createAdvertiserSchema
+  .partial()
+  .extend({
+    id: z.string().min(1),
+  })
+  .strict();
 
 export const createPublisherSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   contactEmail: z.string().email().optional().or(z.literal("")),
-  status: z.string().optional(),
+  status: z.enum(["active", "inactive"]).optional(),
 });
 
-export const updatePublisherSchema = createPublisherSchema.partial().extend({
-  id: z.string().min(1),
-});
+export const updatePublisherSchema = createPublisherSchema
+  .partial()
+  .extend({
+    id: z.string().min(1),
+  })
+  .strict();
 
 export const createOfferSchema = z.object({
   name: z.string().min(1, "Offer name is required").max(200),
@@ -42,15 +73,20 @@ export const createOfferSchema = z.object({
   everflowOfferId: z.string().optional(),
 });
 
-export const updateOfferSchema = createOfferSchema.partial().extend({
-  id: z.string().min(1),
-});
+export const updateOfferSchema = createOfferSchema
+  .partial()
+  .extend({
+    id: z.string().min(1),
+  })
+  .strict();
 
-export const bulkUpdateOffersSchema = z.object({
-  offerIds: z.array(z.string().min(1)).min(1),
-  visibility: z.enum(["Public", "Internal", "Hidden"]).optional(),
-  status: z.enum(["Active", "Inactive"]).optional(),
-});
+export const bulkUpdateOffersSchema = z
+  .object({
+    offerIds: z.array(z.string().min(1)).min(1),
+    visibility: z.enum(["Public", "Internal", "Hidden"]).optional(),
+    status: z.enum(["Active", "Inactive"]).optional(),
+  })
+  .strict();
 
 const cuidSchema = z
   .string()
@@ -159,3 +195,22 @@ export const moveAssetBetweenBatchesSchema = z.object({
 export const batchAnalyticsQuerySchema = z.object({
   batchIds: z.string().optional(),
 });
+
+export const advertiserResponseSchema = z
+  .object({
+    requestId: z.string().min(1, "Request ID is required"),
+    action: z.enum(["APPROVE", "REJECT"]),
+    comments: z
+      .string()
+      .max(1000, "Comments must not exceed 1000 characters")
+      .optional()
+      .or(z.literal("")),
+  })
+  .strict();
+
+export const syncAdvertisersSchema = z
+  .object({
+    conflictResolution: z.enum(["skip", "update", "merge"]).optional(),
+    filters: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();

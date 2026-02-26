@@ -12,7 +12,10 @@ import { db } from "@/lib/db";
 import { getRateLimitKey } from "@/lib/getRateLimitKey";
 import { ratelimit } from "@/lib/ratelimit";
 import { advertisers } from "@/lib/schema";
-import { createOfferSchema } from "@/lib/validations/admin";
+import {
+  createOfferSchema,
+  offersListQuerySchema,
+} from "@/lib/validations/admin";
 
 async function enforceRateLimit() {
   const key = await getRateLimitKey();
@@ -31,11 +34,20 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const search = searchParams.get("search") ?? undefined;
-  const status = searchParams.get("status") as
-    | "Active"
-    | "Inactive"
-    | undefined;
+  const search = searchParams.get("search") || undefined;
+  const status = searchParams.get("status") || undefined;
+
+  // Validate query parameters
+  const queryParsed = offersListQuerySchema.safeParse({ search, status });
+  if (!queryParsed.success) {
+    return NextResponse.json(
+      {
+        error: "Invalid query parameters",
+        details: queryParsed.error.flatten(),
+      },
+      { status: 400 }
+    );
+  }
 
   let advertiserId: string | undefined = undefined;
 
@@ -48,7 +60,11 @@ export async function GET(req: Request) {
   }
 
   try {
-    const data = await listOffers({ search, status, advertiserId });
+    const data = await listOffers({
+      search: queryParsed.data.search,
+      status: queryParsed.data.status,
+      advertiserId,
+    });
     return NextResponse.json({ data });
   } catch (err: unknown) {
     return handleApiError(err);

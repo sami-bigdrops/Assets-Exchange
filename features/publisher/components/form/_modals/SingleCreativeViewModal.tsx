@@ -42,6 +42,7 @@ import {
   useSingleCreativeViewModal,
   type Creative,
 } from "@/features/publisher/view-models/singleCreativeViewModal.viewModel";
+import { sanitizeCreativeHtml } from "@/lib/security/sanitize";
 
 interface SingleCreativeViewModalProps {
   isOpen: boolean;
@@ -544,7 +545,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                         return markedHtmlContent ? (
                           <iframe
                             key={`marked-${viewModel.previewKey}`}
-                            srcDoc={markedHtmlContent}
+                            srcDoc={sanitizeCreativeHtml(markedHtmlContent)}
                             title="Marked HTML Preview"
                             className="w-full h-full border-0"
                             sandbox="allow-scripts allow-same-origin"
@@ -591,7 +592,7 @@ const SingleCreativeViewModal: React.FC<SingleCreativeViewModalProps> = ({
                       <iframe
                         key={viewModel.previewKey}
                         srcDoc={
-                          viewModel.htmlContent ||
+                          sanitizeCreativeHtml(viewModel.htmlContent) ||
                           '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Arial,sans-serif;color:#666;"><p>HTML content will appear here</p></div>'
                         }
                         title="HTML Preview"

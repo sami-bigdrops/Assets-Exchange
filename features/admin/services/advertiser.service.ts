@@ -142,6 +142,16 @@ export async function updateAdvertiser(
     contactEmail: string;
     status: "active" | "inactive";
     password: string;
+    brandGuidelines: {
+      type: "url" | "file" | "text" | null;
+      url?: string;
+      fileUrl?: string;
+      fileName?: string;
+      fileSize?: number;
+      mimeType?: string;
+      text?: string;
+      notes?: string;
+    } | null;
   }>
 ) {
   // console.log(`[AdvertiserService] updateAdvertiser called for ID ${id} with data:`, JSON.stringify(data));
@@ -152,6 +162,7 @@ export async function updateAdvertiser(
       name: data.name,
       contactEmail: data.contactEmail,
       status: data.status,
+      brandGuidelines: data.brandGuidelines,
       updatedAt: new Date(),
     })
     .where(eq(advertisers.id, id))

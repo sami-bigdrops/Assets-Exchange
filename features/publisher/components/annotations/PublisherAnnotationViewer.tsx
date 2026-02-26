@@ -7,6 +7,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  sanitizeRichTextOrHtml,
+  sanitizeCreativeHtml,
+} from "@/lib/security/sanitize";
 
 type PositionData = {
   x: number;
@@ -79,7 +83,7 @@ export function PublisherAnnotationViewer({
     try {
       const res = await fetch(creativeUrl);
       const text = await res.text();
-      setHtmlContent(text);
+      setHtmlContent(sanitizeCreativeHtml(text));
     } catch {
       setHtmlContent(
         '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Arial;color:#666;"><p>Failed to load HTML</p></div>'
@@ -140,7 +144,7 @@ export function PublisherAnnotationViewer({
               ) : (
                 <iframe
                   srcDoc={
-                    htmlContent ||
+                    sanitizeCreativeHtml(htmlContent) ||
                     '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Arial;color:#666;"><p>Loading...</p></div>'
                   }
                   className="w-[800px] h-[600px] border-none bg-white"
@@ -339,7 +343,9 @@ export function PublisherAnnotationViewer({
                         </div>
                         <div
                           className="text-sm text-gray-700 prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
-                          dangerouslySetInnerHTML={{ __html: note.content }}
+                          dangerouslySetInnerHTML={{
+                            __html: sanitizeRichTextOrHtml(note.content),
+                          }}
                         />
                       </div>
                     </div>

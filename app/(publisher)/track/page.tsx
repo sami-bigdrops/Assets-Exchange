@@ -51,6 +51,10 @@ import SingleCreativeViewModal from "@/features/publisher/components/form/_modal
 import { StatusTracker } from "@/features/publisher/components/thankYou/StatusTracker";
 import type { CreativeFile } from "@/features/publisher/view-models/multipleCreativesModal.viewModel";
 import type { Creative as SingleCreative } from "@/features/publisher/view-models/singleCreativeViewModal.viewModel";
+import {
+  sanitizePlainText,
+  sanitizeCreativeHtml,
+} from "@/lib/security/sanitize";
 
 interface Creative {
   id: string;
@@ -331,8 +335,14 @@ function TrackPageContent() {
         setIsLoadingHtml(true);
         try {
           const response = await fetch(creative.url);
-          const html = await response.text();
-          setHtmlContent(html);
+          if (response.ok) {
+            const text = await response.text();
+            setHtmlContent(sanitizeCreativeHtml(text));
+          } else {
+            throw new Error(
+              `Failed to load HTML content: ${response.statusText}`
+            );
+          }
         } catch {
           setHtmlContent(
             '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Arial,sans-serif;color:#666;"><p>Failed to load HTML content</p></div>'
@@ -750,7 +760,7 @@ function TrackPageContent() {
                         Admin Comments
                       </h4>
                       <p className="text-sm text-amber-700">
-                        {data.adminComments}
+                        {sanitizePlainText(data.adminComments)}
                       </p>
                     </div>
                   )}

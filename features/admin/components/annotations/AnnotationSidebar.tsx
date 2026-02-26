@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { sanitizeRichTextOrHtml } from "@/lib/security/sanitize";
 
 import type { Annotation, AnnotationPositionData } from "./AnnotationLayer";
 
@@ -288,7 +289,9 @@ export function AnnotationSidebar({
                         className={`text-[13px] leading-relaxed text-gray-700 break-words prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 ${
                           truncated ? "line-clamp-3" : ""
                         }`}
-                        dangerouslySetInnerHTML={{ __html: note.content }}
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeRichTextOrHtml(note.content),
+                        }}
                       />
 
                       {isLongComment(note.content) && (

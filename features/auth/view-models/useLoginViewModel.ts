@@ -17,6 +17,13 @@ export function useLoginViewModel() {
     setError(null);
 
     try {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "Logging in via:",
+          `${window.location.origin}/api/auth/signin/email`
+        );
+      }
+
       const result = await signIn.email({
         email: credentials.email,
         password: credentials.password,
@@ -53,7 +60,28 @@ export function useLoginViewModel() {
           errorMessage = result.error.message;
         }
 
-        console.error("Login error:", result.error);
+        // Robust error logging
+        const errorToLog = result.error;
+        if (errorToLog instanceof Response) {
+          console.error("Login query failed:", {
+            status: errorToLog.status,
+            statusText: errorToLog.statusText,
+          });
+          errorToLog
+            .text()
+            .then((t) => console.error("Login error body:", t))
+            .catch(() => {});
+        } else if (errorToLog instanceof Error) {
+          console.error("Login error message:", errorToLog.message);
+          console.error("Login error stack:", errorToLog.stack);
+        } else {
+          console.error("Login error raw:", errorToLog);
+          console.error(
+            "Login error stringified:",
+            JSON.stringify(errorToLog, Object.getOwnPropertyNames(errorToLog))
+          );
+        }
+
         setError(errorMessage);
         setIsLoading(false);
         return;
@@ -70,7 +98,21 @@ export function useLoginViewModel() {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      console.error("Login exception:", err);
+      // Robust exception logging
+      if (err instanceof Error) {
+        console.error("Login exception source:", err.message);
+        console.error("Login exception stack:", err.stack);
+      } else {
+        console.error("Login exception raw:", err);
+        console.error(
+          "Login exception stringified:",
+          JSON.stringify(
+            err,
+            Object.getOwnPropertyNames(err as Record<string, unknown>)
+          )
+        );
+      }
+
       const errorMessage =
         err instanceof Error
           ? err.message

@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { sanitizeCreativeHtml } from "@/lib/security/sanitize";
 
 export type AnnotationPositionData = {
   x: number;
@@ -208,7 +209,7 @@ export function AnnotationLayer({
           <div className="relative w-full">
             <iframe
               srcDoc={
-                htmlContent ||
+                sanitizeCreativeHtml(htmlContent) ||
                 '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Arial,sans-serif;color:#666;"><p>Loading HTML content...</p></div>'
               }
               className="w-full h-[600px] border-none pointer-events-none"

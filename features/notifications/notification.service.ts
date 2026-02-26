@@ -172,6 +172,7 @@ export async function sendStatusChangeEmailAlert(params: {
     | "admin_approved"
     | "admin_rejected"
     | "admin_sent_back"
+    | "admin_forwarded"
     | "advertiser_approved"
     | "advertiser_rejected"
     | "advertiser_sent_back";
@@ -184,6 +185,7 @@ export async function sendStatusChangeEmailAlert(params: {
     admin_approved: "Approved by Admin ✅",
     admin_rejected: "Rejected by Admin ❌",
     admin_sent_back: "Sent back by Admin (revisions requested) ↩️",
+    admin_forwarded: "Forwarded to Advertiser 🔁",
     advertiser_approved: "Approved by Advertiser ✅",
     advertiser_rejected: "Rejected by Advertiser ❌",
     advertiser_sent_back: "Sent back by Advertiser (revisions requested)",

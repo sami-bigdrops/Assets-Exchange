@@ -288,9 +288,6 @@ export async function forwardRequest(id: string, adminId: string) {
       .set({
         status: "pending",
         approvalStage: "advertiser",
-        adminApprovedBy: adminId,
-        adminApprovedAt: new Date(),
-        adminStatus: "approved",
         updatedAt: new Date(),
       })
       .where(eq(creativeRequests.id, id));
@@ -324,20 +321,19 @@ export async function forwardRequest(id: string, adminId: string) {
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
 
-  // ===== PHASE 9 EMAIL: admin_approved =====
+  // ===== PHASE 9 EMAIL: admin_forwarded (correct for forward action) =====
   if (publisherEmail && trackingCode && offerName) {
     try {
       await sendStatusChangeEmailAlert({
         to: publisherEmail,
         trackingCode,
         offerName,
-        status: "admin_approved",
-        // We don't have headers here; use public base URL fallback
+        status: "admin_forwarded",
         host: null,
         proto: null,
       });
     } catch (err) {
-      console.error("[ADMIN_APPROVED_EMAIL_FAILED]", err);
+      console.error("[ADMIN_FORWARDED_EMAIL_FAILED]", err);
     }
   }
 }

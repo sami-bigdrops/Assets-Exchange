@@ -12,6 +12,7 @@ import {
 
 import { logStatusChange } from "@/features/admin/services/statusHistory.service";
 import { notifyWorkflowEvent } from "@/features/notifications/notification.service";
+import { sendStatusChangeEmailAlert } from "@/features/notifications/notification.service";
 import type { WorkflowEvent } from "@/features/notifications/types";
 import { db } from "@/lib/db";
 import { creativeRequests, offers, advertisers, creatives } from "@/lib/schema";
@@ -168,6 +169,9 @@ export async function getRequestWithCreatives(requestId: string) {
 export async function approveRequest(id: string, adminId: string) {
   let evt: WorkflowEvent | null = null;
   let historyEntry: Parameters<typeof logStatusChange>[0] | null = null;
+  let publisherEmail: string | null = null;
+  let trackingCode: string | null = null;
+  let offerName: string | null = null;
 
   await db.transaction(async (tx) => {
     const [row] = await tx
@@ -179,6 +183,10 @@ export async function approveRequest(id: string, adminId: string) {
     if (!row) {
       throw new Error("Request not found");
     }
+
+    publisherEmail = row.email ?? null;
+    trackingCode = row.trackingCode ?? null;
+    offerName = row.offerName ?? null;
 
     const isValidStatus =
       row.status === "new" ||
@@ -228,11 +236,29 @@ export async function approveRequest(id: string, adminId: string) {
 
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
+
+  if (publisherEmail && trackingCode && offerName) {
+    try {
+      await sendStatusChangeEmailAlert({
+        to: publisherEmail,
+        trackingCode,
+        offerName,
+        status: "admin_approved",
+        host: null,
+        proto: null,
+      });
+    } catch (err) {
+      console.error("[ADMIN_APPROVED_EMAIL_FAILED]", err);
+    }
+  }
 }
 
 export async function forwardRequest(id: string, adminId: string) {
   let evt: WorkflowEvent | null = null;
   let historyEntry: Parameters<typeof logStatusChange>[0] | null = null;
+  let publisherEmail: string | null = null;
+  let trackingCode: string | null = null;
+  let offerName: string | null = null;
 
   await db.transaction(async (tx) => {
     const [row] = await tx
@@ -244,6 +270,10 @@ export async function forwardRequest(id: string, adminId: string) {
     if (!row) {
       throw new Error("Request not found");
     }
+
+    publisherEmail = row.email ?? null;
+    trackingCode = row.trackingCode ?? null;
+    offerName = row.offerName ?? null;
 
     const isValidStatus =
       row.status === "new" ||
@@ -293,6 +323,23 @@ export async function forwardRequest(id: string, adminId: string) {
 
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
+
+  // ===== PHASE 9 EMAIL: admin_approved =====
+  if (publisherEmail && trackingCode && offerName) {
+    try {
+      await sendStatusChangeEmailAlert({
+        to: publisherEmail,
+        trackingCode,
+        offerName,
+        status: "admin_approved",
+        // We don't have headers here; use public base URL fallback
+        host: null,
+        proto: null,
+      });
+    } catch (err) {
+      console.error("[ADMIN_APPROVED_EMAIL_FAILED]", err);
+    }
+  }
 }
 
 export async function rejectRequest(
@@ -302,6 +349,10 @@ export async function rejectRequest(
 ) {
   let evt: WorkflowEvent | null = null;
   let historyEntry: Parameters<typeof logStatusChange>[0] | null = null;
+
+  let publisherEmail: string | null = null;
+  let trackingCode: string | null = null;
+  let offerName: string | null = null;
 
   await db.transaction(async (tx) => {
     const [row] = await tx
@@ -313,6 +364,10 @@ export async function rejectRequest(
     if (!row) {
       throw new Error("Request not found");
     }
+
+    publisherEmail = row.email ?? null;
+    trackingCode = row.trackingCode ?? null;
+    offerName = row.offerName ?? null;
 
     const isValidStatus =
       row.status === "new" ||
@@ -353,6 +408,22 @@ export async function rejectRequest(
 
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
+
+  if (publisherEmail && trackingCode && offerName) {
+    try {
+      await sendStatusChangeEmailAlert({
+        to: publisherEmail,
+        trackingCode,
+        offerName,
+        status: "admin_rejected",
+        reason,
+        host: null,
+        proto: null,
+      });
+    } catch (err) {
+      console.error("[ADMIN_REJECTED_EMAIL_FAILED]", err);
+    }
+  }
 }
 
 export async function sendBackRequest(
@@ -362,6 +433,10 @@ export async function sendBackRequest(
 ) {
   let evt: WorkflowEvent | null = null;
   let historyEntry: Parameters<typeof logStatusChange>[0] | null = null;
+
+  let publisherEmail: string | null = null;
+  let trackingCode: string | null = null;
+  let offerName: string | null = null;
 
   await db.transaction(async (tx) => {
     const [row] = await tx
@@ -373,6 +448,9 @@ export async function sendBackRequest(
     if (!row) {
       throw new Error("Request not found");
     }
+    publisherEmail = row.email ?? null;
+    trackingCode = row.trackingCode ?? null;
+    offerName = row.offerName ?? null;
 
     const isValidStatus =
       row.status === "new" ||
@@ -424,4 +502,26 @@ export async function sendBackRequest(
 
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
+
+  if (publisherEmail && trackingCode) {
+    try {
+      await sendStatusChangeEmailAlert({
+        to: publisherEmail,
+        trackingCode,
+        offerName: offerName ?? "Your submission",
+        status: "admin_sent_back",
+        reason: feedback,
+        host: null,
+        proto: null,
+      });
+    } catch (err) {
+      console.error("[ADMIN_SENT_BACK_EMAIL_FAILED]", err);
+    }
+  } else {
+    console.warn("[ADMIN_SENT_BACK_EMAIL_SKIPPED]", {
+      id,
+      publisherEmail,
+      trackingCode,
+    });
+  }
 }

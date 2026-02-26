@@ -3,6 +3,7 @@ import "server-only";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
 import { env } from "@/env";
+import { logExternalCall } from "@/lib/analytics/externalCalls.service";
 
 /**
  * AWS SES Singleton Client
@@ -31,6 +32,10 @@ function getSESClient(): SESClient {
 /**
  * ✅ Task 1 required function signature:
  * sendEmail({ to, subject, html })
+ *
+ * ✅ Phase 9 requirement:
+ * Every email sent must be logged in external_calls
+ * service: 'ses', endpoint: 'SendEmail'
  */
 export async function sendEmail({
   to,
@@ -41,11 +46,16 @@ export async function sendEmail({
   subject: string;
   html: string;
 }) {
-  const fromEmail = env.AWS_SES_FROM_EMAIL;
+  const startedAt = Date.now();
 
+  const fromEmail = env.AWS_SES_FROM_EMAIL;
   if (!fromEmail?.trim()) {
     throw new Error("AWS_SES_FROM_EMAIL is not set");
   }
+
+  // Good enough estimate for analytics
+  const requestSize =
+    (to?.length ?? 0) + (subject?.length ?? 0) + (html?.length ?? 0);
 
   const command = new SendEmailCommand({
     Destination: { ToAddresses: [to] },
@@ -59,7 +69,40 @@ export async function sendEmail({
   });
 
   const ses = getSESClient();
-  return await ses.send(command);
+
+  try {
+    const res = await ses.send(command);
+    const responseTimeMs = Date.now() - startedAt;
+
+    await logExternalCall({
+      service: "ses",
+      endpoint: "SendEmail",
+      method: "POST",
+      requestSize,
+      responseTimeMs,
+      statusCode: 200,
+      errorMessage: null,
+    });
+
+    return res;
+  } catch (err: unknown) {
+    const responseTimeMs = Date.now() - startedAt;
+
+    const errorMessage =
+      err instanceof Error ? err.message : "Unknown SES error";
+
+    await logExternalCall({
+      service: "ses",
+      endpoint: "SendEmail",
+      method: "POST",
+      requestSize,
+      responseTimeMs,
+      statusCode: 500,
+      errorMessage,
+    });
+
+    throw err;
+  }
 }
 
 /**

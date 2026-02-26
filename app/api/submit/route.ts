@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 
 import { env } from "@/env";
 import { getOffer } from "@/features/admin/services/offer.service";
+import { sendSubmissionEmailAlert } from "@/features/notifications/notification.service";
 import { sendSubmissionTelegramAlert } from "@/features/notifications/notification.service";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
@@ -194,6 +195,23 @@ export async function POST(req: NextRequest) {
         trackingCode,
         offer.offerName
       ).catch((err) => console.error("[TELEGRAM_NOTIFY_ERROR]:", err));
+    }
+
+    try {
+      const h = await headers();
+      const host = h.get("x-forwarded-host") ?? h.get("host");
+      const proto = h.get("x-forwarded-proto") ?? "https";
+
+      await sendSubmissionEmailAlert({
+        to: data.email,
+        trackingCode,
+        offerName: offer.offerName ?? "",
+        offerId: offer.offerId ?? null,
+        host,
+        proto,
+      });
+    } catch (emailError) {
+      console.error("[SUBMISSION_EMAIL_FAILED]", emailError);
     }
 
     return NextResponse.json(

@@ -12,6 +12,7 @@ import {
   jsonb,
   date,
   doublePrecision,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -743,5 +744,25 @@ export const batchAssets = pgTable(
       table.batchId,
       table.assetId
     ),
+  })
+);
+
+export const externalCalls = pgTable(
+  "external_calls",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    service: text("service").notNull(),
+    endpoint: text("endpoint").notNull(),
+    method: text("method").notNull().default("GET"),
+    requestSize: integer("request_size"),
+    responseTimeMs: integer("response_time_ms"),
+    statusCode: integer("status_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    serviceIdx: index("idx_external_calls_service").on(table.service),
+    createdAtIdx: index("idx_external_calls_created_at").on(table.createdAt),
+    statusCodeIdx: index("idx_external_calls_status_code").on(table.statusCode),
   })
 );

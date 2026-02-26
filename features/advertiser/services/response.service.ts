@@ -11,6 +11,7 @@ import {
 
 import { logStatusChange } from "@/features/admin/services/statusHistory.service";
 import { notifyWorkflowEvent } from "@/features/notifications/notification.service";
+import { sendStatusChangeEmailAlert } from "@/features/notifications/notification.service";
 import type { WorkflowEvent } from "@/features/notifications/types";
 import { db } from "@/lib/db";
 import { creativeRequests, offers } from "@/lib/schema";
@@ -105,6 +106,9 @@ export async function getAdvertiserResponses({
 export async function approveResponse(id: string, advertiserId: string) {
   let evt: WorkflowEvent | null = null;
   let historyEntry: Parameters<typeof logStatusChange>[0] | null = null;
+  let publisherEmail: string | null = null;
+  let trackingCode: string | null = null;
+  let offerName: string | null = null;
 
   await db.transaction(async (tx) => {
     const [row] = await tx
@@ -121,6 +125,10 @@ export async function approveResponse(id: string, advertiserId: string) {
     if (!row) {
       throw new Error("Request not found");
     }
+
+    publisherEmail = row.email ?? null;
+    trackingCode = row.trackingCode ?? null;
+    offerName = row.offerName ?? null;
 
     if (row.status !== "pending" || row.approvalStage !== "advertiser") {
       throw new Error("Invalid state transition");
@@ -157,6 +165,21 @@ export async function approveResponse(id: string, advertiserId: string) {
 
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
+
+  if (publisherEmail && trackingCode && offerName) {
+    try {
+      await sendStatusChangeEmailAlert({
+        to: publisherEmail,
+        trackingCode,
+        offerName,
+        status: "advertiser_approved",
+        host: null,
+        proto: null,
+      });
+    } catch (err) {
+      console.error("[ADVERTISER_APPROVED_EMAIL_FAILED]", err);
+    }
+  }
 }
 
 export async function sendBackResponse(
@@ -166,6 +189,9 @@ export async function sendBackResponse(
 ) {
   let evt: WorkflowEvent | null = null;
   let historyEntry: Parameters<typeof logStatusChange>[0] | null = null;
+  let publisherEmail: string | null = null;
+  let trackingCode: string | null = null;
+  let offerName: string | null = null;
 
   await db.transaction(async (tx) => {
     const [row] = await tx
@@ -182,6 +208,10 @@ export async function sendBackResponse(
     if (!row) {
       throw new Error("Request not found");
     }
+
+    publisherEmail = row.email ?? null;
+    trackingCode = row.trackingCode ?? null;
+    offerName = row.offerName ?? null;
 
     if (row.status !== "pending" || row.approvalStage !== "advertiser") {
       throw new Error("Invalid state transition");
@@ -220,6 +250,22 @@ export async function sendBackResponse(
 
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
+
+  if (publisherEmail) {
+    try {
+      await sendStatusChangeEmailAlert({
+        to: publisherEmail,
+        trackingCode: trackingCode ?? id,
+        offerName: offerName ?? "Your submission",
+        status: "advertiser_sent_back",
+        reason,
+        host: null,
+        proto: null,
+      });
+    } catch (err) {
+      console.error("[ADVERTISER_SENT_BACK_EMAIL_FAILED]", err);
+    }
+  }
 }
 
 export async function rejectResponse(
@@ -229,6 +275,9 @@ export async function rejectResponse(
 ) {
   let evt: WorkflowEvent | null = null;
   let historyEntry: Parameters<typeof logStatusChange>[0] | null = null;
+  let publisherEmail: string | null = null;
+  let trackingCode: string | null = null;
+  let offerName: string | null = null;
 
   await db.transaction(async (tx) => {
     const [row] = await tx
@@ -245,6 +294,10 @@ export async function rejectResponse(
     if (!row) {
       throw new Error("Request not found");
     }
+
+    publisherEmail = row.email ?? null;
+    trackingCode = row.trackingCode ?? null;
+    offerName = row.offerName ?? null;
 
     if (row.status !== "pending" || row.approvalStage !== "advertiser") {
       throw new Error("Invalid state transition");
@@ -283,4 +336,20 @@ export async function rejectResponse(
 
   if (evt) await notifyWorkflowEvent(evt);
   if (historyEntry) await logStatusChange(historyEntry);
+
+  if (publisherEmail && trackingCode && offerName) {
+    try {
+      await sendStatusChangeEmailAlert({
+        to: publisherEmail,
+        trackingCode,
+        offerName,
+        status: "advertiser_rejected",
+        reason,
+        host: null,
+        proto: null,
+      });
+    } catch (err) {
+      console.error("[ADVERTISER_REJECTED_EMAIL_FAILED]", err);
+    }
+  }
 }

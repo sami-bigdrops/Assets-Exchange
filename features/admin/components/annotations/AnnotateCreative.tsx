@@ -217,23 +217,25 @@ export function AnnotateCreative({
             </div>
             <h2 className="text-lg font-semibold text-gray-800">Preview</h2>
           </div>
-          <div className="flex-1 min-h-0 overflow-auto flex items-start justify-center p-4 sm:p-6">
-            <div className="w-full max-w-[640px]">
-              <AnnotationLayer
-                creativeUrl={creativeUrl}
-                type={creativeType}
-                annotations={annotations}
-                isAddingMode={readOnly ? false : isAddingMode}
-                onAddAnnotation={onAddAnnotation}
-                onSelectAnnotation={onSelectAnnotation}
-                selectedAnnotationId={selectedAnnotation?.id ?? null}
-                hoveredAnnotationId={hoveredAnnotationId}
-                connectionPointAnnotationId={lineAnnotationId}
-                pendingAnnotation={pendingAnnotation}
-                onHoveredRectConnectionPoint={setConnectionLineFrom}
-                htmlContent={htmlContent}
-                readOnly={readOnly}
-              />
+          <div className="flex-1 min-h-0 flex flex-col p-4 sm:p-6">
+            <div className="flex-1 min-h-0 bg-white border border-gray-200 rounded-lg overflow-auto">
+              <div className="min-h-full w-full max-w-[640px] mx-auto">
+                <AnnotationLayer
+                  creativeUrl={creativeUrl}
+                  type={creativeType}
+                  annotations={annotations}
+                  isAddingMode={readOnly ? false : isAddingMode}
+                  onAddAnnotation={onAddAnnotation}
+                  onSelectAnnotation={onSelectAnnotation}
+                  selectedAnnotationId={selectedAnnotation?.id ?? null}
+                  hoveredAnnotationId={hoveredAnnotationId}
+                  connectionPointAnnotationId={lineAnnotationId}
+                  pendingAnnotation={pendingAnnotation}
+                  onHoveredRectConnectionPoint={setConnectionLineFrom}
+                  htmlContent={htmlContent}
+                  readOnly={readOnly}
+                />
+              </div>
             </div>
           </div>
         </div>

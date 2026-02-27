@@ -33,6 +33,27 @@ function isRect(
   return w > 0.5 && h > 0.5;
 }
 
+const IFRAME_NO_SCROLL_STYLE =
+  "<style>html,body{overflow:hidden !important;}</style>";
+
+const HEIGHT_SCRIPT = `
+(function(){
+  function report(){ try { var h = Math.max(document.documentElement.scrollHeight,document.body.scrollHeight,1); window.parent.postMessage({type:'creative-html-height',height:h},'*'); } catch(e){} }
+  if (document.readyState === 'complete') report(); else window.addEventListener('load', report);
+  try { new ResizeObserver(report).observe(document.body); } catch(e){ setInterval(report, 500); }
+})();
+`;
+
+function getHtmlWithHeightScript(html: string): string {
+  const script = `<script>${HEIGHT_SCRIPT}<\/script>`;
+  const style = IFRAME_NO_SCROLL_STYLE;
+  const trimmed = html.trim();
+  if (/<\/body\s*>/i.test(trimmed)) {
+    return trimmed.replace(/<\/body\s*>/i, style + script + "</body>");
+  }
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">${style}<\/head><body>${trimmed}${script}</body></html>`;
+}
+
 interface AnnotationLayerProps {
   creativeUrl: string;
   type: "image" | "html";
@@ -67,6 +88,28 @@ export function AnnotationLayer({
   readOnly = false,
 }: AnnotationLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [iframeContentHeight, setIframeContentHeight] = useState<number | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (type !== "html") return;
+    setIframeContentHeight(null);
+  }, [htmlContent, type]);
+
+  useEffect(() => {
+    if (type !== "html") return;
+    const onMessage = (e: MessageEvent) => {
+      if (
+        e.data?.type === "creative-html-height" &&
+        typeof e.data.height === "number"
+      ) {
+        setIframeContentHeight(e.data.height);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [type]);
 
   const updateConnectionPoint = useCallback(() => {
     const id = connectionPointAnnotationId;
@@ -186,37 +229,46 @@ export function AnnotationLayer({
       : null;
 
   return (
-    <div className="relative inline-block w-full max-w-4xl border rounded-lg overflow-hidden bg-gray-100">
+    <div className="relative w-full min-h-full border rounded-lg overflow-hidden bg-gray-100">
       <div
         ref={containerRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        className={`relative select-none ${isAddingMode ? "cursor-crosshair" : "cursor-default"}`}
+        className={`relative w-full min-h-full select-none ${isAddingMode ? "cursor-crosshair" : "cursor-default"}`}
         style={{ userSelect: "none" }}
       >
         {type === "image" ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={creativeUrl}
-            alt="Creative to review"
-            className="w-full h-auto block pointer-events-none"
-            draggable={false}
-          />
+          <div className="relative w-full min-h-full flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={creativeUrl}
+              alt="Creative to review"
+              className="max-w-full w-full h-auto block pointer-events-none"
+              draggable={false}
+            />
+          </div>
         ) : (
-          <div className="relative w-full">
+          <div
+            className="relative w-full min-h-full"
+            style={
+              iframeContentHeight != null
+                ? { height: iframeContentHeight }
+                : undefined
+            }
+          >
             <iframe
-              srcDoc={
+              srcDoc={getHtmlWithHeightScript(
                 htmlContent ||
-                '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Arial,sans-serif;color:#666;"><p>Loading HTML content...</p></div>'
-              }
-              className="w-full h-[600px] border-none pointer-events-none"
+                  '<div style="display:flex;align-items:center;justify-content:center;min-height:400px;font-family:Arial,sans-serif;color:#666;"><p>Loading HTML content...</p></div>'
+              )}
+              className={`w-full h-full border-0 ${isAddingMode ? "pointer-events-none" : "pointer-events-auto"}`}
               title="HTML Creative"
               sandbox="allow-scripts allow-same-origin"
             />
             {isAddingMode && (
-              <div className="absolute inset-0 cursor-crosshair pointer-events-none" />
+              <div className="absolute inset-0 cursor-crosshair pointer-events-auto" />
             )}
           </div>
         )}

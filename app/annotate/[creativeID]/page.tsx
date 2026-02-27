@@ -15,18 +15,19 @@ export default async function AnnotatePage({
   params: Promise<{ creativeID: string }>;
   searchParams: Promise<{ requestId?: string; action?: string; mode?: string }>;
 }) {
+  const { creativeID } = await params;
+  const { requestId, action, mode } = await searchParams;
+  const isShareableView = mode === "view";
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  if (!session) {
+  if (!session && !isShareableView) {
     redirect("/auth");
   }
 
-  const userRole = (session.user.role as string) ?? "";
-
-  const { creativeID } = await params;
-  const { requestId, action, mode } = await searchParams;
+  const userRole = (session?.user?.role as string) ?? "";
 
   const creative = await db.query.creatives.findFirst({
     where: eq(creatives.id, creativeID),

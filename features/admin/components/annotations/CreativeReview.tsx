@@ -86,9 +86,10 @@ export function CreativeReview({
   const fetchAnnotations = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(
-        `/api/admin/annotations?creativeId=${creativeId}`
-      );
+      const url = readOnly
+        ? `/api/annotations/${creativeId}`
+        : `/api/admin/annotations?creativeId=${creativeId}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setAnnotations(sortByCreatedAtAsc(data.data));
@@ -99,7 +100,7 @@ export function CreativeReview({
     } finally {
       setIsLoading(false);
     }
-  }, [creativeId, sortByCreatedAtAsc]);
+  }, [creativeId, readOnly, sortByCreatedAtAsc]);
 
   useEffect(() => {
     fetchAnnotations();

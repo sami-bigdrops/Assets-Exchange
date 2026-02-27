@@ -31,18 +31,10 @@ export function LastUpdated() {
     updateTime();
     const clockInterval = setInterval(updateTime, 1000);
 
-    const refreshInterval = setInterval(() => {
-      dispatchDashboardRefresh();
-      startTransition(() => {
-        router.refresh();
-      });
-    }, 10000);
-
     return () => {
       clearInterval(clockInterval);
-      clearInterval(refreshInterval);
     };
-  }, [router]);
+  }, []);
 
   const handleRefresh = () => {
     dispatchDashboardRefresh();

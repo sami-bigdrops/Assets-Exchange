@@ -68,6 +68,12 @@ export function Request({
     };
 
     load();
+
+    const handleRefresh = () => void load();
+    window.addEventListener("dashboard-refresh", handleRefresh);
+    return () => {
+      window.removeEventListener("dashboard-refresh", handleRefresh);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

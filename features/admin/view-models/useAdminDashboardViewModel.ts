@@ -10,9 +10,9 @@ export function useAdminDashboardViewModel() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (showLoading = false) => {
     try {
-      setIsLoading(true);
+      if (showLoading) setIsLoading(true);
       setError(null);
       const dashboardData = await getAdminDashboardData();
       setData(dashboardData);
@@ -26,7 +26,13 @@ export function useAdminDashboardViewModel() {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
+
+    const handleRefresh = () => void fetchData();
+    window.addEventListener("dashboard-refresh", handleRefresh);
+    return () => {
+      window.removeEventListener("dashboard-refresh", handleRefresh);
+    };
   }, [fetchData]);
 
   return {

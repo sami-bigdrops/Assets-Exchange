@@ -14,14 +14,15 @@ export async function POST(
     headers: await headers(),
   });
 
-  if (!session || session.user.role !== "admin") {
+  if (!session || !["admin", "administrator"].includes(session.user.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
-    const reason = typeof body?.reason === "string" ? body.reason : "";
+    const reason =
+      typeof body?.reason === "string" ? body.reason : body?.feedback || "";
 
     await rejectRequest(id, session.user.id, reason);
     return new NextResponse(null, { status: 204 });

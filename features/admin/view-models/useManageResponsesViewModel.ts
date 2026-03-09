@@ -54,9 +54,6 @@ export function useManageResponsesViewModel(isAdvertiserView: boolean = false) {
       newApprovalStage: "admin" | "advertiser" | "completed"
     ) => {
       setResponses((prev) => {
-        if (newApprovalStage !== "advertiser") {
-          return prev.filter((req) => req.id !== requestId);
-        }
         return prev.map((req) =>
           req.id === requestId
             ? { ...req, status: newStatus, approvalStage: newApprovalStage }

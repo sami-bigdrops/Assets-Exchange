@@ -59,6 +59,12 @@ export function Response() {
     };
 
     load();
+
+    const handleRefresh = () => void load();
+    window.addEventListener("dashboard-refresh", handleRefresh);
+    return () => {
+      window.removeEventListener("dashboard-refresh", handleRefresh);
+    };
   }, []);
 
   const updateRequestStatus = useCallback(

@@ -34,11 +34,6 @@ export async function POST(req: NextRequest) {
 
     const data = validation.data;
 
-    // Sanitize user-stored content for XSS protection
-    const sanitizedAdditionalNotes = sanitizePlainText(data.additionalNotes);
-    const sanitizedFromLines = sanitizePlainText(data.fromLines);
-    const sanitizedSubjectLines = sanitizePlainText(data.subjectLines);
-
     const offer = await getOffer(data.offerId);
     if (!offer) {
       return NextResponse.json({ error: "Offer not found" }, { status: 404 });
@@ -49,6 +44,8 @@ export async function POST(req: NextRequest) {
 
     let fromLinesCount = countLines(data.fromLines);
     let subjectLinesCount = countLines(data.subjectLines);
+    let finalFromLines = data.fromLines || "";
+    let finalSubjectLines = data.subjectLines || "";
 
     if (data.files?.length) {
       data.files.forEach((file) => {
@@ -56,9 +53,11 @@ export async function POST(req: NextRequest) {
           const metadata = file.metadata as Record<string, unknown>;
           if (typeof metadata.fromLines === "string") {
             fromLinesCount += countLines(metadata.fromLines);
+            if (!finalFromLines) finalFromLines = metadata.fromLines;
           }
           if (typeof metadata.subjectLines === "string") {
             subjectLinesCount += countLines(metadata.subjectLines);
+            if (!finalSubjectLines) finalSubjectLines = metadata.subjectLines;
           }
         }
       });
@@ -99,9 +98,9 @@ export async function POST(req: NextRequest) {
         status: "new",
         approvalStage: "admin",
         adminStatus: "pending",
-        fromLines: sanitizedFromLines,
-        subjectLines: sanitizedSubjectLines,
-        additionalNotes: sanitizedAdditionalNotes,
+        fromLines: sanitizePlainText(finalFromLines),
+        subjectLines: sanitizePlainText(finalSubjectLines),
+        additionalNotes: sanitizePlainText(data.additionalNotes),
         submittedAt: new Date(),
         updatedAt: new Date(),
       })

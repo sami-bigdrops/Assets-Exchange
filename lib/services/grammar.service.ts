@@ -319,7 +319,7 @@ async function processImageWithAI(
 ): Promise<Record<string, unknown> | null> {
   if (!AI_BASE_URL) return null;
 
-  const timeouts = [30000, 45000, 50000];
+  const timeouts = [300000, 300000, 300000];
 
   for (let attempt = 0; attempt < timeouts.length; attempt++) {
     const timeout = timeouts[attempt];

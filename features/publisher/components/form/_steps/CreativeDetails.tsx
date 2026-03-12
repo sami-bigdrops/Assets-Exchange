@@ -49,8 +49,6 @@ type GrammarIssue = {
   suggestedText?: string;
 };
 
-// Optional: this supports multiple possible backend shapes.
-// We normalize everything into GrammarIssue[] so UI never crashes.
 type GrammarFeedbackInput =
   | null
   | undefined
@@ -613,7 +611,7 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
         if (!r.ok) throw new Error(await r.text());
         const data = await r.json();
 
-        // Handle ZIP analysis (same logic as before)
+        // Handle ZIP analysis
         if (data.zipAnalysis) {
           if (data.zipAnalysis.isSingleCreative) {
             const mainFile = data.zipAnalysis.mainCreative as
@@ -628,31 +626,25 @@ const CreativeDetails: React.FC<CreativeDetailsProps> = ({
             if (!mainFile)
               throw new Error("Single creative ZIP missing main file");
 
-            const mapped: UploadedFileMeta[] = [
-              {
-                id: mainFile.id, // Note: using id not fileId as per new structure, or map if needed
-                name: mainFile.name,
-                url: mainFile.url,
-                size: mainFile.size,
-                type: mainFile.type || "text/html",
-                source: "zip",
-                html: /\.html?$/i.test(mainFile.name),
-                previewUrl: mainFile.url, // URL is now direct
-                assetCount: data.zipAnalysis.items.length - 1,
-                hasAssets: data.zipAnalysis.items.length > 1,
-              },
-            ];
-            addFiles(mapped);
-            setSelectedCreatives(mapped);
+            const singleMapped: UploadedFileMeta = {
+              id: mainFile.id,
+              name: mainFile.name,
+              url: mainFile.url,
+              size: mainFile.size,
+              type: mainFile.type || "text/html",
+              source: "zip",
+              html: /\.html?$/i.test(mainFile.name),
+              previewUrl: mainFile.url,
+              assetCount: data.zipAnalysis.items.length - 1,
+              hasAssets: data.zipAnalysis.items.length > 1,
+            };
+            addFiles([singleMapped]);
+            setSelectedCreative(singleMapped);
             setUploadedZipFileName(file.name);
             setIsUploadDialogOpen(false);
-            setIsMultipleCreativeDialogOpen(true);
+            setIsSingleCreativeDialogOpen(true);
             return;
           } else {
-            // Pass the processed items to handleMultipleFileUpload logic (or inline it here)
-            // Actually handleMultipleFileUpload was rewriting the logic, let's just reuse the mapping logic
-            // But handleMultipleFileUpload does the upload itself in current code.
-            // Let's call a shared helper or just process here.
             processZipItems(data.zipAnalysis.items, file.name);
             return;
           }

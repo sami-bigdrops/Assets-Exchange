@@ -45,15 +45,14 @@ async function saveTelegramIdToPublisher(
 
     if (existingByTelegram.length > 0) {
       const publisher = existingByTelegram[0];
-      if (email && !publisher.contactEmail) {
-        await db
-          .update(publishers)
-          .set({
-            contactEmail: email,
-            updatedAt: new Date(),
-          })
-          .where(eq(publishers.id, publisher.id));
-      }
+      await db
+        .update(publishers)
+        .set({
+          ...(chatId != null && { telegramChatId: chatId }),
+          ...(email && !publisher.contactEmail && { contactEmail: email }),
+          updatedAt: new Date(),
+        })
+        .where(eq(publishers.id, publisher.id));
       return;
     }
 
@@ -91,29 +90,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingPublisher = await db
-      .select()
-      .from(publishers)
-      .where(eq(publishers.telegramId, normalizedTelegramId))
-      .limit(1);
-
-    if (existingPublisher.length > 0) {
-      const publisher = existingPublisher[0];
-      return NextResponse.json({
-        verified: true,
-        verifiedAt:
-          publisher.updatedAt?.toISOString() ||
-          publisher.createdAt?.toISOString(),
-        savedInDb: true,
-      });
-    }
-
     const verificationKey = `telegram_verify:${normalizedTelegramId}`;
     const verificationData = await redis.get(verificationKey);
 
+    let parsed: { verified?: boolean; verifiedAt?: string; chatId?: string } = {
+      verified: false,
+    };
     if (verificationData) {
-      let parsed: { verified?: boolean; verifiedAt?: string; chatId?: string };
-
       if (typeof verificationData === "string") {
         try {
           parsed = JSON.parse(verificationData);
@@ -126,28 +109,47 @@ export async function POST(req: NextRequest) {
           verifiedAt?: string;
           chatId?: string;
         };
-      } else {
-        parsed = { verified: false };
       }
+    }
 
-      if (parsed.verified === true) {
-        //changed
-        await saveTelegramIdToPublisher(
-          normalizedTelegramId,
-          parsed.chatId,
-          email
-        );
+    if (parsed.verified === true && parsed.chatId) {
+      await saveTelegramIdToPublisher(
+        normalizedTelegramId,
+        parsed.chatId,
+        email
+      );
+      const [updated] = await db
+        .select({ updatedAt: publishers.updatedAt })
+        .from(publishers)
+        .where(eq(publishers.telegramId, normalizedTelegramId))
+        .limit(1);
+      return NextResponse.json({
+        verified: true,
+        verifiedAt: updated?.updatedAt?.toISOString() ?? parsed.verifiedAt,
+        savedInDb: true,
+      });
+    }
+
+    const existingPublisher = await db
+      .select()
+      .from(publishers)
+      .where(eq(publishers.telegramId, normalizedTelegramId))
+      .limit(1);
+
+    if (existingPublisher.length > 0) {
+      if (existingPublisher[0].telegramChatId) {
         return NextResponse.json({
           verified: true,
-          verifiedAt: parsed.verifiedAt,
+          verifiedAt:
+            existingPublisher[0].updatedAt?.toISOString() ||
+            existingPublisher[0].createdAt?.toISOString(),
           savedInDb: true,
         });
       }
-
       return NextResponse.json({
-        verified: Boolean(parsed.verified),
-        verifiedAt: parsed.verifiedAt,
-        savedInDb: false,
+        verified: false,
+        savedInDb: true,
+        message: "Send /start to the bot in Telegram, then click Verify again.",
       });
     }
 

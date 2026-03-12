@@ -124,9 +124,10 @@ async function nativeHttpPost(
     );
 
   const escapedFilename = filename.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const fileFieldName = process.env.GRAMMAR_AI_FILE_FIELD ?? "creative_file";
   const filePart = Buffer.concat([
     Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${escapedFilename}"\r\nContent-Type: ${mimeType}\r\n\r\n`
+      `--${boundary}\r\nContent-Disposition: form-data; name="${fileFieldName}"; filename="${escapedFilename}"\r\nContent-Type: ${mimeType}\r\n\r\n`
     ),
     fileBuffer,
     Buffer.from("\r\n"),
@@ -1166,15 +1167,20 @@ export const GrammarService = {
 
           try {
             data = JSON.parse(res.body) as typeof data;
+            const raw = data as unknown as Record<string, unknown>;
             console.warn(`AI Response data:`, {
               task_id: data.task_id,
               status: data.status,
               hasResult: !!data.result,
               resultKeys: data.result ? Object.keys(data.result) : [],
-              topLevelKeys: Object.keys(data),
+              topLevelKeys: Object.keys(raw),
               hasMarkedImage:
                 !!(data.result as Record<string, unknown>)?.marked_image ||
                 !!data.marked_image,
+              messagePreview:
+                typeof raw.message === "string"
+                  ? raw.message.substring(0, 300)
+                  : undefined,
             });
           } catch (_jsonError) {
             console.error(
@@ -1186,13 +1192,49 @@ export const GrammarService = {
             );
           }
 
+          const raw = data as unknown as Record<string, unknown>;
+
+          // Map new compliance API format → legacy grammar service format
+          if (!data.corrections && !data.issues && !data.result) {
+            if (Array.isArray(raw.violations)) {
+              data.issues = raw.violations as unknown[];
+            }
+            if (
+              typeof raw.status === "string" &&
+              (raw.status === "pass" || raw.status === "fail")
+            ) {
+              data.status = raw.status === "fail" ? "SUCCESS" : raw.status;
+            }
+            // message field is a base64 image
+            if (
+              typeof raw.message === "string" &&
+              raw.message.startsWith("data:image/")
+            ) {
+              data.marked_image = raw.message;
+              if (!data.issues) data.issues = [];
+            }
+            // message field is a plain URL to an image
+            if (
+              typeof raw.message === "string" &&
+              (raw.message.startsWith("http://") ||
+                raw.message.startsWith("https://")) &&
+              /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(raw.message)
+            ) {
+              data.marked_image = raw.message;
+              if (!data.issues) data.issues = [];
+            }
+          }
+
           const isSync =
             data.task_id === "universal" ||
             data.status === "SUCCESS" ||
             data.corrections ||
             data.issues ||
             data.corrected_html ||
-            data.result;
+            data.result ||
+            data.marked_image ||
+            raw.status === "pass" ||
+            raw.status === "fail";
 
           if (isSync) {
             let resultData = (data.result || data) as Record<string, unknown>;

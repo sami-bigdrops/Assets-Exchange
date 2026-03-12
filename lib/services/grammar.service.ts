@@ -361,6 +361,16 @@ async function processImageWithAI(
       if (res.status < 200 || res.status >= 300) {
         console.warn(`AI response error for ${filename}: ${res.status}`);
         if (attempt < timeouts.length - 1) {
+          const retryDelay =
+            res.status === 503 || res.status === 502 || res.status === 504
+              ? 5000 * (attempt + 1)
+              : 0;
+          if (retryDelay > 0) {
+            console.warn(
+              `Service unavailable (${res.status}), waiting ${retryDelay / 1000}s before retry...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          }
           console.warn(`Retrying ${filename}...`);
           continue;
         }

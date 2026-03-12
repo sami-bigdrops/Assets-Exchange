@@ -438,6 +438,7 @@ const MultipleCreativesModal: React.FC<MultipleCreativesModalProps> = ({
       {/* SingleCreativeViewModal - Opens when View Creative is clicked */}
       {viewModel.selectedCreative && (
         <SingleCreativeViewModal
+          key={viewModel.selectedCreative.id}
           isOpen={viewModel.isSingleCreativeViewOpen}
           onClose={viewModel.closeSingleCreativeView}
           creative={{

@@ -17,14 +17,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const result = await db
-      .select()
-      .from(creativeMetadata)
-      .where(eq(creativeMetadata.creativeId, creativeIdParam))
-      .limit(1);
-
-    if (result.length > 0) {
-      const record = result[0];
+    // Helper to build the response from a creativeMetadata row
+    function buildFromMetadataRow(record: (typeof result)[number]) {
       return NextResponse.json({
         success: true,
         metadata: {
@@ -38,16 +32,39 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const [creative] = await db
-      .select({
-        metadata: creatives.metadata,
-      })
+    const result = await db
+      .select()
+      .from(creativeMetadata)
+      .where(eq(creativeMetadata.creativeId, creativeIdParam))
+      .limit(1);
+
+    if (result.length > 0) {
+      return buildFromMetadataRow(result[0]);
+    }
+
+    // creativeIdParam may be a DB CUID — look up the creative's blob URL and
+    // retry so we can find metadata saved by the publisher (who used blob URL).
+    const [creativeRow] = await db
+      .select({ url: creatives.url, metadata: creatives.metadata })
       .from(creatives)
       .where(eq(creatives.id, creativeIdParam))
       .limit(1);
 
-    if (creative?.metadata) {
-      const meta = creative.metadata as Record<string, unknown>;
+    if (creativeRow?.url) {
+      const byUrl = await db
+        .select()
+        .from(creativeMetadata)
+        .where(eq(creativeMetadata.creativeId, creativeRow.url))
+        .limit(1);
+
+      if (byUrl.length > 0) {
+        return buildFromMetadataRow(byUrl[0]);
+      }
+    }
+
+    // Last resort: use the metadata column stored on the creatives row
+    if (creativeRow?.metadata) {
+      const meta = creativeRow.metadata as Record<string, unknown>;
 
       let fallbackProofreadingData = meta.proofreadingData;
 

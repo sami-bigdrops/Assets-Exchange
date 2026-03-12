@@ -434,6 +434,23 @@ function grammarScoreFromErrorCount(errorCount: number): number {
   return Math.max(0, Math.min(100, Math.round(100 - errorCount * 6)));
 }
 
+function sanitizeBase64ForDB(value: unknown): unknown {
+  if (typeof value === "string" && value.startsWith("data:image/")) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    return value.map(sanitizeBase64ForDB);
+  }
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      result[k] = sanitizeBase64ForDB(v);
+    }
+    return result;
+  }
+  return value;
+}
+
 function applyCorrectionsToHtml(html: string, corrections: unknown[]): string {
   if (!corrections || corrections.length === 0) return html;
 
@@ -1331,7 +1348,9 @@ export const GrammarService = {
                 ...resultData,
                 corrections: [...htmlCorrections, ...allCorrections],
                 issues: [...htmlIssues, ...allIssues],
-                image_results: extractedImageResults,
+                image_results: extractedImageResults.map(
+                  (r) => sanitizeBase64ForDB(r) as Record<string, unknown>
+                ),
                 image_marked_urls: imageMarkedUrls,
               };
 
@@ -1658,6 +1677,11 @@ Copy to analyze:`;
               "completed"
             );
 
+            const dbSafeResult = sanitizeBase64ForDB(resultData) as Record<
+              string,
+              unknown
+            >;
+
             const [task] = await db
               .insert(externalTasks)
               .values({
@@ -1666,7 +1690,7 @@ Copy to analyze:`;
                 source: "grammar_ai",
                 externalTaskId: data.task_id || `sync-${Date.now()}`,
                 status: "completed",
-                result: resultData,
+                result: dbSafeResult,
                 grammarFeedback,
                 startedAt: new Date(),
                 finishedAt: new Date(),

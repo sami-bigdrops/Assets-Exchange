@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { bulkDeleteByIds, parseIdsFromUrl } from "@/lib/filesClient";
 
@@ -46,27 +46,35 @@ export const useMultipleCreativesModal = ({
     useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [htmlContent, setHtmlContent] = useState<Record<string, string>>({});
+  const fetchingIdsRef = useRef(new Set<string>());
   const [isHtmlEditorFullscreen, setIsHtmlEditorFullscreen] = useState(false);
   const [isImagePreviewFullscreen, setIsImagePreviewFullscreen] =
     useState(false);
   const [currentEditingCreative, setCurrentEditingCreative] =
     useState<CreativeFile | null>(null);
 
-  // ZIP file name editing state
   const [isEditingZipFileName, setIsEditingZipFileName] = useState(false);
   const [editableZipFileName, setEditableZipFileName] = useState("");
   const [editableZipNameOnly, setEditableZipNameOnly] = useState("");
 
-  // Load HTML content for HTML creatives
+  // Clear fetch tracking when modal closes so fresh content loads on reopen
+  useEffect(() => {
+    if (!isOpen) {
+      fetchingIdsRef.current.clear();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen || typeof window === "undefined") return;
 
     const loadHtmlContent = async (creative: CreativeFile) => {
-      // Skip if already loaded
-      if (htmlContent[creative.id]) return;
+      // Skip if already fetching or already loaded (ref guards against concurrent re-runs)
+      if (fetchingIdsRef.current.has(creative.id)) return;
 
       const isHtml = creative.html || /\.html?$/i.test(creative.name);
       if (!isHtml) return;
+
+      fetchingIdsRef.current.add(creative.id);
 
       try {
         // Check for embedded HTML first
@@ -103,21 +111,18 @@ export const useMultipleCreativesModal = ({
             }
           }
         } catch (apiError) {
-          // API fetch failed, try fallback
           console.warn("API fetch failed for creative:", creative.id, apiError);
         }
 
-        // Fallback to direct fetch - only for absolute URLs (not relative paths)
-        // Skip relative paths as they won't work with CORS
+        // Fallback to direct fetch - only for absolute URLs
         if (
           creative.url &&
           (creative.url.startsWith("http://") ||
             creative.url.startsWith("https://"))
         ) {
           try {
-            // Use AbortController for timeout compatibility
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             const directResponse = await fetch(creative.url, {
               method: "GET",
@@ -142,8 +147,6 @@ export const useMultipleCreativesModal = ({
               }
             }
           } catch (fetchError) {
-            // Silently fail - this is a fallback, so it's okay if it fails
-            // Only log if it's not a timeout or abort error
             if (
               fetchError instanceof Error &&
               fetchError.name !== "AbortError" &&
@@ -158,7 +161,8 @@ export const useMultipleCreativesModal = ({
           }
         }
       } catch (error) {
-        // Catch any unexpected errors
+        // On unexpected error remove from ref so the next open can retry
+        fetchingIdsRef.current.delete(creative.id);
         if (error instanceof Error) {
           console.warn(
             "Failed to load HTML content for creative:",
@@ -169,10 +173,9 @@ export const useMultipleCreativesModal = ({
       }
     };
 
-    // Load HTML content for each creative
+    // Load HTML content for each creative - ref prevents duplicate fetches
     creatives.forEach((creative) => {
       loadHtmlContent(creative).catch((error) => {
-        // Ensure no unhandled promise rejections
         console.warn(
           "Unhandled error loading HTML for creative:",
           creative.id,
@@ -180,8 +183,7 @@ export const useMultipleCreativesModal = ({
         );
       });
     });
-     
-  }, [isOpen, creatives, htmlContent]);
+  }, [isOpen, creatives]); // htmlContent intentionally excluded - ref handles deduplication
 
   const openSingleCreativeView = useCallback((creative: CreativeFile) => {
     setSelectedCreative(creative);

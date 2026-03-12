@@ -259,7 +259,7 @@ export async function syncOffersFromEverflow(
     }
 
     const everflowOffers = Array.from(uniqueOffersMap.values());
-    const totalRecords = everflowOffers.length;
+    totalRecords = everflowOffers.length;
 
     logger.everflow.info(
       `Fetched and deduplicated offers from Everflow - syncId: ${syncId}, statuses: ${statusesToFetch.join(",")}, totalFetched: ${allEverflowOffers.length}, totalUnique: ${totalRecords}`

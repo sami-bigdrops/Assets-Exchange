@@ -1,5 +1,6 @@
 import dns from "dns";
 import http from "http";
+import type { LookupFunction } from "net";
 import { parse } from "url";
 
 import { eq } from "drizzle-orm";
@@ -15,17 +16,30 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 15000;
 const MAX_IMAGE_SIZE_BYTES =
   typeof process.env.GRAMMAR_MAX_IMAGE_BYTES !== "undefined"
-    ? Math.max(256 * 1024, parseInt(process.env.GRAMMAR_MAX_IMAGE_BYTES, 10) || 1024 * 1024)
+    ? Math.max(
+        256 * 1024,
+        parseInt(process.env.GRAMMAR_MAX_IMAGE_BYTES, 10) || 1024 * 1024
+      )
     : 1024 * 1024;
 const MAX_IMAGE_DIMENSION =
   typeof process.env.GRAMMAR_MAX_IMAGE_DIMENSION !== "undefined"
-    ? Math.min(4096, Math.max(640, parseInt(process.env.GRAMMAR_MAX_IMAGE_DIMENSION, 10) || 1920))
+    ? Math.min(
+        4096,
+        Math.max(
+          640,
+          parseInt(process.env.GRAMMAR_MAX_IMAGE_DIMENSION, 10) || 1920
+        )
+      )
     : 1920;
 
 function lookupIPv4(
   hostname: string,
   options: dns.LookupAllOptions | dns.LookupOneOptions,
-  callback: (err: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family: number) => void
+  callback: (
+    err: NodeJS.ErrnoException | null,
+    address: string | dns.LookupAddress[],
+    family: number
+  ) => void
 ): void {
   const opts = Object.assign({}, options, { family: 4 });
   dns.lookup(hostname, opts, callback);
@@ -43,7 +57,7 @@ function grammarHealthGet(baseUrl: string, timeoutMs = 8000): Promise<boolean> {
         port,
         path,
         agent: false,
-        lookup: lookupIPv4 as import("net").LookupFunction,
+        lookup: lookupIPv4 as LookupFunction,
       },
       (res) => {
         let data = "";
@@ -75,7 +89,10 @@ async function resizeImageIfNeeded(
   }
   try {
     const out = await sharp(buffer)
-      .resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, { fit: "inside", withoutEnlargement: true })
+      .resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
       .jpeg({ quality: 85 })
       .toBuffer();
     const newName = filename.replace(/\.[^.]+$/i, ".jpg");
@@ -88,48 +105,8 @@ async function resizeImageIfNeeded(
     return { buffer, mimeType, filename };
   }
 }
-const OPENAI_API_KEY =
-  process.env.OPENAI_API_KEY || process.env.Open_AI;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.Open_AI;
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-
-async function fetchMultipartPost(
-  url: string,
-  fileBuffer: Buffer,
-  filename: string,
-  mimeType: string,
-  extraFields: Record<string, string> = {},
-  timeoutMs = 300000
-): Promise<{ status: number; body: string }> {
-  const form = new FormData();
-  for (const [k, v] of Object.entries(extraFields)) {
-    form.append(k, v);
-  }
-  form.append(
-    "file",
-    new Blob([new Uint8Array(fileBuffer)], { type: mimeType }),
-    filename
-  );
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      body: form,
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "GrammarBot/1.0 (Assets-Exchange)",
-      },
-    });
-    clearTimeout(timeoutId);
-    const body = await response.text();
-    return { status: response.status, body };
-  } catch (err) {
-    clearTimeout(timeoutId);
-    throw err;
-  }
-}
 
 async function nativeHttpPost(
   url: string,
@@ -168,7 +145,7 @@ async function nativeHttpPost(
   const hostHeader =
     parsed.hostname && parsed.port
       ? `${parsed.hostname}:${parsed.port}`
-      : parsed.hostname ?? "";
+      : (parsed.hostname ?? "");
 
   return new Promise((resolve, reject) => {
     const req = http.request(
@@ -178,7 +155,7 @@ async function nativeHttpPost(
         path,
         method: "POST",
         agent: false,
-        lookup: lookupIPv4 as import("net").LookupFunction,
+        lookup: lookupIPv4 as LookupFunction,
         headers: {
           "Content-Type": `multipart/form-data; boundary=${boundary}`,
           "Content-Length": body.length,
@@ -189,7 +166,9 @@ async function nativeHttpPost(
       (res) => {
         let data = "";
         res.on("data", (chunk: Buffer) => (data += chunk.toString()));
-        res.on("end", () => resolve({ status: res.statusCode ?? 0, body: data }));
+        res.on("end", () =>
+          resolve({ status: res.statusCode ?? 0, body: data })
+        );
       }
     );
 
@@ -202,8 +181,6 @@ async function nativeHttpPost(
     req.end();
   });
 }
-
-
 
 interface ExtractedImage {
   url: string;
@@ -351,10 +328,13 @@ async function processImageWithAI(
         `Processing image: ${filename} (attempt ${attempt + 1}/${timeouts.length}, timeout ${timeout / 1000}s)...`
       );
 
-      let fileBuffer = Buffer.from(await blob.arrayBuffer());
+      const fileBuffer = Buffer.from(await blob.arrayBuffer());
       const mt = blob.type || "image/jpeg";
-      const { buffer: sendBuffer, mimeType: sendMimeType, filename: sendFilename } =
-        await resizeImageIfNeeded(fileBuffer, mt, filename);
+      const {
+        buffer: sendBuffer,
+        mimeType: sendMimeType,
+        filename: sendFilename,
+      } = await resizeImageIfNeeded(fileBuffer, mt, filename);
       const base = AI_BASE_URL?.replace(/\/$/, "") ?? "";
       const path = process.env.GRAMMAR_AI_PROCESS_PATH || "/process";
       const processUrl = `${base}${path.startsWith("/") ? path : `/${path}`}${path.includes("?") ? "&" : "?"}format=json`;
@@ -409,7 +389,8 @@ async function processImageWithAI(
 
       return data;
     } catch (err) {
-      const isTimeout = err instanceof Error && err.message?.includes("timed out");
+      const isTimeout =
+        err instanceof Error && err.message?.includes("timed out");
       console.warn(
         `${isTimeout ? "Timeout" : "Error"} processing ${filename} (attempt ${attempt + 1}):`,
         err
@@ -1050,7 +1031,6 @@ export const GrammarService = {
         }
       }
 
-
       let lastError: Error | null = null;
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
@@ -1066,10 +1046,13 @@ export const GrammarService = {
           );
 
           const startTime = Date.now();
-          let fileBuffer = Buffer.from(await blob.arrayBuffer());
+          const fileBuffer = Buffer.from(await blob.arrayBuffer());
           const mimeType = blob.type || "application/octet-stream";
-          const { buffer: sendBuffer, mimeType: sendMimeType, filename: sendFilename } =
-            await resizeImageIfNeeded(fileBuffer, mimeType, filename);
+          const {
+            buffer: sendBuffer,
+            mimeType: sendMimeType,
+            filename: sendFilename,
+          } = await resizeImageIfNeeded(fileBuffer, mimeType, filename);
 
           const processPath = process.env.GRAMMAR_AI_PROCESS_PATH || "/process";
           const processUrl = `${grammarBaseUrl}${processPath.startsWith("/") ? processPath : `/${processPath}`}${processPath.includes("?") ? "&" : "?"}format=json`;
@@ -1100,7 +1083,9 @@ export const GrammarService = {
               `Request completed in ${duration}s with status ${res.status}`
             );
           } catch (fetchErr) {
-            const fetchError = fetchErr as Error & { cause?: { code?: string } };
+            const fetchError = fetchErr as Error & {
+              cause?: { code?: string };
+            };
             const causeMsg =
               fetchError.cause && fetchError.cause instanceof Error
                 ? fetchError.cause.message
@@ -1119,7 +1104,8 @@ export const GrammarService = {
               fetchError.message?.includes("fetch failed") ||
               fetchError.message?.includes("ECONNRESET") ||
               fetchError.message?.includes("ECONNREFUSED") ||
-              (causeMsg && /ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND/i.test(causeMsg));
+              (causeMsg &&
+                /ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND/i.test(causeMsg));
 
             if (isTimeout || isRetryableNetwork) {
               lastError = fetchError;
@@ -1141,15 +1127,9 @@ export const GrammarService = {
             throw new Error(`Network error: ${fetchError.message}`);
           }
 
-          console.warn(
-            `AI Response: status=${res.status}`
-          );
+          console.warn(`AI Response: status=${res.status}`);
 
-          if (
-            res.status === 502 ||
-            res.status === 503 ||
-            res.status === 504
-          ) {
+          if (res.status === 502 || res.status === 503 || res.status === 504) {
             const delay = RETRY_DELAY_MS * attempt;
             console.warn(
               `AI Service temporarily unavailable (${res.status}), attempt ${attempt}/${MAX_RETRIES}. Waiting ${delay / 1000}s...`
@@ -1334,18 +1314,27 @@ export const GrammarService = {
                         ...htmlIssues,
                         ...allIssues,
                       ]
-                      .slice(0, 30)
-                      .map((c: unknown) => {
-                        const o = c as Record<string, unknown>;
-                        const orig =
-                          o.original ?? o.original_word ?? o.incorrect ?? o.error_text ?? "";
-                        const fix =
-                          o.correction ?? o.corrected_word ?? o.correct ?? o.suggested ?? "";
-                        return typeof orig === "string" && typeof fix === "string"
-                          ? `"${orig}" -> "${fix}"`
-                          : JSON.stringify(o);
-                      })
-                      .join("\n")
+                        .slice(0, 30)
+                        .map((c: unknown) => {
+                          const o = c as Record<string, unknown>;
+                          const orig =
+                            o.original ??
+                            o.original_word ??
+                            o.incorrect ??
+                            o.error_text ??
+                            "";
+                          const fix =
+                            o.correction ??
+                            o.corrected_word ??
+                            o.correct ??
+                            o.suggested ??
+                            "";
+                          return typeof orig === "string" &&
+                            typeof fix === "string"
+                            ? `"${orig}" -> "${fix}"`
+                            : JSON.stringify(o);
+                        })
+                        .join("\n")
                     : "None.";
                 const openAiPrompt = `You are a strict quality scorer for marketing copy. Analyze the HTML content and the list of spelling/grammar errors that were already found.
 
@@ -1409,7 +1398,9 @@ HTML content to analyze:`;
                   (Array.isArray(resultData.corrections)
                     ? resultData.corrections.length
                     : 0) +
-                  (Array.isArray(resultData.issues) ? resultData.issues.length : 0);
+                  (Array.isArray(resultData.issues)
+                    ? resultData.issues.length
+                    : 0);
                 if (
                   resultData.qualityScore &&
                   typeof resultData.qualityScore === "object"
@@ -1428,10 +1419,8 @@ HTML content to analyze:`;
               typeof resultData === "object" &&
               !Array.isArray(resultData)
             ) {
-              const originalText =
-                (resultData.original_text as string) || "";
-              const correctedText =
-                (resultData.corrected_text as string) || "";
+              const originalText = (resultData.original_text as string) || "";
+              const correctedText = (resultData.corrected_text as string) || "";
               const textForAnalysis = [originalText, correctedText]
                 .filter(Boolean)
                 .join("\n\n--- Corrected ---\n\n");
@@ -1453,10 +1442,17 @@ HTML content to analyze:`;
                           .map((c: unknown) => {
                             const o = c as Record<string, unknown>;
                             const orig =
-                              o.original ?? o.original_word ?? o.incorrect ?? "";
+                              o.original ??
+                              o.original_word ??
+                              o.incorrect ??
+                              "";
                             const fix =
-                              o.correction ?? o.corrected_word ?? o.correct ?? "";
-                            return typeof orig === "string" && typeof fix === "string"
+                              o.correction ??
+                              o.corrected_word ??
+                              o.correct ??
+                              "";
+                            return typeof orig === "string" &&
+                              typeof fix === "string"
                               ? `"${orig}" -> "${fix}"`
                               : JSON.stringify(o);
                           })
@@ -1493,24 +1489,35 @@ Copy to analyze:`;
                   const aiResult = await callOpenAI(
                     openAiPrompt + "\n" + textForAnalysis.slice(0, 8000)
                   );
-                  if (aiResult.suggestions && Array.isArray(aiResult.suggestions)) {
+                  if (
+                    aiResult.suggestions &&
+                    Array.isArray(aiResult.suggestions)
+                  ) {
                     resultData.suggestions = aiResult.suggestions;
                     console.warn(
                       `[OpenAI] Added ${aiResult.suggestions.length} suggestions for image creative`
                     );
                   }
-                  if (aiResult.qualityScore && typeof aiResult.qualityScore === "object") {
-                    resultData.qualityScore = aiResult.qualityScore as Record<string, number>;
-                    console.warn("[OpenAI] Added quality scores for image creative");
+                  if (
+                    aiResult.qualityScore &&
+                    typeof aiResult.qualityScore === "object"
+                  ) {
+                    resultData.qualityScore = aiResult.qualityScore as Record<
+                      string,
+                      number
+                    >;
+                    console.warn(
+                      "[OpenAI] Added quality scores for image creative"
+                    );
                   }
-                  const totalErrImg =
-                    imgCorrections.length + imgIssues.length;
+                  const totalErrImg = imgCorrections.length + imgIssues.length;
                   if (
                     resultData.qualityScore &&
                     typeof resultData.qualityScore === "object"
                   ) {
-                    (resultData.qualityScore as Record<string, number>).grammar =
-                      grammarScoreFromErrorCount(totalErrImg);
+                    (
+                      resultData.qualityScore as Record<string, number>
+                    ).grammar = grammarScoreFromErrorCount(totalErrImg);
                   }
                 } catch (err) {
                   console.error("OpenAI (image creative) failed:", err);
@@ -1527,7 +1534,9 @@ Copy to analyze:`;
                 (Array.isArray(resultData.corrections)
                   ? resultData.corrections.length
                   : 0) +
-                (Array.isArray(resultData.issues) ? resultData.issues.length : 0);
+                (Array.isArray(resultData.issues)
+                  ? resultData.issues.length
+                  : 0);
               if (totalErrors >= 0) {
                 if (
                   !resultData.qualityScore ||
@@ -1575,9 +1584,11 @@ Copy to analyze:`;
                       resultData[key] = uploaded.url;
                       if (
                         key === "output_content" ||
-                        typeof (resultData as Record<string, unknown>).marked_image !== "string"
+                        typeof (resultData as Record<string, unknown>)
+                          .marked_image !== "string"
                       ) {
-                        (resultData as Record<string, unknown>).marked_image = uploaded.url;
+                        (resultData as Record<string, unknown>).marked_image =
+                          uploaded.url;
                       }
                       console.warn(`✅ Converted & Saved: ${uploaded.url}`);
                     } else {

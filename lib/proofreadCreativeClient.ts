@@ -58,9 +58,6 @@ export async function proofreadCreative(
     if (!response.ok) {
       let errorMessage = "Proofreading failed";
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorData.message || errorMessage;
-      } catch {
         const errorText = await response.text();
         try {
           const parsed = JSON.parse(errorText);
@@ -68,6 +65,8 @@ export async function proofreadCreative(
         } catch {
           errorMessage = errorText || errorMessage;
         }
+      } catch {
+        // Failed to read response body
       }
       throw new Error(errorMessage);
     }
@@ -95,9 +94,6 @@ export async function checkProofreadStatus(
     if (!response.ok) {
       let errorMessage = "Status check failed";
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorData.message || errorMessage;
-      } catch {
         const errorText = await response.text();
         try {
           const parsed = JSON.parse(errorText);
@@ -105,6 +101,8 @@ export async function checkProofreadStatus(
         } catch {
           errorMessage = errorText || errorMessage;
         }
+      } catch {
+        // Failed to read response body
       }
       throw new Error(errorMessage);
     }
